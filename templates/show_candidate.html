@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Label Candidate</title>
+    <style>
+        /* Full-screen layout */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Make the map container take up full window size */
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Position buttons near the bottom and center them */
+        #buttons {
+            position: absolute;
+            bottom: 10%; /* Adjust to move up/down */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9); /* Semi-transparent background */
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            gap: 15px;
+        }
+
+        /* Larger buttons */
+        .btn {
+            font-size: 20px;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .btn-yes { background: #ff4d4d; color: white; }    /* Red - Duplicate */
+        .btn-no { background: #4caf50; color: white; }     /* Green - Not Duplicate */
+        .btn-unsure { background: #f0ad4e; color: white; } /* Yellow - Unsure */
+        
+        /* Button hover effect */
+        .btn:hover {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div id="map">
+        <iframe src="{{ url_for('static', filename='maps/candidate_' + i + '.html') }}" width="100%" height="100%"></iframe>
+    </div>
+
+    <!-- Buttons for labeling -->
+    <div id="buttons">
+        <button class="btn btn-yes" onclick="labelCandidate('yes')">Duplicate</button>
+        <button class="btn btn-no" onclick="labelCandidate('no')">Not Duplicate</button>
+        <button class="btn btn-unsure" onclick="labelCandidate('unsure')">Unsure</button>
+    </div>
+
+    <script>
+        function labelCandidate(label) {
+            const i = {{ i }};
+            fetch(`/label_candidate/${i}/${label}`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.next_candidate !== undefined) {
+                        window.location.href = `/show_candidate/${data.next_candidate}`;
+                    }
+                });
+        }
+    </script>
+</body>
+</html>

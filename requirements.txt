@@ -1,0 +1,5 @@
+flask
+folium
+geopandas
+pandas
+pyarrow
