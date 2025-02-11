@@ -48,9 +48,8 @@
 </head>
 <body>
     <div id="map">
-        {{ map_html|safe }}
+        <iframe src="{{ url_for('static', filename='maps/candidate_' + i | string + '.html') }}" width="100%" height="100%"></iframe>
     </div>
-
     <div id="buttons">
         <button class="btn btn-yes" onclick="labelPair({{ i }}, 'yes')">Duplicate</button>
         <button class="btn btn-no" onclick="labelPair({{ i }}, 'no')">Not Duplicate</button>
