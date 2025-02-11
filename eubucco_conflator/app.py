@@ -1,7 +1,6 @@
 import atexit
 import webbrowser
 import os
-from pathlib import Path
 
 import click
 import pandas as pd
@@ -36,7 +35,8 @@ def main(filepath):
 
     atexit.register(_store_results)
     webbrowser.open('http://127.0.0.1:5001/show_candidate/0')
-    app.run(debug=False, port=5001)
+    from waitress import serve
+    serve(app, host="127.0.0.1", port=5001)
 
 
 @app.route("/")

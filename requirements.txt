@@ -1,6 +1,0 @@
-flask
-folium
-geopandas
-pandas
-pyarrow
-click
