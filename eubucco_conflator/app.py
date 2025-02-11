@@ -44,7 +44,7 @@ def main(filepath):
     already_labeled_ids = [duplicate['id'] for duplicate in results]
     click.echo(f"Loaded latest labeling state: {len(results)} buildings already labeled")
 
-    candidates = gdf_all[gdf_all.index == gdf_all['candidate_id']].sort_values('dataset').drop(already_labeled_ids)
+    candidates = gdf_all[(gdf_all.index == gdf_all['candidate_id']) & (~gdf_all['candidate_id'].isin(already_labeled_ids))].sort_values('dataset')
     click.echo(f"Starting labeling of {len(candidates)} buildings...")
 
     create_html(0)
