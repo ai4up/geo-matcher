@@ -10,6 +10,7 @@ from flask import Flask, render_template, request, jsonify
 from flask_executor import Executor
 import folium
 import geopandas as gpd
+from waitress import serve
 
 app = Flask(__name__)
 executor = Executor(app)
@@ -21,6 +22,7 @@ PROGRESS_FILE = 'data/labeling-progress.pickle'
 RESULTS_FILE = 'results.csv'
 
 gdf_all = None
+candidates = None
 results = []
 
 
@@ -34,17 +36,22 @@ def main(filepath):
     global gdf_all
     global results
     global candidates
- 
-    gdf_all = gpd.read_parquet(filepath).to_crs("EPSG:4326")
-    results = _load_progress()
-    already_labeled_ids = [item['id'] for item in results]
-    candidates = gdf_all[gdf_all.index == gdf_all['candidate_id']].sort_values('dataset').drop(already_labeled_ids)
 
+    gdf_all = gpd.read_parquet(filepath).to_crs("EPSG:4326")
+    click.echo(f"Loaded {len(gdf_all)} buildings from {filepath}")
+
+    results = _load_progress()
+    already_labeled_ids = [duplicate['id'] for duplicate in results]
+    click.echo(f"Loaded latest labeling state: {len(results)} buildings already labeled")
+
+    candidates = gdf_all[gdf_all.index == gdf_all['candidate_id']].sort_values('dataset').drop(already_labeled_ids)
+    click.echo(f"Starting labeling of {len(candidates)} buildings...")
 
     create_html(0)
     atexit.register(_store_results)
+
+    click.echo("Opening browser...")
     webbrowser.open('http://127.0.0.1:5001/show_candidate/0')
-    from waitress import serve
     serve(app, host="127.0.0.1", port=5001)
 
 
@@ -148,6 +155,7 @@ def _lat_lon(geom):
 
 def _store_results():
     pd.DataFrame(results).to_csv(RESULTS_FILE, index=False)
+    click.echo(f"All buildings successfully labled. Results stored in {RESULTS_FILE}.")
 
 
 def _store_progress():
