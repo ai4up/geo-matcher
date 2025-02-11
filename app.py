@@ -1,91 +1,143 @@
+import atexit
+import webbrowser
 import os
-import pickle
+from pathlib import Path
+
+import click
 import pandas as pd
 from flask import Flask, render_template, request, jsonify
 import folium
-from shapely.geometry import Point
-from shapely.ops import transform
-from pyproj import Transformer
 import geopandas as gpd
 
-
-# Initialize Flask app
 app = Flask(__name__)
 
-# Load the data
-gdf = gpd.read_parquet('data/duplicate-candidates-5.parquet')
-progress_file = 'data/labeling-progress.pickle'
+PROGRESS_FILE = 'data/labeling-progress.pickle'
+RESULTS_FILE = 'results.csv'
 
-# Load progress if exists
-if os.path.exists(progress_file):
-    results = pd.read_pickle(progress_file).to_dict('records')
-else:
-    results = []
-
-already_labeled_ids = [item['id'] for item in results]
-candidates = gdf[gdf.index == gdf['candidate_id']].sort_values('dataset').drop(already_labeled_ids)
-
-# Helper function to convert geometry to lat/lng
-def _lng_lat(p: Point, source_crs: str):
-    t = Transformer.from_crs(source_crs, "EPSG:4326", always_xy=True)
-    transformed_p = transform(t.transform, p)
-    return transformed_p.y, transformed_p.x
-
-# Function to get neighbors
-def _get_neighbors(location, gdf, dis):
-    neighbor_idx = gdf.sindex.query(location, predicate="dwithin", distance=dis)
-    return gdf.iloc[neighbor_idx]
-
-# Show duplicate candidate and neighbors
-@app.route("/show_candidate/<int:i>")
-def show_candidate(i):
-    if i >= len(candidates):
-        return "All buildings labeled!", 200
-
-    candidate = candidates.iloc[i]
-    centroid = candidate.geometry.centroid
-    lng, lat = _lng_lat(centroid, gdf.crs)
-    
-    # Create Folium map centered on the candidate
-    m = folium.Map(location=[lng, lat], zoom_start=19)
-
-    # Add neighbors to the map (existing and new)
-    gdf_neighbors_existing = gdf[(gdf['candidate_id'] == candidate.name) & (gdf['dataset'] != candidate.dataset)]
-    gdf_neighbors_new = gdf[(gdf['candidate_id'] == candidate.name) & (gdf['dataset'] == candidate.dataset) & (gdf.index != candidate.name)]
-    folium.GeoJson(gdf_neighbors_existing.to_crs("EPSG:4326"), style_function=lambda x: {'color': 'skyblue', 'fillOpacity': 1}).add_to(m)
-    folium.GeoJson(gdf_neighbors_new.to_crs("EPSG:4326"), style_function=lambda x: {'color': 'coral', 'fillOpacity': 0.2}).add_to(m)
-
-    # Highlight the candidate building
-    folium.GeoJson(candidates.iloc[[i]].geometry.to_crs("EPSG:4326"), style_function=lambda x: {'color': 'red', 'weight': 3}).add_to(m)
-
-    # m = gdf_neighbors_existing.explore(m=m, color='skyblue', style_kwds={"fillOpacity": 1})
-    # m = gdf_neighbors_new.explore(m=m, color='coral', style_kwds={"fillOpacity": 0.2})
-    
-    # # Highlight candidate building with red boundary
-    # m = candidates.iloc[[i]].explore(color="red", m=m, style_kwds={"fillOpacity": 0, "weight": 2.5})
-
-    # Save the map to an HTML file
-    map_file = f"static/maps/candidate_{i}.html"
-    m.save(map_file)
-    
-    return render_template("show_candidate.html", i=str(i))
+gdf_all = None
+results = []
 
 
-# Label the candidate (duplicate or not)
-@app.route("/label_candidate/<int:i>/<label>", methods=["POST"])
-def label_candidate(i, label):
-    id = candidates.iloc[i].name
-    results.append({"id": id, "duplicate": label})
-    # Store progress
-    with open(progress_file, "wb") as f:
-        pickle.dump(pd.DataFrame(results), f)
-    
-    return jsonify({"message": "Success", "next_candidate": i + 1})
+@click.command()
+@click.argument('filepath', required=True, type=click.Path(exists=True))
+def main(filepath):
+    """Start labeling of duplicated buildings.
 
-# Home route
+    FILEPATH to GeoParquet file which contains the buildings to label.
+    """
+    global gdf_all
+    global results
+    global candidates
+ 
+    gdf_all = gpd.read_parquet(filepath).to_crs("EPSG:4326")
+    results = _load_progress()
+    already_labeled_ids = [item['id'] for item in results]
+    candidates = gdf_all[gdf_all.index == gdf_all['candidate_id']].sort_values('dataset').drop(already_labeled_ids)
+
+    atexit.register(_store_results)
+    webbrowser.open('http://127.0.0.1:5001/show_candidate/0')
+    app.run(debug=False, port=5001)
+
+
 @app.route("/")
 def home():
     return render_template("index.html")
 
+
+@app.route('/store-label', methods=['POST'])
+def store_label():
+    data = request.json
+    i = data.get("i")
+
+    id = candidates.iloc[i].name
+    label = data.get("label")
+    existing_id = data.get("existing_id")
+    results.append({"id": id, "duplicate": label, "existing_id": existing_id})
+    
+    _store_progress()
+
+    return jsonify({"message": "Success", "next_candidate": i + 1})
+
+
+@app.route("/show_candidate/<int:i>")
+def show_candidate(i):
+    if i >= len(candidates):
+        _store_results()
+        return f"All buildings labeled! Results stored in {RESULTS_FILE}", 200
+
+    candidate = candidates.iloc[i]
+    centroid = candidate.geometry.centroid
+    gdf = gdf_all[gdf_all['candidate_id'] == candidate.name]
+    
+    # Create Folium map centered on the candidate
+    m = folium.Map(location=[centroid.y, centroid.x], zoom_start=19)
+
+    # Add new buildings to the map (for reference)
+    gdf_neighbors_new = gdf[(gdf['dataset'] == candidate.dataset) & (gdf.index != candidate.name)]
+    folium.GeoJson(gdf_neighbors_new, style_function=lambda _: {'color': 'coral', 'fillOpacity': 0.2}).add_to(m)
+    
+    # Add existing buildings to the map
+    gdf_neighbors_existing = gdf[gdf['dataset'] != candidate.dataset]
+    for _, row in gdf_neighbors_existing.iterrows():
+        html_str = f"<button onclick=\"labelPair({i}, 'yes', '{row.name}')\">Duplicated</button>"
+        html = folium.Html(html_str, script=True)
+        popup = folium.Popup(html, max_width=300)
+        coords = _lat_lon(row.geometry)
+        folium.Polygon(coords, popup=popup, color='skyblue', fill=True, fill_opacity=0.5).add_to(m)
+
+    # Highlight the candidate building
+    coords = _lat_lon(candidate.geometry)
+    folium.Polygon(coords, color='red', weight=3).add_to(m)
+
+    # Add the script to the map’s HTML
+    m.get_root().html.add_child(folium.Element(_js_labeling_func()))
+    map_html = m.get_root()._repr_html_()
+
+    return render_template("show_candidate.html", map_html=map_html, label_function_script=_js_labeling_func(), i=i)
+
+
+def _js_labeling_func():
+    func = """
+    <script>
+        // Global function accessible from popups
+        function labelPair(i, label, existing_id) {
+            fetch('/store-label', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    i: i,
+                    label: label,
+                    existing_id: existing_id
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Saved:", data);
+                window.location.href = `/show_candidate/${data.next_candidate}`;
+            });
+        }
+    </script>
+    """
+    return func
+
+
+def _lat_lon(geom):
+    return [(lat, lon) for lon, lat in geom.exterior.coords]
+
+
+def _store_results():
+    pd.DataFrame(results).to_csv(RESULTS_FILE, index=False)
+
+
+def _store_progress():
+    pd.DataFrame(results).to_pickle(PROGRESS_FILE)
+
+
+def _load_progress():
+    if os.path.exists(PROGRESS_FILE):
+        return pd.read_pickle(PROGRESS_FILE).to_dict('records')
+    
+    return []
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    main()

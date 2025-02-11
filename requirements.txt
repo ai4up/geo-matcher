@@ -3,3 +3,4 @@ folium
 geopandas
 pandas
 pyarrow
+click
