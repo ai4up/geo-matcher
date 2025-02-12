@@ -21,4 +21,4 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-conflate = "eubucco_conflator.app:main"
+conflator = "eubucco_conflator.cli:cli"
