@@ -15,7 +15,7 @@ def label(filepath):
 
     FILEPATH to GeoParquet file containing the potential duplicates to label.
     """
-    State.init(filepath)
+    State.init(filepath, logger=click.echo)
     click.echo(f"Loaded {len(State.gdf)} buildings")
     click.echo(f"Loaded latest labeling state: {len(State.results)} buildings already labeled")
     click.echo(f"Starting labeling of {len(State.candidates)} buildings...")
