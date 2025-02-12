@@ -58,7 +58,13 @@ class State:
 
     @classmethod
     def _determine_candidates(cls):
-        return cls.gdf[(cls.gdf.index == cls.gdf["candidate_id"]) & (~cls.gdf["candidate_id"].isin(cls._already_labeled_id()))]
+        candidates = cls.gdf[(cls.gdf.index == cls.gdf["candidate_id"]) & (~cls.gdf["candidate_id"].isin(cls._already_labeled_id()))]
+        if candidates.index.has_duplicates:
+            msg = "Index of duplicate building candidates must be unique. Please check your dataset."
+            cls.logger(msg)
+            raise ValueError(msg)
+
+        return candidates
 
     @classmethod
     def _already_labeled_id(cls):
