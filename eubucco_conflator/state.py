@@ -30,6 +30,24 @@ class State:
             cls.logger(f"Progress: {len(cls.results)} buildings labeled ({frequency})")
 
     @classmethod
+    def current_candidate_id(cls):
+        try:
+            ids = cls.candidates.index
+            return ids[~ids.isin(cls._already_labeled_id())][0]
+
+        except IndexError:
+            return None
+
+    @classmethod
+    def next_candidate_id(cls):
+        try:
+            ids = cls.candidates.index
+            return ids[~ids.isin(cls._already_labeled_id())][1]
+
+        except IndexError:
+            return None
+
+    @classmethod
     def store_results(cls):
         pd.DataFrame(cls.results).to_csv(RESULTS_FILE, index=False)
         cls.logger(f"All buildings successfully labled. Results stored in {RESULTS_FILE}.")
@@ -40,8 +58,11 @@ class State:
 
     @classmethod
     def _determine_candidates(cls):
-        already_labeled_ids = [duplicate["id"] for duplicate in cls.results]
-        return cls.gdf[(cls.gdf.index == cls.gdf["candidate_id"]) & (~cls.gdf["candidate_id"].isin(already_labeled_ids))]
+        return cls.gdf[(cls.gdf.index == cls.gdf["candidate_id"]) & (~cls.gdf["candidate_id"].isin(cls._already_labeled_id()))]
+
+    @classmethod
+    def _already_labeled_id(cls):
+        return [duplicate["id"] for duplicate in cls.results]
 
     @staticmethod
     def _load_progress():
