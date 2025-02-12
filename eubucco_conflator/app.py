@@ -1,4 +1,5 @@
 import atexit
+import warnings
 import webbrowser
 from pathlib import Path
 import shutil
@@ -63,11 +64,13 @@ def _create_html(i):
         return
 
     candidate = s.candidates.iloc[i]
-    centroid = candidate.geometry.centroid
     gdf = s.gdf[s.gdf['candidate_id'] == candidate.name]
 
     # Create Folium map centered on the candidate
-    m = folium.Map(location=[centroid.y, centroid.x], zoom_start=19)
+    with warnings.catch_warnings():
+        warnings.simplefilter(action='ignore', category=UserWarning)
+        centroid = candidate.geometry.centroid
+        m = folium.Map(location=[centroid.y, centroid.x], zoom_start=19)
 
     # Add existing buildings to the map
     gdf_neighbors_existing = gdf[gdf['dataset'] != candidate.dataset]
