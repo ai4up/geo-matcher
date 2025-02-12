@@ -49,7 +49,7 @@ class State:
 
     @classmethod
     def store_results(cls):
-        pd.DataFrame(cls.results).to_csv(RESULTS_FILE, index=False)
+        pd.DataFrame(cls.results).drop_duplicates(subset=['id'], keep='first').to_csv(RESULTS_FILE, index=False)
         cls.logger(f"All buildings successfully labled. Results stored in {RESULTS_FILE}.")
 
     @classmethod
