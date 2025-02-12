@@ -1,0 +1,46 @@
+import click
+
+from eubucco_conflator import dataset, app
+from eubucco_conflator.state import State, CANDIDATES_FILE
+
+@click.group()
+def cli():
+    pass
+
+@cli.command()
+@click.argument('filepath', default='candidates.parquet', type=click.Path(exists=True))
+def label(filepath):
+    """
+    Start labeling of duplicated buildings.
+
+    FILEPATH to GeoParquet file containing the potential duplicates to label.
+    """
+    State.init(filepath)
+    click.echo(f"Loaded {len(State.gdf)} buildings")
+    click.echo(f"Loaded latest labeling state: {len(State.results)} buildings already labeled")
+    click.echo(f"Starting labeling of {len(State.candidates)} buildings...")
+
+    click.echo("Starting browser app...")
+    app.start()
+
+
+@cli.command()
+@click.argument('filepath1', required=True, type=click.Path(exists=True))
+@click.argument('filepath2', required=True, type=click.Path(exists=True))
+@click.option('--min-intersection', '-l', default=0.0, help="Minimum relative overlap for new buildings to be considered for duplicate labeling [0,1).")
+@click.option('--max-intersection', '-u', default=1.0, help="Maximum relative overlap for new buildings to be considered for duplicate labeling (0,1].")
+@click.option('--distance', '-d', default=100, help="Distance threshold for displaying neighboring buildings [meters].")
+def create_labeling_dataset(filepath1, filepath2, min_intersection, max_intersection, distance):
+    """
+    Create a dataset of potential duplicate buildings.
+
+    FILEPATH1 to GeoParquet file containing the reference (existing) buildings.
+    FILEPATH2 to GeoParquet file containing the new (to be added) buildings.
+    """
+    click.echo("Loading geodata...")
+    dataset.create_duplicate_candidates_dataset(filepath1, filepath2, (min_intersection, max_intersection), distance)
+    click.echo(f"Dataset of duplicate candidates created and stored in {CANDIDATES_FILE}")
+
+
+if __name__ == '__main__':
+    cli()
