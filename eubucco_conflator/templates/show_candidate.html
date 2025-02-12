@@ -48,12 +48,12 @@
 </head>
 <body>
     <div id="map">
-        <iframe src="{{ url_for('static', filename='maps/candidate_' + i | string + '.html') }}" width="100%" height="100%"></iframe>
+        <iframe src="{{ url_for('static', filename='maps/candidate_' + id | string + '.html') }}" width="100%" height="100%"></iframe>
     </div>
     <div id="buttons">
-        <button class="btn btn-yes" onclick="labelPair({{ i }}, 'yes')">Duplicate</button>
-        <button class="btn btn-no" onclick="labelPair({{ i }}, 'no')">Not Duplicate</button>
-        <button class="btn btn-unsure" onclick="labelPair({{ i }}, 'unsure')">Unsure</button>
+        <button class="btn btn-yes" onclick="labelPair('{{ id }}', 'yes')">Duplicate</button>
+        <button class="btn btn-no" onclick="labelPair('{{ id }}', 'no')">Not Duplicate</button>
+        <button class="btn btn-unsure" onclick="labelPair('{{ id }}', 'unsure')">Unsure</button>
     </div>
 
     {{ label_function_script|safe }}
