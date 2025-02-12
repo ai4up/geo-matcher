@@ -69,10 +69,6 @@ def _create_html(i):
     # Create Folium map centered on the candidate
     m = folium.Map(location=[centroid.y, centroid.x], zoom_start=19)
 
-    # Add new buildings to the map (for reference)
-    gdf_neighbors_new = gdf[(gdf['dataset'] == candidate.dataset) & (gdf.index != candidate.name)]
-    folium.GeoJson(gdf_neighbors_new, style_function=lambda _: {'color': 'coral', 'fillOpacity': 0.2}).add_to(m)
-
     # Add existing buildings to the map
     gdf_neighbors_existing = gdf[gdf['dataset'] != candidate.dataset]
     for _, row in gdf_neighbors_existing.iterrows():
@@ -81,6 +77,10 @@ def _create_html(i):
         popup = folium.Popup(html, max_width=300)
         coords = _lat_lon(row.geometry)
         folium.Polygon(coords, popup=popup, color='skyblue', fill=True, fill_opacity=0.5).add_to(m)
+
+    # Add new buildings to the map (for reference)
+    gdf_neighbors_new = gdf[(gdf['dataset'] == candidate.dataset) & (gdf.index != candidate.name)]
+    folium.GeoJson(gdf_neighbors_new, style_function=lambda _: {'color': 'coral', 'fillOpacity': 0.2}).add_to(m)
 
     # Highlight the candidate building
     coords = _lat_lon(candidate.geometry)
