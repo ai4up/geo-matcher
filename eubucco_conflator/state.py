@@ -1,3 +1,4 @@
+from collections import Counter
 import os
 
 import pandas as pd
@@ -13,9 +14,10 @@ class State:
     results = None
 
     @classmethod
-    def init(cls, geodata_path):
-        cls.gdf = _read_geodata(geodata_path)
-        cls.results = _load_progress()
+    def init(cls, geodata_path, logger=print):
+        cls.logger = logger
+        cls.gdf = cls._read_geodata(geodata_path)
+        cls.results = cls._load_progress()
         cls.candidates = cls._determine_candidates()
 
     @classmethod
@@ -23,9 +25,14 @@ class State:
         cls.results.append({"id": id, "duplicate": label, "existing_id": existing_id})
         cls._store_progress()
 
+        if len(cls.results) % 10 == 0:
+            frequency = dict(Counter([e["duplicate"] for e in cls.results]))
+            cls.logger(f"Progress: {len(cls.results)} buildings labeled ({frequency})")
+
     @classmethod
     def store_results(cls):
         pd.DataFrame(cls.results).to_csv(RESULTS_FILE, index=False)
+        cls.logger(f"All buildings successfully labled. Results stored in {RESULTS_FILE}.")
 
     @classmethod
     def _store_progress(cls):
@@ -36,13 +43,13 @@ class State:
         already_labeled_ids = [duplicate["id"] for duplicate in cls.results]
         return cls.gdf[(cls.gdf.index == cls.gdf["candidate_id"]) & (~cls.gdf["candidate_id"].isin(already_labeled_ids))]
 
+    @staticmethod
+    def _load_progress():
+        if os.path.exists(_PROGRESS_FILE):
+            return pd.read_pickle(_PROGRESS_FILE).to_dict("records")
 
-def _load_progress():
-    if os.path.exists(_PROGRESS_FILE):
-        return pd.read_pickle(_PROGRESS_FILE).to_dict("records")
+        return []
 
-    return []
-
-
-def _read_geodata(filepath):
-    return gpd.read_parquet(filepath).to_crs("EPSG:4326")
+    @staticmethod
+    def _read_geodata(filepath):
+        return gpd.read_parquet(filepath).to_crs("EPSG:4326")
