@@ -13,6 +13,7 @@ from eubucco_conflator.state import State as s
 from eubucco_conflator.state import RESULTS_FILE
 
 app = Flask(__name__)
+app.url_map.strict_slashes = False
 executor = Executor(app)
 maps_dir = Path(app.static_folder) / "maps"
 
@@ -39,7 +40,7 @@ def store_label():
     existing_id = data.get("existing_id")
     s.add_result(id, label, existing_id)
 
-    return jsonify({"message": "Success", "candidate": s.current_candidate_id()})
+    return jsonify({"message": "Success", "candidate": s.current_candidate_id() or ''})
 
 
 @app.route("/show_candidate")
