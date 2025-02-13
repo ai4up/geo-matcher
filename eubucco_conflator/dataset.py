@@ -62,4 +62,5 @@ def _intersection_to_area_ratio(gdf1, gdf2):
 
 
 def _keep_building_with_largest_intersection(gdf):
-    return gdf.loc[~gdf.sort_values('ioa', ascending=False).index.duplicated(keep='first')]
+    gdf = gdf.sort_values("ioa", ascending=False)
+    return gdf[~gdf.index.duplicated(keep="first")]
