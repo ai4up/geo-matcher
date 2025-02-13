@@ -27,10 +27,11 @@ def label(filepath):
 @cli.command()
 @click.argument('filepath1', required=True, type=click.Path(exists=True))
 @click.argument('filepath2', required=True, type=click.Path(exists=True))
+@click.option('--id-col', default=None, help="Name of the column containing unique building identifiers (default index).")
 @click.option('--min-intersection', '-l', default=0.0, help="Minimum relative overlap for new buildings to be considered for duplicate labeling [0,1).")
 @click.option('--max-intersection', '-u', default=1.0, help="Maximum relative overlap for new buildings to be considered for duplicate labeling (0,1].")
 @click.option('--distance', '-d', default=100, help="Distance threshold for displaying neighboring buildings [meters].")
-def create_labeling_dataset(filepath1, filepath2, min_intersection, max_intersection, distance):
+def create_labeling_dataset(filepath1, filepath2, id_col, min_intersection, max_intersection, distance):
     """
     Create a dataset of potential duplicate buildings.
 
@@ -38,7 +39,7 @@ def create_labeling_dataset(filepath1, filepath2, min_intersection, max_intersec
     FILEPATH2 to GeoParquet file containing the new (to be added) buildings.
     """
     click.echo("Loading geodata...")
-    dataset.create_duplicate_candidates_dataset(filepath1, filepath2, (min_intersection, max_intersection), distance)
+    dataset.create_duplicate_candidates_dataset(filepath1, filepath2, id_col, (min_intersection, max_intersection), distance, logger=click.echo)
     click.echo(f"Dataset of duplicate candidates created and stored in {CANDIDATES_FILE}")
 
 

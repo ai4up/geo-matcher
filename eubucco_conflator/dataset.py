@@ -10,9 +10,22 @@ warnings.simplefilter(action='ignore', category=pd.errors.SettingWithCopyWarning
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
-def create_duplicate_candidates_dataset(gdf_path1, gdf_path2, ioa_range, dis):
-    gdf1 = gpd.read_parquet(gdf_path1, columns=['geometry']).to_crs(3035)
-    gdf2 = gpd.read_parquet(gdf_path2, columns=['geometry']).to_crs(3035)
+def create_duplicate_candidates_dataset(gdf_path1, gdf_path2, id_col, ioa_range, dis, logger=print):
+    cols = ['geometry', id_col] if id_col else ['geometry']
+    gdf1 = gpd.read_parquet(gdf_path1, columns=cols).to_crs(3035)
+    gdf2 = gpd.read_parquet(gdf_path2, columns=cols).to_crs(3035)
+
+    gdf1['dataset'] = 'A'
+    gdf2['dataset'] = 'B'
+
+    if id_col:
+        gdf1 = gdf1.set_index(id_col)
+        gdf2 = gdf2.set_index(id_col)
+
+    elif _indices_overlap(gdf1, gdf2):
+        gdf1.index = 'A-' + gdf1.index.astype(str)
+        gdf2.index = 'B-' + gdf2.index.astype(str)
+        logger("Indices of both datasets overlap. Adding the prefixes 'A-' and 'B-' to avoid ambiguities. Alternatively, consider specifying an ID column.")
 
     candidates = _identify_duplicate_candidates(gdf1, gdf2, ioa_range, dis)
     candidates.to_parquet(CANDIDATES_FILE)
@@ -24,9 +37,6 @@ def _identify_duplicate_candidates(gdf1, gdf2, ioa_range, dis):
 
     gdf1_ngbh = _get_candidate_neighbors(candidates, gdf1, dis)
     gdf2_ngbh = _get_candidate_neighbors(candidates, gdf2, dis)
-
-    gdf1_ngbh['dataset'] = 1
-    gdf2_ngbh['dataset'] = 2
 
     return pd.concat([gdf1_ngbh, gdf2_ngbh])
 
@@ -64,3 +74,7 @@ def _intersection_to_area_ratio(gdf1, gdf2):
 def _keep_building_with_largest_intersection(gdf):
     gdf = gdf.sort_values("ioa", ascending=False)
     return gdf[~gdf.index.duplicated(keep="first")]
+
+
+def _indices_overlap(gdf1, gdf2):
+    return not gdf1.index.intersection(gdf2.index).empty
