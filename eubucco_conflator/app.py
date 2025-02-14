@@ -62,7 +62,7 @@ def show_candidate(id=None):
         app.logger.debug(f"Pre-generating HTML map for candidate {next_id}")
         executor.submit(_create_html, next_id)
 
-    return render_template("show_candidate.html", label_function_script=_js_labeling_func(), id=id)
+    return render_template("show_candidate.html", label_function_script=_labeling_func_js(), id=id)
 
 
 def _html_exists(id):
@@ -76,55 +76,74 @@ def _create_html(id):
     candidate = s.candidates.loc[id]
     gdf = s.gdf[s.gdf['candidate_id'] == id]
 
-    # Create Folium map centered on the candidate
+    # Create base map centered on candidate building
+    m = _initialize_map(candidate)
+
+    # Add layers
+    _create_existing_buildings_layer(gdf, candidate).add_to(m)
+    _create_new_buildings_layer(gdf, candidate).add_to(m)
+    _create_candidate_building_layer(candidate).add_to(m)
+
+    # Add JavaScript labeling function and legend
+    m.get_root().html.add_child(folium.Element(_labeling_func_js()))
+    m.get_root().html.add_child(folium.Element(_legend_html()))
+
+    # Add LayerControl for toggling layers
+    folium.LayerControl(collapsed=True).add_to(m)
+
+    # Save the map
+    m.save(maps_dir / f"candidate_{id}.html")
+
+
+def _initialize_map(candidate):
     with warnings.catch_warnings():
         warnings.simplefilter(action='ignore', category=UserWarning)
         centroid = candidate.geometry.centroid
 
     m = folium.Map(location=[centroid.y, centroid.x], zoom_start=20, tiles=None)
-    folium.TileLayer('CartoDB.Positron', name='CartoDB Positron', show=True).add_to(m)  # Default
-    folium.TileLayer('OpenStreetMap', name='OpenStreetMap', show=False).add_to(m)  # Alternative basemap
-    folium.TileLayer('Esri.WorldTopoMap', name='Esri WorldTopoMap', show=False, max_native_zoom=18, max_zoom=19).add_to(m)  # Map without buildings, scaled beyond highest zoom level
 
-    existing_buildings = folium.FeatureGroup(name='Existing Buildings')
-    new_buildings = folium.FeatureGroup(name='New Buildings')
-    candidate_building = folium.FeatureGroup(name='Duplicate Candidate')
+    folium.TileLayer('CartoDB.Positron', name='CartoDB Positron', show=True).add_to(m)
+    folium.TileLayer('OpenStreetMap', name='OpenStreetMap', show=False).add_to(m)
+    folium.TileLayer('Esri.WorldTopoMap', name='Esri WorldTopoMap', show=False, max_native_zoom=18, max_zoom=19).add_to(m)
 
-    # Add existing buildings to the map
-    gdf_neighbors_existing = gdf[gdf['dataset'] != candidate.dataset]
-    for _, row in gdf_neighbors_existing.iterrows():
-        html_str = f"<button onclick=\"labelPair('{id}', 'yes', '{row.name}')\">Duplicated</button>"
+    return m
+
+
+def _create_existing_buildings_layer(gdf, candidate):
+    existing_buildings = folium.FeatureGroup(name="Existing Buildings")
+    gdf_existing = gdf[gdf['dataset'] != candidate.dataset]
+
+    for _, row in gdf_existing.iterrows():
+        html_str = f"<button onclick=\"labelPair('{candidate.name}', 'yes', '{row.name}')\">Duplicated</button>"
         html = folium.Html(html_str, script=True)
         popup = folium.Popup(html, max_width=300)
         coords = _lat_lon(row.geometry)
         folium.Polygon(coords, popup=popup, color='skyblue', fill=True, fill_opacity=0.5).add_to(existing_buildings)
 
-    # Add new buildings to the map (for reference)
-    gdf_neighbors_new = gdf[(gdf['dataset'] == candidate.dataset) & (gdf.index != id)]
-    folium.GeoJson(gdf_neighbors_new, style_function=lambda _: {'color': 'coral', 'fillOpacity': 0.2}).add_to(new_buildings)
+    return existing_buildings
 
-    # Highlight the candidate building
+
+def _create_new_buildings_layer(gdf, candidate):
+    new_buildings = folium.FeatureGroup(name="New Buildings")
+    gdf_new = gdf[(gdf['dataset'] == candidate.dataset) & (gdf.index != candidate.name)]
+
+    folium.GeoJson(
+        gdf_new, style_function=lambda _: {'color': 'coral', 'fillOpacity': 0.2}
+    ).add_to(new_buildings)
+
+    return new_buildings
+
+
+def _create_candidate_building_layer(candidate):
+    candidate_building = folium.FeatureGroup(name="Duplicate Candidate")
     coords = _lat_lon(candidate.geometry)
-    folium.Polygon(coords, color='red', weight=3).add_to(candidate_building)
 
-    # Add the script to the map’s HTML
-    m.get_root().html.add_child(folium.Element(_js_labeling_func()))
+    folium.Polygon(coords, color='red', weight=3, fill=False).add_to(candidate_building)
 
-    # Add the legend to the map
-    m.get_root().html.add_child(folium.Element(_legend_html()))
-
-    # Add feature groups to the map
-    existing_buildings.add_to(m)
-    new_buildings.add_to(m)
-    candidate_building.add_to(m)
-
-    # Add LayerControl to allow toggling
-    folium.LayerControl(collapsed=True).add_to(m)
-
-    m.save(maps_dir / f"candidate_{id}.html")
+    return candidate_building
 
 
-def _js_labeling_func():
+def _labeling_func_js():
     return """
     <script>
         // Global function accessible from popups
