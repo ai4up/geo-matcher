@@ -80,7 +80,15 @@ def _create_html(id):
     with warnings.catch_warnings():
         warnings.simplefilter(action='ignore', category=UserWarning)
         centroid = candidate.geometry.centroid
-        m = folium.Map(location=[centroid.y, centroid.x], zoom_start=20, tiles='CartoDB.Positron')
+
+    m = folium.Map(location=[centroid.y, centroid.x], zoom_start=20, tiles=None)
+    folium.TileLayer('CartoDB.Positron', name='CartoDB Positron', show=True).add_to(m)  # Default
+    folium.TileLayer('OpenStreetMap', name='OpenStreetMap', show=False).add_to(m)  # Alternative basemap
+    folium.TileLayer('Esri.WorldTopoMap', name='Esri WorldTopoMap', show=False, max_native_zoom=18, max_zoom=19).add_to(m)  # Map without buildings, scaled beyond highest zoom level
+
+    existing_buildings = folium.FeatureGroup(name='Existing Buildings')
+    new_buildings = folium.FeatureGroup(name='New Buildings')
+    candidate_building = folium.FeatureGroup(name='Duplicate Candidate')
 
     # Add existing buildings to the map
     gdf_neighbors_existing = gdf[gdf['dataset'] != candidate.dataset]
@@ -89,21 +97,29 @@ def _create_html(id):
         html = folium.Html(html_str, script=True)
         popup = folium.Popup(html, max_width=300)
         coords = _lat_lon(row.geometry)
-        folium.Polygon(coords, popup=popup, color='skyblue', fill=True, fill_opacity=0.5).add_to(m)
+        folium.Polygon(coords, popup=popup, color='skyblue', fill=True, fill_opacity=0.5).add_to(existing_buildings)
 
     # Add new buildings to the map (for reference)
     gdf_neighbors_new = gdf[(gdf['dataset'] == candidate.dataset) & (gdf.index != id)]
-    folium.GeoJson(gdf_neighbors_new, style_function=lambda _: {'color': 'coral', 'fillOpacity': 0.2}).add_to(m)
+    folium.GeoJson(gdf_neighbors_new, style_function=lambda _: {'color': 'coral', 'fillOpacity': 0.2}).add_to(new_buildings)
 
     # Highlight the candidate building
     coords = _lat_lon(candidate.geometry)
-    folium.Polygon(coords, color='red', weight=3).add_to(m)
+    folium.Polygon(coords, color='red', weight=3).add_to(candidate_building)
 
     # Add the script to the map’s HTML
     m.get_root().html.add_child(folium.Element(_js_labeling_func()))
 
     # Add the legend to the map
     m.get_root().html.add_child(folium.Element(_legend_html()))
+
+    # Add feature groups to the map
+    existing_buildings.add_to(m)
+    new_buildings.add_to(m)
+    candidate_building.add_to(m)
+
+    # Add LayerControl to allow toggling
+    folium.LayerControl(collapsed=True).add_to(m)
 
     m.save(maps_dir / f"candidate_{id}.html")
 
