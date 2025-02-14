@@ -8,6 +8,7 @@ from flask import Flask, render_template, request, jsonify
 from flask_executor import Executor
 import folium
 from waitress import serve
+import geopandas as gpd
 
 from eubucco_conflator.state import State as s
 from eubucco_conflator.state import RESULTS_FILE
@@ -22,12 +23,13 @@ def start():
     _clean_maps_dir()
     atexit.register(s.store_results)
 
-    webbrowser.open(f"http://127.0.0.1:5001/show_candidate")
+    webbrowser.open(f"http://127.0.0.1:5001")
     serve(app, host="127.0.0.1", port=5001)
 
 
 @app.route("/")
 def home():
+    _create_tutorial_html()
     return render_template("index.html")
 
 
@@ -67,6 +69,25 @@ def show_candidate(id=None):
 
 def _html_exists(id):
     return (maps_dir / f"candidate_{id}.html").is_file()
+
+
+def _create_tutorial_html():
+    # Load demo data
+    demo_data_path = Path('data', 'demo-candidate.parquet')
+    gdf = gpd.read_parquet(demo_data_path).to_crs("EPSG:4326")
+    candidate = gdf.loc['demo']
+
+    # Initialize map and add demo buildings
+    m = _initialize_map(candidate)
+    _create_existing_buildings_layer(gdf, candidate).add_to(m)
+    _create_new_buildings_layer(gdf, candidate).add_to(m)
+    _create_candidate_building_layer(candidate).add_to(m)
+
+    _add_tutorial_markers(m, gdf, candidate)
+    m.get_root().html.add_child(folium.Element(_demo_labeling_func_js()))
+
+    # Save the map
+    m.save(maps_dir / 'candidate_demo.html')
 
 
 def _create_html(id):
@@ -109,6 +130,22 @@ def _initialize_map(candidate):
     return m
 
 
+def _add_tutorial_markers(m, gdf, candidate):
+    gdf_existing = gdf[gdf['dataset'] != candidate.dataset]
+    folium.Marker(
+        location=[candidate.geometry.centroid.y, candidate.geometry.centroid.x],
+        tooltip='Building to be labeled.',
+        icon=folium.Icon(color='red', icon='info-sign')
+    ).add_to(m)
+
+    for _, row in gdf_existing.iterrows():
+        folium.Marker(
+            location=[row.geometry.centroid.y, row.geometry.centroid.x],
+            tooltip='Existing building. Click on it to indicate that it is being duplicated by the red building.',
+            icon=folium.Icon(color='blue', icon='info-sign')
+        ).add_to(m)
+
+
 def _create_existing_buildings_layer(gdf, candidate):
     existing_buildings = folium.FeatureGroup(name="Existing Buildings")
     gdf_existing = gdf[gdf['dataset'] != candidate.dataset]
@@ -124,7 +161,7 @@ def _create_existing_buildings_layer(gdf, candidate):
 
 
 def _create_new_buildings_layer(gdf, candidate):
-    new_buildings = folium.FeatureGroup(name="New Buildings")
+    new_buildings = folium.FeatureGroup(name="Other New Buildings")
     gdf_new = gdf[(gdf['dataset'] == candidate.dataset) & (gdf.index != candidate.name)]
 
     folium.GeoJson(
@@ -166,6 +203,15 @@ def _labeling_func_js():
     </script>
     """
 
+def _demo_labeling_func_js():
+    return """
+    <script>
+        function labelPair(id, label, existing_id) {
+            alert("Demo only. No data will be saved.");
+        }
+    </script>
+    """
+
 
 def _legend_html():
     return """
@@ -175,8 +221,8 @@ def _legend_html():
                     z-index: 9999; font-size: 14px; padding: 10px;">
             <b style="display: block; margin-bottom: 5px;">Building Layers</b>
             <i style="background: transparent; width: 18px; height: 18px; display: inline-block; border: 3px solid red;"></i> Duplicate Candidate<br>
-            <i style="background: rgba(255, 127, 80, 0.2); width: 18px; height: 18px; display: inline-block; border: 2px solid coral;"></i> New Building<br>
-            <i style="background: rgba(135, 206, 235, 0.5); width: 18px; height: 18px; display: inline-block; border: 2px solid skyblue;"></i> Existing Building
+            <i style="background: rgba(255, 127, 80, 0.2); width: 18px; height: 18px; display: inline-block; border: 2px solid coral;"></i> Other New Buildings<br>
+            <i style="background: rgba(135, 206, 235, 0.5); width: 18px; height: 18px; display: inline-block; border: 2px solid skyblue;"></i> Existing Buildings
         </div>
     """
 

@@ -3,10 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Duplicate Labeling Tool</title>
+    <title>Label Candidate Tutorial</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        #buttons {
+            position: absolute;
+            bottom: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            font-size: 20px;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .btn-yes { background: #ff4d4d; color: white; }
+        .btn-no { background: #4caf50; color: white; }
+        .btn-unsure { background: #f0ad4e; color: white; }
+
+        .btn:hover {
+            opacity: 0.8;
+        }
+
+        #tutorial {
+            position: absolute;
+            top: 5%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 1000;
+            width: 50%;
+            font-size: 16px;
+            font-family: Arial, sans-serif;
+        }
+
+        #tutorial p {
+            margin-bottom: 15px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Welcome to the Duplicate Labeling Tool!</h1>
-    <a href="/show_candidate/0">Start labeling</a>
+    <div id="map">
+        <iframe src="{{ url_for('static', filename='maps/candidate_demo.html') }}" width="100%" height="100%"></iframe>
+    </div>
+
+    <div id="tutorial">
+        <h3>Welcome to the Building Duplicate Labeling Tool!</h3>
+        <p>The tool iterates through all new buildings that overlap an existing building and asks you to label them as duplicates or not.</p>
+
+        <i style="background: transparent; width: 18px; height: 18px; display: inline-block; border: 3px solid red;"></i> The building in question is marked in red.<br>
+        <i style="background: rgba(135, 206, 235, 0.5); width: 18px; height: 18px; display: inline-block; border: 2px solid skyblue;"></i> Existing buildings are marked in blue.<br>
+        <i style="background: rgba(255, 127, 80, 0.2); width: 18px; height: 18px; display: inline-block; border: 2px solid coral;"></i> Other new buildings are also displayed for reference (but the duplicate label only applies to the building in red).
+
+        <p>Use the buttons below to label the <strong>red building</strong> as either a <strong>duplicate</strong>, <strong>non-duplicate</strong>, or <strong>unsure</strong>.</p>
+        <p> <span style="color: #A9A9A9"><strong>Optional:</strong> If you wish, you can also indicate which existing building the red building duplicates by clicking on any of the existing buildings and selecting the "Duplicate" button in the popup.</span></p>
+
+        <div style="text-align: center; margin-top: 20px;">
+            <button onclick="window.location.href='/show_candidate'" style="padding: 15px 25px; font-size: 18px; background-color: #4CAF50; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                Get Started!
+            </button>
+        </div>
+    </div>
+
+    <div id="buttons">
+        <button class="btn btn-yes" onclick="alert('Demo only. No data will be saved.');">Duplicate</button>
+        <button class="btn btn-no" onclick="alert('Demo only. No data will be saved.');">Not Duplicate</button>
+        <button class="btn btn-unsure" onclick="alert('Demo only. No data will be saved.');">Unsure</button>
+    </div>
 </body>
 </html>
