@@ -9,6 +9,7 @@ packages = [{include = "eubucco_conflator"}]
 [tool.poetry.dependencies]
 python = "^3.11"
 flask = "^3.1"
+flask-executor = "^1.0"
 folium = "^0.19"
 geopandas = "^1.0"
 pandas = "^2.2"
