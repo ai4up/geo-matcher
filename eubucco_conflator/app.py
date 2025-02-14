@@ -80,7 +80,7 @@ def _create_html(id):
     with warnings.catch_warnings():
         warnings.simplefilter(action='ignore', category=UserWarning)
         centroid = candidate.geometry.centroid
-        m = folium.Map(location=[centroid.y, centroid.x], zoom_start=19)
+        m = folium.Map(location=[centroid.y, centroid.x], zoom_start=20, tiles='CartoDB.Positron')
 
     # Add existing buildings to the map
     gdf_neighbors_existing = gdf[gdf['dataset'] != candidate.dataset]
