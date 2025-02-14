@@ -34,7 +34,7 @@ def home():
 @app.route('/store-label', methods=['POST'])
 def store_label():
     data = request.json
-
+    print(data)
     id = data.get("id")
     label = data.get("label")
     existing_id = data.get("existing_id")
@@ -51,7 +51,7 @@ def show_candidate(id=None):
 
     if id is None:
         s.store_results()
-        return f"All buildings labeled! Results stored in {RESULTS_FILE}", 200
+        return f"All places labeled! Results stored in {RESULTS_FILE}", 200
 
     if id not in s.candidates.index:
         return "Candidate not found", 404
@@ -69,36 +69,35 @@ def _html_exists(id):
     return (maps_dir / f"candidate_{id}.html").is_file()
 
 
+def _create_pop_up(row):
+    #Setup the content of the popup
+    iframe = folium.IFrame(f"Name:{row['can_name']} \nAddress: {row['can_address']}", width=300, height=80)
+    
+    #Initialise the popup using the iframe
+    return folium.Popup(iframe, min_width=300, max_width=500)
+    
+
 def _create_html(id):
     if _html_exists(id):
         return
 
-    candidate = s.candidates.loc[id]
-    gdf = s.gdf[s.gdf['candidate_id'] == id]
-
-    # Create Folium map centered on the candidate
+    pairs = s.candidates.loc[[id]]
+    print('Pairs:',len(pairs))
+    base_coords = [pairs.iloc[0]['base_latitude'],pairs.iloc[0]['base_longitude']]
+    # Create Folium map centered on base poi
     with warnings.catch_warnings():
         warnings.simplefilter(action='ignore', category=UserWarning)
-        centroid = candidate.geometry.centroid
-        m = folium.Map(location=[centroid.y, centroid.x], zoom_start=19)
+        m = folium.Map(location=base_coords,zoom_start=19)
 
-    # Add existing buildings to the map
-    gdf_neighbors_existing = gdf[gdf['dataset'] != candidate.dataset]
-    for _, row in gdf_neighbors_existing.iterrows():
-        html_str = f"<button onclick=\"labelPair('{id}', 'yes', '{row.name}')\">Duplicated</button>"
-        html = folium.Html(html_str, script=True)
-        popup = folium.Popup(html, max_width=300)
-        coords = _lat_lon(row.geometry)
-        folium.Polygon(coords, popup=popup, color='skyblue', fill=True, fill_opacity=0.5).add_to(m)
+    folium.Marker(base_coords,
+                    icon=folium.Icon(color='green', icon=''),
+                    popup=_create_pop_up(pairs.iloc[0])).add_to(m)            
 
-    # Add new buildings to the map (for reference)
-    gdf_neighbors_new = gdf[(gdf['dataset'] == candidate.dataset) & (gdf.index != id)]
-    folium.GeoJson(gdf_neighbors_new, style_function=lambda _: {'color': 'coral', 'fillOpacity': 0.2}).add_to(m)
-
-    # Highlight the candidate building
-    coords = _lat_lon(candidate.geometry)
-    folium.Polygon(coords, color='red', weight=3).add_to(m)
-
+    # display candidates per base_poi
+    for _, row in pairs.iterrows():
+        coords = [row['can_latitude']+1e-5, row['can_longitude']+1e-5]
+        folium.Marker(coords,popup=_create_pop_up(row),icon=folium.Icon(color='red', icon='')).add_to(m)
+    
     # Add the script to the map’s HTML
     m.get_root().html.add_child(folium.Element(_js_labeling_func()))
 
@@ -129,10 +128,6 @@ def _js_labeling_func():
     </script>
     """
     return func
-
-
-def _lat_lon(geom):
-    return [(lat, lon) for lon, lat in geom.exterior.coords]
 
 
 def _clean_maps_dir():

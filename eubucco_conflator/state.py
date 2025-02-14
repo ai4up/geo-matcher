@@ -3,10 +3,12 @@ import os
 
 import pandas as pd
 import geopandas as gpd
+from shapely.geometry import Point
 
 CANDIDATES_FILE = 'candidates.parquet'
 RESULTS_FILE = 'results.csv'
 _PROGRESS_FILE = 'data/labeling-progress.pickle'
+
 
 class State:
     gdf = None
@@ -16,13 +18,13 @@ class State:
     @classmethod
     def init(cls, geodata_path, logger=print):
         cls.logger = logger
-        cls.gdf = cls._read_geodata(geodata_path)
+        cls.gdf = cls._read_data(geodata_path)
         cls.results = cls._load_progress()
         cls.candidates = cls._determine_candidates()
 
     @classmethod
     def add_result(cls, id, label, existing_id):
-        cls.results.append({"id": id, "duplicate": label, "existing_id": existing_id})
+        cls.results.append({"base_id": id, "duplicate": label, "existing_id": existing_id})
         cls._store_progress()
 
         if len(cls.results) % 10 == 0:
@@ -49,8 +51,9 @@ class State:
 
     @classmethod
     def store_results(cls):
-        pd.DataFrame(cls.results).drop_duplicates(subset=['id'], keep='first').to_csv(RESULTS_FILE, index=False)
-        cls.logger(f"All buildings successfully labled. Results stored in {RESULTS_FILE}.")
+        print(cls.results)
+        pd.DataFrame(cls.results).drop_duplicates(subset=['base_id'], keep='first').to_csv(RESULTS_FILE, index=False)
+        cls.logger(f"All places successfully labled. Results stored in {RESULTS_FILE}.")
 
     @classmethod
     def _store_progress(cls):
@@ -58,17 +61,22 @@ class State:
 
     @classmethod
     def _determine_candidates(cls):
-        candidates = cls.gdf[(cls.gdf.index == cls.gdf["candidate_id"]) & (~cls.gdf["candidate_id"].isin(cls._already_labeled_id()))]
-        if candidates.index.has_duplicates:
-            msg = "Index of duplicate building candidates must be unique. Please check your dataset."
-            cls.logger(msg)
-            raise ValueError(msg)
+        candidates = cls.gdf[~cls.gdf.index.isin(cls._already_labeled_id())]
+        
+        # Extract the first row for can_id and base_id
+        #candidates = cls.gdf.iloc[[0]]
+
+        # candidates = cls.gdf[(cls.gdf.index == cls.gdf["candidate_id"]) & (~cls.gdf["candidate_id"].isin(cls._already_labeled_id()))]
+        # if candidates.index.has_duplicates:
+        #     msg = "Index of duplicate building candidates must be unique. Please check your dataset."
+        #     cls.logger(msg)
+        #     raise ValueError(msg)
 
         return candidates
 
     @classmethod
     def _already_labeled_id(cls):
-        return [duplicate["id"] for duplicate in cls.results]
+        return [duplicate["base_id"] for duplicate in cls.results]
 
     @staticmethod
     def _load_progress():
@@ -78,5 +86,5 @@ class State:
         return []
 
     @staticmethod
-    def _read_geodata(filepath):
-        return gpd.read_parquet(filepath).to_crs("EPSG:4326")
+    def _read_data(filepath):
+        return pd.read_parquet(filepath).set_index('base_id')
