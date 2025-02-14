@@ -102,15 +102,17 @@ def _create_html(id):
     # Add the script to the map’s HTML
     m.get_root().html.add_child(folium.Element(_js_labeling_func()))
 
+    # Add the legend to the map
+    m.get_root().html.add_child(folium.Element(_legend_html()))
+
     m.save(maps_dir / f"candidate_{id}.html")
 
 
 def _js_labeling_func():
-    func = """
+    return """
     <script>
         // Global function accessible from popups
         function labelPair(id, label, existing_id) {
-            console.log("Saved id:", id);
             fetch('/store-label', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -128,8 +130,20 @@ def _js_labeling_func():
         }
     </script>
     """
-    return func
 
+
+def _legend_html():
+    return """
+        <div style="position: fixed;
+                    bottom: 30px; left: 30px;
+                    background: rgba(255, 255, 255, 0.8); border: 1px solid lightgrey;
+                    z-index: 9999; font-size: 14px; padding: 10px;">
+            <b style="display: block; margin-bottom: 5px;">Building Layers</b>
+            <i style="background: transparent; width: 18px; height: 18px; display: inline-block; border: 3px solid red;"></i> Duplicate Candidate<br>
+            <i style="background: rgba(255, 127, 80, 0.2); width: 18px; height: 18px; display: inline-block; border: 2px solid coral;"></i> New Building<br>
+            <i style="background: rgba(135, 206, 235, 0.5); width: 18px; height: 18px; display: inline-block; border: 2px solid skyblue;"></i> Existing Building
+        </div>
+    """
 
 def _lat_lon(geom):
     return [(lat, lon) for lon, lat in geom.exterior.coords]
