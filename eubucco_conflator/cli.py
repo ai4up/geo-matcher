@@ -3,13 +3,15 @@ import click
 from eubucco_conflator import dataset, app
 from eubucco_conflator.state import State, CANDIDATES_FILE
 
+
 @click.group()
-def cli():
+def cli() -> None:
     pass
+
 
 @cli.command()
 @click.argument('filepath', default='candidates.parquet', type=click.Path(exists=True))
-def label(filepath):
+def label(filepath: str) -> None:
     """
     Start labeling of duplicated buildings.
 
@@ -31,7 +33,14 @@ def label(filepath):
 @click.option('--min-intersection', '-l', default=0.0, help="Minimum relative overlap for new buildings to be considered for duplicate labeling [0,1).")
 @click.option('--max-intersection', '-u', default=1.0, help="Maximum relative overlap for new buildings to be considered for duplicate labeling (0,1].")
 @click.option('--distance', '-d', default=100, help="Distance threshold for displaying neighboring buildings [meters].")
-def create_labeling_dataset(filepath1, filepath2, id_col, min_intersection, max_intersection, distance):
+def create_labeling_dataset(
+    filepath1: str,
+    filepath2: str,
+    id_col: str,
+    min_intersection: float,
+    max_intersection: float,
+    distance: int
+) -> None:
     """
     Create a dataset of potential duplicate buildings.
 

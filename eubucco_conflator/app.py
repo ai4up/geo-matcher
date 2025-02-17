@@ -3,12 +3,15 @@ import warnings
 import webbrowser
 from pathlib import Path
 import shutil
+from typing import Optional
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, Response, render_template, request, jsonify
 from flask_executor import Executor
 import folium
 from waitress import serve
 import geopandas as gpd
+from geopandas import GeoDataFrame
+from shapely.geometry import Polygon
 
 from eubucco_conflator.state import State as s
 from eubucco_conflator.state import RESULTS_FILE
@@ -19,7 +22,7 @@ executor = Executor(app)
 maps_dir = Path(app.static_folder) / "maps"
 
 
-def start():
+def start() -> None:
     _clean_maps_dir()
     atexit.register(s.store_results)
 
@@ -28,13 +31,13 @@ def start():
 
 
 @app.route("/")
-def home():
+def home() -> str:
     _create_tutorial_html()
     return render_template("index.html")
 
 
 @app.route('/store-label', methods=['POST'])
-def store_label():
+def store_label() -> Response:
     data = request.json
 
     id = data.get("id")
@@ -47,7 +50,7 @@ def store_label():
 
 @app.route("/show_candidate")
 @app.route("/show_candidate/<id>")
-def show_candidate(id=None):
+def show_candidate(id: Optional[str] = None) -> str:
     if id is None:
         id = s.current_candidate_id()
 
@@ -67,11 +70,11 @@ def show_candidate(id=None):
     return render_template("show_candidate.html", label_function_script=_labeling_func_js(), id=id)
 
 
-def _html_exists(id):
+def _html_exists(id: str) -> bool:
     return (maps_dir / f"candidate_{id}.html").is_file()
 
 
-def _create_tutorial_html():
+def _create_tutorial_html() -> None:
     # Load demo data
     demo_data_path = Path('data', 'demo-candidate.parquet')
     gdf = gpd.read_parquet(demo_data_path).to_crs("EPSG:4326")
@@ -86,37 +89,31 @@ def _create_tutorial_html():
     _add_tutorial_markers(m, gdf, candidate)
     m.get_root().html.add_child(folium.Element(_demo_labeling_func_js()))
 
-    # Save the map
     m.save(maps_dir / 'candidate_demo.html')
 
 
-def _create_html(id):
+def _create_html(id: str) -> None:
     if _html_exists(id):
         return
 
     candidate = s.candidates.loc[id]
     gdf = s.gdf[s.gdf['candidate_id'] == id]
 
-    # Create base map centered on candidate building
     m = _initialize_map(candidate)
 
-    # Add layers
     _create_existing_buildings_layer(gdf, candidate).add_to(m)
     _create_new_buildings_layer(gdf, candidate).add_to(m)
     _create_candidate_building_layer(candidate).add_to(m)
 
-    # Add JavaScript labeling function and legend
     m.get_root().html.add_child(folium.Element(_labeling_func_js()))
     m.get_root().html.add_child(folium.Element(_legend_html()))
 
-    # Add LayerControl for toggling layers
     folium.LayerControl(collapsed=True).add_to(m)
 
-    # Save the map
     m.save(maps_dir / f"candidate_{id}.html")
 
 
-def _initialize_map(candidate):
+def _initialize_map(candidate: GeoDataFrame) -> folium.Map:
     with warnings.catch_warnings():
         warnings.simplefilter(action='ignore', category=UserWarning)
         centroid = candidate.geometry.centroid
@@ -130,7 +127,7 @@ def _initialize_map(candidate):
     return m
 
 
-def _add_tutorial_markers(m, gdf, candidate):
+def _add_tutorial_markers(m: folium.Map, gdf: GeoDataFrame, candidate: GeoDataFrame) -> None:
     gdf_existing = gdf[gdf['dataset'] != candidate.dataset]
     folium.Marker(
         location=[candidate.geometry.centroid.y, candidate.geometry.centroid.x],
@@ -146,7 +143,7 @@ def _add_tutorial_markers(m, gdf, candidate):
         ).add_to(m)
 
 
-def _create_existing_buildings_layer(gdf, candidate):
+def _create_existing_buildings_layer(gdf: GeoDataFrame, candidate: GeoDataFrame) -> folium.FeatureGroup:
     existing_buildings = folium.FeatureGroup(name="Existing Buildings")
     gdf_existing = gdf[gdf['dataset'] != candidate.dataset]
 
@@ -160,7 +157,7 @@ def _create_existing_buildings_layer(gdf, candidate):
     return existing_buildings
 
 
-def _create_new_buildings_layer(gdf, candidate):
+def _create_new_buildings_layer(gdf: GeoDataFrame, candidate: GeoDataFrame) -> folium.FeatureGroup:
     new_buildings = folium.FeatureGroup(name="Other New Buildings")
     gdf_new = gdf[(gdf['dataset'] == candidate.dataset) & (gdf.index != candidate.name)]
 
@@ -171,7 +168,7 @@ def _create_new_buildings_layer(gdf, candidate):
     return new_buildings
 
 
-def _create_candidate_building_layer(candidate):
+def _create_candidate_building_layer(candidate: GeoDataFrame) -> folium.FeatureGroup:
     candidate_building = folium.FeatureGroup(name="Duplicate Candidate")
     coords = _lat_lon(candidate.geometry)
 
@@ -180,10 +177,9 @@ def _create_candidate_building_layer(candidate):
     return candidate_building
 
 
-def _labeling_func_js():
+def _labeling_func_js() -> str:
     return """
     <script>
-        // Global function accessible from popups
         function labelPair(id, label, existing_id) {
             fetch('/store-label', {
                 method: 'POST',
@@ -203,7 +199,8 @@ def _labeling_func_js():
     </script>
     """
 
-def _demo_labeling_func_js():
+
+def _demo_labeling_func_js() -> str:
     return """
     <script>
         function labelPair(id, label, existing_id) {
@@ -213,7 +210,7 @@ def _demo_labeling_func_js():
     """
 
 
-def _legend_html():
+def _legend_html() -> str:
     return """
         <div style="position: fixed;
                     bottom: 30px; left: 30px;
@@ -226,10 +223,11 @@ def _legend_html():
         </div>
     """
 
-def _lat_lon(geom):
+
+def _lat_lon(geom: Polygon) -> list[tuple[float, float]]:
     return [(lat, lon) for lon, lat in geom.exterior.coords]
 
 
-def _clean_maps_dir():
+def _clean_maps_dir() -> None:
     shutil.rmtree(maps_dir, ignore_errors=True)
     maps_dir.mkdir(parents=True, exist_ok=True)
