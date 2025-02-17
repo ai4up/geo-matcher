@@ -78,7 +78,7 @@ def _html_exists(id: str) -> bool:
 
 def _create_tutorial_html() -> None:
     # Load demo data
-    demo_data_path = Path("data", "demo-candidate.parquet")
+    demo_data_path = Path("data", "tutorial-candidate.parquet")
     gdf = gpd.read_parquet(demo_data_path).to_crs("EPSG:4326")
     candidate = gdf.loc["demo"]
 

@@ -1,0 +1,2 @@
+data/demo-gov.parquet filter=lfs diff=lfs merge=lfs -text
+data/demo-microsoft.parquet filter=lfs diff=lfs merge=lfs -text
