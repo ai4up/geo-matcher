@@ -29,6 +29,32 @@
             gap: 15px;
         }
 
+        #legend {
+            display: none;
+            position: fixed;
+            top: 30px;
+            left: 40%;
+            background-color: rgba(255, 255, 255, 0.7);
+            border: 1px solid lightgrey;
+            padding: 10px;
+            z-index: 1000;
+            font-size: 14px;
+            font-family: Arial, sans-serif;
+        }
+
+        #legend h4 {
+            font-size: 15px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        #legend button {
+            margin-top: 15px;
+            display: block;
+            margin-right: auto;
+            margin-left: auto;
+        }
+
         .btn {
             font-size: 20px;
             padding: 15px 25px;
@@ -50,12 +76,43 @@
     <div id="map">
         <iframe src="{{ url_for('static', filename='maps/candidate_' + id | string + '.html') }}" width="100%" height="100%"></iframe>
     </div>
+
     <div id="buttons">
         <button class="btn btn-yes" onclick="labelPair('{{ id }}', 'yes')">Duplicate</button>
         <button class="btn btn-no" onclick="labelPair('{{ id }}', 'no')">Not Duplicate</button>
         <button class="btn btn-unsure" onclick="labelPair('{{ id }}', 'unsure')">Unsure</button>
     </div>
 
+    <div id="legend">
+        <h4>Keyboard Shortcuts</h4>
+        <li>Arrow up (&#8593;): Not Duplicate</li>
+        <li>Arrow down (&#8595;): Duplicate</li>
+        <li>Arrow right (&#8594;): Unsure</li>
+        <button onclick="toggleLegend()">Close</button>
+    </div>
+
+    <script type="text/javascript">
+        document.addEventListener('keydown', function(event) {
+            if (event.key === "ArrowUp") {
+                labelPair('{{ id }}', 'no')
+            } else if (event.key === "ArrowDown") {
+                labelPair('{{ id }}', 'yes')
+            } else if (event.key === "ArrowRight") {
+                labelPair('{{ id }}', 'unsure')
+            } else if (event.key === "?") {
+                toggleLegend();
+            }
+        });
+
+        function toggleLegend() {
+            const legend = document.getElementById('legend');
+            if (legend.style.display === 'block') {
+                legend.style.display = 'none';
+            } else {
+                legend.style.display = 'block';
+            }
+        }
+    </script>
     {{ label_function_script|safe }}
 </body>
 </html>
