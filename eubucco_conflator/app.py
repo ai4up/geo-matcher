@@ -67,14 +67,15 @@ def show_candidate(id=None):
             "base_country": row.base_country,
             "base_house_number": row.base_house_number,
             "base_normalized_phone": row.base_normalized_phone,
+            "can_id": row.can_id,  # or row['can_id'] if that's a column in your DataFrame
             "can_name": row.can_name,  # or row['can_id'] if that's a column in your DataFrame
             "can_address": row.can_address,
             "can_country": row.can_country,
             "can_house_number": row.can_house_number,
             "can_normalized_phone": row.can_normalized_phone,
             }
-        for idx, row in s.candidates.loc[['08f2ab381ba7615403d9afedf3d41905']].iterrows()]
-        #for idx, row in s.candidates.loc[[id]].iterrows()]  
+        #for idx, row in s.candidates.loc[['08f2ab381ba7615403d9afedf3d41905']].iterrows()]
+        for idx, row in s.candidates.loc[[id]].iterrows()]  
 
     if next_id := s.next_candidate_id():
         app.logger.debug(f"Pre-generating HTML map for candidate {next_id}")
@@ -93,20 +94,37 @@ def _create_pop_up(row):
     
     #Initialise the popup using the iframe
     return folium.Popup(iframe, min_width=300, max_width=500)
-    
+
+
+def _adjust_zoom_level(pairs, base_coords):
+    # Compute the maximum differences in latitude and longitude from the base POI
+    max_lat_diff = (pairs['can_latitude'] - base_coords[0]).abs().max()
+    max_lon_diff = (pairs['can_longitude'] - base_coords[1]).abs().max()
+    delta = max(max_lat_diff, max_lon_diff)
+
+    # Multiply delta by 2 to get a bounding box one zoom level less (more zoomed out)
+    scale_factor = 2
+    delta_scaled = delta * scale_factor
+
+    # Build a bounding box that is symmetric around the base POI.
+    min_bound = [base_coords[0] - delta_scaled, base_coords[1] - delta_scaled]
+    max_bound = [base_coords[0] + delta_scaled, base_coords[1] + delta_scaled]
+    return [min_bound, max_bound]
+
 
 def _create_html(id):
     if _html_exists(id):
         return
     
-    #pairs = s.candidates.loc[[id]]
-    pairs = s.candidates.loc[['08f2ab381ba7615403d9afedf3d41905']]
-    print('Pairs:',len(pairs))
+    pairs = s.candidates.loc[[id]]
+    #pairs = s.candidates.loc[['08f2ab381ba7615403d9afedf3d41905']]
     base_coords = [pairs.iloc[0]['base_latitude'],pairs.iloc[0]['base_longitude']]
+    
     # Create Folium map centered on base poi
     with warnings.catch_warnings():
         warnings.simplefilter(action='ignore', category=UserWarning)
-        m = folium.Map(location=base_coords,zoom_start=19,tiles='Cartodb Positron')
+        m = folium.Map(location=base_coords,tiles='Cartodb Positron')
+        m.fit_bounds(_adjust_zoom_level(pairs, base_coords))
 
 
     # display candidates per base_poi

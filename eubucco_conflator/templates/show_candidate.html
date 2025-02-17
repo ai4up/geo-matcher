@@ -22,7 +22,13 @@
       position: relative;
     }
     /* Bottom half for the table */
-
+    #table-section {
+      height: 50%;
+      overflow-y: auto;
+      overflow-x: auto;
+      padding: 0;
+      background: #f8f8f8;
+    }
     /* Labeling buttons positioned over the map */
     #buttons {
       position: absolute;
@@ -49,43 +55,42 @@
     .btn:hover {
       opacity: 0.8;
     }
-	#table-section {
-      height: 50%;
-      overflow-y: auto;
-	  overflow-x: auto;
-      padding: 20px;
-      background: #f8f8f8;
-    }
     /* Basic table styling */
     table {
       border-collapse: collapse;
-      width: 100%;
+      width: 99%;
+	  margin: 0 auto;
+	  font-family: 'Helvetica', sans-serif;
     }
     th, td {
       border: 1px solid #ddd;
       padding: 8px;
-	  text-align: left;
+      text-align: left;
     }
     th {
       background-color: #ffffff;
-      color: rgb(10, 10, 10);
+      color: #0a0a0a;
     }
-	/* For the first header row (top row) */
-	thead tr:first-child th {
-	position: sticky;
-	top: 0;
-	background-color: #e0e2e0; /* same as your header background */
-	z-index: 3; /* ensure it sits above the rest of the table */
-	}
-
-	/* For the second header row */
-	thead tr:nth-child(2) th {
-	position: sticky;
-	top: 34px; /* adjust this value to the actual height of your first row */
-	background-color: #f8f8f8;
-	color:purple; 
-	z-index: 2;
-	}
+    /* For the first header row (top row) */
+    thead tr:first-child th {
+      position: sticky;
+      top: 0;
+      background-color: #e0e2e0;
+      z-index: 3;
+    }
+    /* For the second header row */
+    thead tr:nth-child(2) th {
+      position: sticky;
+      top: 34px; /* adjust this value to match the actual height of your first row */
+      background-color: rgb(214, 154, 214);
+      color: black;
+	  font-weight: normal;
+      z-index: 2;
+    }
+    /* Highlight the selected table row */
+    .selected {
+      background-color: #d0e0f0;
+    }
   </style>
 </head>
 <body>
@@ -99,46 +104,111 @@
         frameborder="0"
       ></iframe>
       <div id="buttons">
-        <button class="btn btn-yes" onclick="labelPair('{{ id }}', 'yes')">Duplicate</button>
-        <button class="btn btn-no" onclick="labelPair('{{ id }}', 'no')">Not Duplicate</button>
-        <button class="btn btn-unsure" onclick="labelPair('{{ id }}', 'unsure')">Unsure</button>
+        <button class="btn btn-yes" onclick="labelPair('{{ id }}', 'yes', document.getElementById('selectedCanID').value)">Duplicate</button>
+        <button class="btn btn-no" onclick="labelPair('{{ id }}', 'no', document.getElementById('selectedCanID').value)">Not Duplicate</button>
+        <button class="btn btn-unsure" onclick="labelPair('{{ id }}', 'unsure', document.getElementById('selectedCanID').value)">Unsure</button>
       </div>
     </div>
     <!-- Bottom half: Table -->
-	<div id="table-section">
-		<table>
-			<thead>
-				<tr>
-					<th>Name</th>
-					<th>Address</th>
-					<th>Country</th>
-					<th>House Number</th>
-					<th>Phone Number</th>
-				</tr>
-				<tr>
-					<th>{{ table_data[0]['base_name'] }}</th>
-					<th>{{ table_data[0]['base_address'] }}</th>
-					<th>{{ table_data[0]['base_country'] }}</th>
-					<th>{{ table_data[0]['base_house_number'] }}</th>
-					<th>{{ table_data[0]['base_normalized_phone'] }}</th>
-				</tr>
-			</thead>
-		  <tbody>
-			{% for row in table_data %}
-			<tr>
-			  <td>{{row.can_name }}</td>
-			  <td>{{row.can_address}}</td>
-			  <td>{{row.can_country }}</td>
-			  <td>{{row.can_house_number}}</td>
-			  <td>{{row.can_normalized_phone}}</td>
-			</tr>
-			{% endfor %}
-		  </tbody>
-		</table>
-	  </div>
-  
+    <div id="table-section">
+      <!-- Hidden field to store the selected candidate's can_id -->
+      <input type="hidden" id="selectedCanID" value="">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Address</th>
+            <th>Country</th>
+            <th>House Number</th>
+            <th>Phone Number</th>
+          </tr>
+          <tr>
+            <th>{{ table_data[0]['base_name'] }}</th>
+            <th>{{ table_data[0]['base_address'] }}</th>
+            <th>{{ table_data[0]['base_country'] }}</th>
+            <th>{{ table_data[0]['base_house_number'] }}</th>
+            <th>{{ table_data[0]['base_normalized_phone'] }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in table_data %}
+          <tr data-can-id="{{ row.can_id }}">
+            <td>{{ row.can_name }}</td>
+            <td>{{ row.can_address }}</td>
+            <td>{{ row.can_country }}</td>
+            <td>{{ row.can_house_number }}</td>
+            <td>{{ row.can_normalized_phone }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
   
   {{ label_function_script|safe }}
+
+  <!-- select table and allow arrows to navifate -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const tbody = document.querySelector("#table-section tbody");
+      const rows = tbody.querySelectorAll("tr");
+      let selectedRowIndex = 0;
+      
+      // Function to update selection
+      function updateSelection(newIndex) {
+        // Remove current selection
+        if (rows[selectedRowIndex]) {
+          rows[selectedRowIndex].classList.remove("selected");
+        }
+        selectedRowIndex = newIndex;
+        // Add new selection
+        if (rows[selectedRowIndex]) {
+          rows[selectedRowIndex].classList.add("selected");
+          // Save the can_name of the selected row in the hidden field
+          const canName = rows[selectedRowIndex].getAttribute("data-can-id");
+          document.getElementById("selectedCanID").value = canName;
+          console.log("Selected can_name:", canName);
+        }
+      }
+      
+      // Set the first row as selected by default if available
+      if (rows.length > 0) {
+        updateSelection(0);
+      }
+      
+      // Add click event listener to each row
+      rows.forEach((row, index) => {
+        row.addEventListener("click", function() {
+          updateSelection(index);
+        });
+      });
+      
+      // Listen for up/down arrow key events to change selection
+      document.addEventListener("keydown", function(e) {
+        if (e.key === "ArrowDown") {
+          if (selectedRowIndex < rows.length - 1) {
+            updateSelection(selectedRowIndex + 1);
+          }
+        } else if (e.key === "ArrowUp") {
+          if (selectedRowIndex > 0) {
+            updateSelection(selectedRowIndex - 1);
+          }
+		} else if (e.key === "ArrowRight") {
+          // Right arrow triggers "yes"
+          labelPair('{{ id }}', 'yes', document.getElementById("selectedCanID").value);
+        } else if (e.key === "ArrowLeft") {
+          // Left arrow triggers "no"
+          labelPair('{{ id }}', 'no', document.getElementById("selectedCanID").value);
+        } else if (e.key.toLowerCase() === "u") {
+          // "u" triggers "unsure"
+          labelPair('{{ id }}', 'unsure', document.getElementById("selectedCanID").value);
+        }
+		else if (e.key === "Enter") {
+          // "u" triggers "unsure"
+          labelPair('{{ id }}', 'nan', document.getElementById("selectedCanID").value);
+		}
+      });
+    });
+  </script>
 </body>
 </html>
