@@ -1,14 +1,15 @@
 from collections import Counter
 from pathlib import Path
-from typing import List, Dict, Optional, Callable
+from typing import Callable, Dict, List, Optional
 
-import pandas as pd
 import geopandas as gpd
+import pandas as pd
 from geopandas import GeoDataFrame
 
-CANDIDATES_FILE = 'candidates.parquet'
-RESULTS_FILE = 'results.csv'
-_PROGRESS_FILEPATH = Path('.progress', 'labeling-progress.pickle')
+CANDIDATES_FILE = "candidates.parquet"
+RESULTS_FILE = "results.csv"
+_PROGRESS_FILEPATH = Path(".progress", "labeling-progress.pickle")
+
 
 class State:
     gdf: Optional[GeoDataFrame] = None
@@ -51,8 +52,12 @@ class State:
 
     @classmethod
     def store_results(cls) -> None:
-        pd.DataFrame(cls.results).drop_duplicates(subset=['id'], keep='first').to_csv(RESULTS_FILE, index=False)
-        cls.logger(f"All buildings successfully labeled. Results stored in {RESULTS_FILE}.")
+        pd.DataFrame(cls.results).drop_duplicates(subset=["id"], keep="first").to_csv(
+            RESULTS_FILE, index=False
+        )
+        cls.logger(
+            f"All buildings successfully labeled. Results stored in {RESULTS_FILE}."
+        )
 
     @classmethod
     def _store_progress(cls) -> None:
@@ -60,9 +65,12 @@ class State:
 
     @classmethod
     def _determine_candidates(cls) -> GeoDataFrame:
-        candidates = cls.gdf[(cls.gdf.index == cls.gdf["candidate_id"]) & (~cls.gdf["candidate_id"].isin(cls._already_labeled_id()))]
+        candidates = cls.gdf[
+            (cls.gdf.index == cls.gdf["candidate_id"])
+            & (~cls.gdf["candidate_id"].isin(cls._already_labeled_id()))
+        ]
         if candidates.index.has_duplicates:
-            msg = "Index of duplicate building candidates must be unique. Please check your dataset."
+            msg = "Index of duplicate building candidates must be unique. Please check your dataset."   # noqa: E501
             cls.logger(msg)
             raise ValueError(msg)
 

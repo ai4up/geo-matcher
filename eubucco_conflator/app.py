@@ -1,20 +1,20 @@
 import atexit
+import shutil
 import warnings
 import webbrowser
 from pathlib import Path
-import shutil
 from typing import Optional
 
-from flask import Flask, Response, render_template, request, jsonify
-from flask_executor import Executor
 import folium
-from waitress import serve
 import geopandas as gpd
+from flask import Flask, Response, jsonify, render_template, request
+from flask_executor import Executor
 from geopandas import GeoDataFrame
 from shapely.geometry import Polygon
+from waitress import serve
 
-from eubucco_conflator.state import State as s
 from eubucco_conflator.state import RESULTS_FILE
+from eubucco_conflator.state import State as s
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
@@ -26,7 +26,7 @@ def start() -> None:
     _clean_maps_dir()
     atexit.register(s.store_results)
 
-    webbrowser.open(f"http://127.0.0.1:5001")
+    webbrowser.open("http://127.0.0.1:5001")
     serve(app, host="127.0.0.1", port=5001)
 
 
@@ -36,7 +36,7 @@ def home() -> str:
     return render_template("index.html")
 
 
-@app.route('/store-label', methods=['POST'])
+@app.route("/store-label", methods=["POST"])
 def store_label() -> Response:
     data = request.json
 
@@ -45,7 +45,7 @@ def store_label() -> Response:
     existing_id = data.get("existing_id")
     s.add_result(id, label, existing_id)
 
-    return jsonify({"message": "Success", "candidate": s.current_candidate_id() or ''})
+    return jsonify({"message": "Success", "candidate": s.current_candidate_id() or ""})
 
 
 @app.route("/show_candidate")
@@ -67,7 +67,9 @@ def show_candidate(id: Optional[str] = None) -> str:
         app.logger.debug(f"Pre-generating HTML map for candidate {next_id}")
         executor.submit(_create_html, next_id)
 
-    return render_template("show_candidate.html", label_function_script=_labeling_func_js(), id=id)
+    return render_template(
+        "show_candidate.html", label_function_script=_labeling_func_js(), id=id
+    )
 
 
 def _html_exists(id: str) -> bool:
@@ -76,9 +78,9 @@ def _html_exists(id: str) -> bool:
 
 def _create_tutorial_html() -> None:
     # Load demo data
-    demo_data_path = Path('data', 'demo-candidate.parquet')
+    demo_data_path = Path("data", "demo-candidate.parquet")
     gdf = gpd.read_parquet(demo_data_path).to_crs("EPSG:4326")
-    candidate = gdf.loc['demo']
+    candidate = gdf.loc["demo"]
 
     # Initialize map and add demo buildings
     m = _initialize_map(candidate)
@@ -89,7 +91,7 @@ def _create_tutorial_html() -> None:
     _add_tutorial_markers(m, gdf, candidate)
     m.get_root().html.add_child(folium.Element(_demo_labeling_func_js()))
 
-    m.save(maps_dir / 'candidate_demo.html')
+    m.save(maps_dir / "candidate_demo.html")
 
 
 def _create_html(id: str) -> None:
@@ -97,7 +99,7 @@ def _create_html(id: str) -> None:
         return
 
     candidate = s.candidates.loc[id]
-    gdf = s.gdf[s.gdf['candidate_id'] == id]
+    gdf = s.gdf[s.gdf["candidate_id"] == id]
 
     m = _initialize_map(candidate)
 
@@ -115,54 +117,68 @@ def _create_html(id: str) -> None:
 
 def _initialize_map(candidate: GeoDataFrame) -> folium.Map:
     with warnings.catch_warnings():
-        warnings.simplefilter(action='ignore', category=UserWarning)
+        warnings.simplefilter(action="ignore", category=UserWarning)
         centroid = candidate.geometry.centroid
 
     m = folium.Map(location=[centroid.y, centroid.x], zoom_start=20, tiles=None)
 
-    folium.TileLayer('CartoDB.Positron', name='CartoDB Positron', show=True).add_to(m)
-    folium.TileLayer('OpenStreetMap', name='OpenStreetMap', show=False).add_to(m)
-    folium.TileLayer('Esri.WorldTopoMap', name='Esri WorldTopoMap', show=False, max_native_zoom=18, max_zoom=19).add_to(m)
+    folium.TileLayer("CartoDB.Positron", name="CartoDB Positron", show=True).add_to(m)
+    folium.TileLayer("OpenStreetMap", name="OpenStreetMap", show=False).add_to(m)
+    folium.TileLayer(
+        "Esri.WorldTopoMap",
+        name="Esri WorldTopoMap",
+        show=False,
+        max_native_zoom=18,
+        max_zoom=19,
+    ).add_to(m)
 
     return m
 
 
-def _add_tutorial_markers(m: folium.Map, gdf: GeoDataFrame, candidate: GeoDataFrame) -> None:
-    gdf_existing = gdf[gdf['dataset'] != candidate.dataset]
+def _add_tutorial_markers(
+    m: folium.Map, gdf: GeoDataFrame, candidate: GeoDataFrame
+) -> None:
+    gdf_existing = gdf[gdf["dataset"] != candidate.dataset]
     folium.Marker(
         location=[candidate.geometry.centroid.y, candidate.geometry.centroid.x],
-        tooltip='Building to be labeled.',
-        icon=folium.Icon(color='red', icon='info-sign')
+        tooltip="Building to be labeled.",
+        icon=folium.Icon(color="red", icon="info-sign"),
     ).add_to(m)
 
     for _, row in gdf_existing.iterrows():
         folium.Marker(
             location=[row.geometry.centroid.y, row.geometry.centroid.x],
-            tooltip='Existing building. Click on it to indicate that it is being duplicated by the red building.',
-            icon=folium.Icon(color='blue', icon='info-sign')
+            tooltip="Existing building. Click on it to indicate that it is being duplicated by the red building.",
+            icon=folium.Icon(color="blue", icon="info-sign"),
         ).add_to(m)
 
 
-def _create_existing_buildings_layer(gdf: GeoDataFrame, candidate: GeoDataFrame) -> folium.FeatureGroup:
+def _create_existing_buildings_layer(
+    gdf: GeoDataFrame, candidate: GeoDataFrame
+) -> folium.FeatureGroup:
     existing_buildings = folium.FeatureGroup(name="Existing Buildings")
-    gdf_existing = gdf[gdf['dataset'] != candidate.dataset]
+    gdf_existing = gdf[gdf["dataset"] != candidate.dataset]
 
     for _, row in gdf_existing.iterrows():
         html_str = f"<button onclick=\"labelPair('{candidate.name}', 'yes', '{row.name}')\">Duplicated</button>"
         html = folium.Html(html_str, script=True)
         popup = folium.Popup(html, max_width=300)
         coords = _lat_lon(row.geometry)
-        folium.Polygon(coords, popup=popup, color='skyblue', fill=True, fill_opacity=0.5).add_to(existing_buildings)
+        folium.Polygon(
+            coords, popup=popup, color="skyblue", fill=True, fill_opacity=0.5
+        ).add_to(existing_buildings)
 
     return existing_buildings
 
 
-def _create_new_buildings_layer(gdf: GeoDataFrame, candidate: GeoDataFrame) -> folium.FeatureGroup:
+def _create_new_buildings_layer(
+    gdf: GeoDataFrame, candidate: GeoDataFrame
+) -> folium.FeatureGroup:
     new_buildings = folium.FeatureGroup(name="Other New Buildings")
-    gdf_new = gdf[(gdf['dataset'] == candidate.dataset) & (gdf.index != candidate.name)]
+    gdf_new = gdf[(gdf["dataset"] == candidate.dataset) & (gdf.index != candidate.name)]
 
     folium.GeoJson(
-        gdf_new, style_function=lambda _: {'color': 'coral', 'fillOpacity': 0.2}
+        gdf_new, style_function=lambda _: {"color": "coral", "fillOpacity": 0.2}
     ).add_to(new_buildings)
 
     return new_buildings
@@ -172,7 +188,7 @@ def _create_candidate_building_layer(candidate: GeoDataFrame) -> folium.FeatureG
     candidate_building = folium.FeatureGroup(name="Duplicate Candidate")
     coords = _lat_lon(candidate.geometry)
 
-    folium.Polygon(coords, color='red', weight=3, fill=False).add_to(candidate_building)
+    folium.Polygon(coords, color="red", weight=3, fill=False).add_to(candidate_building)
 
     return candidate_building
 
