@@ -1,5 +1,4 @@
 from collections import Counter
-import os
 from pathlib import Path
 
 import pandas as pd
@@ -7,7 +6,7 @@ import geopandas as gpd
 
 CANDIDATES_FILE = 'candidates.parquet'
 RESULTS_FILE = 'results.csv'
-_PROGRESS_FILE = '.progress/labeling-progress.pickle'
+_PROGRESS_FILEPATH = Path('.progress', 'labeling-progress.pickle')
 
 class State:
     gdf = None
@@ -55,7 +54,7 @@ class State:
 
     @classmethod
     def _store_progress(cls):
-        pd.DataFrame(cls.results).to_pickle(_PROGRESS_FILE)
+        pd.DataFrame(cls.results).to_pickle(_PROGRESS_FILEPATH)
 
     @classmethod
     def _determine_candidates(cls):
@@ -73,10 +72,10 @@ class State:
 
     @staticmethod
     def _load_progress():
-        if os.path.exists(_PROGRESS_FILE):
-            return pd.read_pickle(_PROGRESS_FILE).to_dict("records")
+        if _PROGRESS_FILEPATH.exists():
+            return pd.read_pickle(_PROGRESS_FILEPATH).to_dict("records")
 
-        Path(_PROGRESS_FILE).parent.mkdir(parents=True, exist_ok=True)
+        _PROGRESS_FILEPATH.parent.mkdir(parents=True, exist_ok=True)
         return []
 
     @staticmethod
