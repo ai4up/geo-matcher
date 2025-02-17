@@ -1,61 +1,144 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Label Candidate</title>
-    <style>
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Label Candidate</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    /* Container splits the page vertically */
+    #container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    /* Top half for the map */
+    #map {
+      height: 50%;
+      position: relative;
+    }
+    /* Bottom half for the table */
 
-        #map {
-            width: 100%;
-            height: 100%;
-        }
+    /* Labeling buttons positioned over the map */
+    #buttons {
+      position: absolute;
+      bottom: 2%;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 15px;
+      border-radius: 10px;
+      display: flex;
+      gap: 15px;
+    }
+    .btn {
+      font-size: 20px;
+      padding: 15px 25px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .btn-yes { background: #ff4d4d; color: white; }
+    .btn-no { background: #4caf50; color: white; }
+    .btn-unsure { background: #f0ad4e; color: white; }
+    .btn:hover {
+      opacity: 0.8;
+    }
+	#table-section {
+      height: 50%;
+      overflow-y: auto;
+	  overflow-x: auto;
+      padding: 20px;
+      background: #f8f8f8;
+    }
+    /* Basic table styling */
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+	  text-align: left;
+    }
+    th {
+      background-color: #ffffff;
+      color: rgb(10, 10, 10);
+    }
+	/* For the first header row (top row) */
+	thead tr:first-child th {
+	position: sticky;
+	top: 0;
+	background-color: #e0e2e0; /* same as your header background */
+	z-index: 3; /* ensure it sits above the rest of the table */
+	}
 
-        #buttons {
-            position: absolute;
-            bottom: 10%;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 15px;
-            border-radius: 10px;
-            display: flex;
-            gap: 15px;
-        }
-
-        .btn {
-            font-size: 20px;
-            padding: 15px 25px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-
-        .btn-yes { background: #ff4d4d; color: white; }
-        .btn-no { background: #4caf50; color: white; }
-        .btn-unsure { background: #f0ad4e; color: white; }
-
-        .btn:hover {
-            opacity: 0.8;
-        }
-    </style>
+	/* For the second header row */
+	thead tr:nth-child(2) th {
+	position: sticky;
+	top: 34px; /* adjust this value to the actual height of your first row */
+	background-color: #f8f8f8;
+	color:purple; 
+	z-index: 2;
+	}
+  </style>
 </head>
 <body>
+  <div id="container">
+    <!-- Top half: Map -->
     <div id="map">
-        <iframe src="{{ url_for('static', filename='maps/candidate_' + id | string + '.html') }}" width="100%" height="100%"></iframe>
-    </div>
-    <div id="buttons">
+      <iframe
+        src="{{ url_for('static', filename='maps/candidate_' + id | string + '.html') }}"
+        width="100%"
+        height="100%"
+        frameborder="0"
+      ></iframe>
+      <div id="buttons">
         <button class="btn btn-yes" onclick="labelPair('{{ id }}', 'yes')">Duplicate</button>
         <button class="btn btn-no" onclick="labelPair('{{ id }}', 'no')">Not Duplicate</button>
         <button class="btn btn-unsure" onclick="labelPair('{{ id }}', 'unsure')">Unsure</button>
+      </div>
     </div>
-
-    {{ label_function_script|safe }}
+    <!-- Bottom half: Table -->
+	<div id="table-section">
+		<table>
+			<thead>
+				<tr>
+					<th>Name</th>
+					<th>Address</th>
+					<th>Country</th>
+					<th>House Number</th>
+					<th>Phone Number</th>
+				</tr>
+				<tr>
+					<th>{{ table_data[0]['base_name'] }}</th>
+					<th>{{ table_data[0]['base_address'] }}</th>
+					<th>{{ table_data[0]['base_country'] }}</th>
+					<th>{{ table_data[0]['base_house_number'] }}</th>
+					<th>{{ table_data[0]['base_normalized_phone'] }}</th>
+				</tr>
+			</thead>
+		  <tbody>
+			{% for row in table_data %}
+			<tr>
+			  <td>{{row.can_name }}</td>
+			  <td>{{row.can_address}}</td>
+			  <td>{{row.can_country }}</td>
+			  <td>{{row.can_house_number}}</td>
+			  <td>{{row.can_normalized_phone}}</td>
+			</tr>
+			{% endfor %}
+		  </tbody>
+		</table>
+	  </div>
+  
+  </div>
+  
+  {{ label_function_script|safe }}
 </body>
 </html>
