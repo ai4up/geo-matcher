@@ -42,8 +42,13 @@ def store_label():
     label = data.get("label")
     existing_id = data.get("existing_id")
     s.add_result(id, label, existing_id)
+    
+    new_id = s.current_candidate_id() or ""
+    
+    if id == new_id:
+        return jsonify({"message": "Success"})
 
-    return jsonify({"message": "Success", "candidate": s.current_candidate_id() or ''})
+    return jsonify({"message": "Success", "candidate": new_id})
 
 
 @app.route("/show_candidate")
@@ -73,8 +78,9 @@ def show_candidate(id=None):
             "can_country": row.can_country,
             "can_house_number": row.can_house_number,
             "can_normalized_phone": row.can_normalized_phone,
+            "can_latitude": row.can_latitude,
+            "can_longitude": row.can_longitude,
             }
-        #for idx, row in s.candidates.loc[['08f2ab381ba7615403d9afedf3d41905']].iterrows()]
         for idx, row in s.candidates.loc[[id]].iterrows()]  
 
     if next_id := s.next_candidate_id():
@@ -89,10 +95,7 @@ def _html_exists(id):
 
 
 def _create_pop_up(row):
-    #Setup the content of the popup
     iframe = folium.IFrame(f"Name:{row['can_name']} \nAddress: {row['can_address']}", width=300, height=80)
-    
-    #Initialise the popup using the iframe
     return folium.Popup(iframe, min_width=300, max_width=500)
 
 
@@ -115,9 +118,7 @@ def _adjust_zoom_level(pairs, base_coords):
 def _create_html(id):
     if _html_exists(id):
         return
-    
     pairs = s.candidates.loc[[id]]
-    #pairs = s.candidates.loc[['08f2ab381ba7615403d9afedf3d41905']]
     base_coords = [pairs.iloc[0]['base_latitude'],pairs.iloc[0]['base_longitude']]
     
     # Create Folium map centered on base poi
@@ -129,7 +130,7 @@ def _create_html(id):
 
     # display candidates per base_poi
     if len(s.candidates) > 1:
-        marker_cluster = MarkerCluster().add_to(m)
+        #marker_cluster = MarkerCluster().add_to(m)
     
         for _, row in pairs.iterrows():
             coords = [row['can_latitude']+1e-5, row['can_longitude']+1e-5] # Add a small offset to avoid overlapping markers
@@ -137,14 +138,15 @@ def _create_html(id):
                         popup=_create_pop_up(row),
                         icon=folium.Icon(color='blue', icon=''),
                         opacity=0.8,
-                        ).add_to(marker_cluster)
+                        #).add_to(marker_cluster)
+                        ).add_to(m)
 
     else:
         coords = [pairs['can_latitude']+1e-5, pairs['can_longitude']+1e-5] # Add a small offset to avoid overlapping markers
         folium.Marker(coords,
                         popup=_create_pop_up(row),
                         icon=folium.Icon(color='red', icon=''),
-                        ).add_to(marker_cluster)
+                        ).add_to(m)
 
 
     folium.Marker(base_coords,
@@ -152,9 +154,14 @@ def _create_html(id):
                     icon=folium.Icon(color='purple', icon=''),
                     ).add_to(m)            
     
-    # Add the script to the map’s HTML
-    m.get_root().html.add_child(folium.Element(_js_labeling_func()))
+    # Inject assignment of map_id to to window.map
+    map_id = m.get_name()
+    m.get_root().script.add_child(folium.Element(f"""
+    console.log("Injecting map variable for: {map_id}");
+    window.map = '{map_id}';
+    """))
 
+    m.get_root().html.add_child(folium.Element(_js_labeling_func()))
     m.save(maps_dir / f"candidate_{id}.html")
 
 
@@ -176,7 +183,9 @@ def _js_labeling_func():
             .then(response => response.json())
             .then(data => {
                 console.log("Saved:", data);
-                window.location.href = `/show_candidate/${data.candidate}`;
+                if (data.hasOwnProperty('candidate')) {
+                    window.location.href = `/show_candidate/${data.candidate}`;
+                }
             });
         }
     </script>

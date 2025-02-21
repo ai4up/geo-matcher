@@ -59,8 +59,8 @@
     table {
       border-collapse: collapse;
       width: 99%;
-	  margin: 0 auto;
-	  font-family: 'Helvetica', sans-serif;
+      margin: 0 auto;
+      font-family: 'Helvetica', sans-serif;
     }
     th, td {
       border: 1px solid #ddd;
@@ -84,7 +84,7 @@
       top: 34px; /* adjust this value to match the actual height of your first row */
       background-color: rgb(214, 154, 214);
       color: black;
-	  font-weight: normal;
+      font-weight: normal;
       z-index: 2;
     }
     /* Highlight the selected table row */
@@ -98,6 +98,7 @@
     <!-- Top half: Map -->
     <div id="map">
       <iframe
+        id="mapFrame"
         src="{{ url_for('static', filename='maps/candidate_' + id | string + '.html') }}"
         width="100%"
         height="100%"
@@ -111,7 +112,7 @@
     </div>
     <!-- Bottom half: Table -->
     <div id="table-section">
-      <!-- Hidden field to store the selected candidate's can_id -->
+      <!-- Hidden field to store the selected candidate's id -->
       <input type="hidden" id="selectedCanID" value="">
       <table>
         <thead>
@@ -132,7 +133,10 @@
         </thead>
         <tbody>
           {% for row in table_data %}
-          <tr data-can-id="{{ row.can_id }}">
+          <!-- Include candidate latitude and longitude as data attributes -->
+          <tr data-can-id="{{ row.can_id }}"
+              data-can-lat="{{ row.can_latitude }}"
+              data-can-lng="{{ row.can_longitude }}">
             <td>{{ row.can_name }}</td>
             <td>{{ row.can_address }}</td>
             <td>{{ row.can_country }}</td>
@@ -147,27 +151,54 @@
   
   {{ label_function_script|safe }}
 
-  <!-- select table and allow arrows to navifate -->
   <script>
+    // Function to highlight candidate place on the map with a specified color
+    function highlightCandidatePlace(lat, lng, color) {
+      const mapIframe = document.getElementById("mapFrame");
+      console.log("Highlighting candidate at", lat, lng, "with color", color);
+      if (mapIframe && mapIframe.contentWindow) {
+        // Ensure that window.map is available in the iframe
+        console.log(mapIframe.contentWindow)
+        const map_name = mapIframe.contentWindow.map;
+        const map = mapIframe.contentWindow[map_name];
+        // console.log(map)
+        if (map) {
+          // Remove any previous highlight layer
+          if (map.highlightLayer) {
+            map.removeLayer(map.highlightLayer);
+          }
+          // Add a new circle marker with the specified color
+          map.highlightLayer = mapIframe.contentWindow.L.circleMarker([lat,lng], {
+            color: color,
+            radius: 10,
+            fillOpacity: 0.8
+          }).addTo(map);
+        } else {
+          console.log("Map instance not available in iframe.");
+        }
+      }
+    }
+
     document.addEventListener("DOMContentLoaded", function() {
       const tbody = document.querySelector("#table-section tbody");
       const rows = tbody.querySelectorAll("tr");
       let selectedRowIndex = 0;
       
-      // Function to update selection
+      // Function to update selection, store candidate id, and highlight the corresponding map location
       function updateSelection(newIndex) {
-        // Remove current selection
         if (rows[selectedRowIndex]) {
           rows[selectedRowIndex].classList.remove("selected");
         }
         selectedRowIndex = newIndex;
-        // Add new selection
         if (rows[selectedRowIndex]) {
           rows[selectedRowIndex].classList.add("selected");
-          // Save the can_name of the selected row in the hidden field
-          const canName = rows[selectedRowIndex].getAttribute("data-can-id");
-          document.getElementById("selectedCanID").value = canName;
-          console.log("Selected can_name:", canName);
+          const canID = rows[selectedRowIndex].getAttribute("data-can-id");
+          const canLat = rows[selectedRowIndex].getAttribute("data-can-lat");
+          const canLng = rows[selectedRowIndex].getAttribute("data-can-lng");
+          document.getElementById("selectedCanID").value = canID;
+          console.log("Selected candidate id:", canID);
+          // Highlight the candidate's place with a custom color (e.g., "orange")
+          highlightCandidatePlace(canLat, canLng, "orange");
         }
       }
       
@@ -176,14 +207,14 @@
         updateSelection(0);
       }
       
-      // Add click event listener to each row
+      // Allow selection via mouse click
       rows.forEach((row, index) => {
         row.addEventListener("click", function() {
           updateSelection(index);
         });
       });
       
-      // Listen for up/down arrow key events to change selection
+      // Listen for keydown events to navigate and trigger labeling shortcuts
       document.addEventListener("keydown", function(e) {
         if (e.key === "ArrowDown") {
           if (selectedRowIndex < rows.length - 1) {
@@ -193,20 +224,15 @@
           if (selectedRowIndex > 0) {
             updateSelection(selectedRowIndex - 1);
           }
-		} else if (e.key === "ArrowRight") {
-          // Right arrow triggers "yes"
+        } else if (e.key === "ArrowRight") {
           labelPair('{{ id }}', 'yes', document.getElementById("selectedCanID").value);
         } else if (e.key === "ArrowLeft") {
-          // Left arrow triggers "no"
           labelPair('{{ id }}', 'no', document.getElementById("selectedCanID").value);
         } else if (e.key.toLowerCase() === "u") {
-          // "u" triggers "unsure"
           labelPair('{{ id }}', 'unsure', document.getElementById("selectedCanID").value);
-        }
-		else if (e.key === "Enter") {
-          // "u" triggers "unsure"
+        } else if (e.key === "Enter") {
           labelPair('{{ id }}', 'nan', document.getElementById("selectedCanID").value);
-		}
+        }
       });
     });
   </script>

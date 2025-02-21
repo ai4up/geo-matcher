@@ -6,8 +6,8 @@ from eubucco_conflator.state import State
 
 if __name__ == '__main__':
 
-	file_path = '/Users/felix/code/overture/eubucco-conflation/data/editorial_team_serbia_features.parquet'
+	file_path = '<path of parquet file>'
 	# Initialize the state with your custom input file
-	State.init(file_path, logger=print)
+	State.init(file_path,fix_id=None, logger=print)
 	app.start()
 
