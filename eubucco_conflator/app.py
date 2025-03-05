@@ -14,6 +14,8 @@ from eubucco_conflator.state import State as s
 from eubucco_conflator.state import RESULTS_FILE
 
 FT = ['name','address','house_number','country','phone_number']
+prefix = ['base','can']
+
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
@@ -66,22 +68,51 @@ def show_candidate(id=None):
 
     _create_html(id)
 
-    table_data = [{
-            "base_name": row.base_name,  # or row['base_id'] if that's a column in your DataFrame
-            "base_address": row.base_address,
-            "base_country": row.base_country,
-            "base_house_number": row.base_house_number,
-            "base_normalized_phone": row.base_normalized_phone,
-            "can_id": row.can_id,  # or row['can_id'] if that's a column in your DataFrame
-            "can_name": row.can_name,  # or row['can_id'] if that's a column in your DataFrame
-            "can_address": row.can_address,
-            "can_country": row.can_country,
-            "can_house_number": row.can_house_number,
-            "can_normalized_phone": row.can_normalized_phone,
-            "can_latitude": row.can_latitude,
-            "can_longitude": row.can_longitude,
-            }
-        for idx, row in s.candidates.loc[[id]].iterrows()]  
+    def _create_table():
+        # todo: refactor this to be more readable
+        # todo: allow table values that exist per base and candidate, as well as common ones, like match_type or features
+        prefixes = ['base','can']
+        columns = ['name', 'address', 'house_number', 'country', 'normalized_phone']
+
+        table_data_cols = [
+                {
+                    f"{prefix}_{col}": row[f"{prefix}_{col}"]
+                    for prefix in prefixes
+                    for col in columns
+                    #if f"{prefix}_{col}" in row
+                }
+                for _, row in s.candidates.loc[[id]].iterrows()
+            ]
+        
+        table_data_fix_vals = [{
+                f"{prefixes[1]}_latitude": row[f'{prefixes[1]}_latitude'],
+                f"{prefixes[1]}_longitude": row[f'{prefixes[1]}_longitude'],
+                f"{prefixes[1]}_id": row[f'{prefixes[1]}_id'],
+                } 
+                for idx, row in s.candidates.loc[[id]].iterrows()]
+        
+        return [table_data_cols[0] | table_data_fix_vals[0]]
+
+
+    table_data = _create_table()
+    
+    # table_data = [{
+    #         "base_name": row['base_name'], # or row['base_id'] if that's a column in your DataFram'
+    #         "base_address": row['base_address'],
+    #         "base_country": row['base_country'],
+    #         "base_house_number": row['base_house_number'],
+    #         "base_normalized_phone": row['base_normalized_phone'],
+    #         "can_id": row['can_id'], 
+    #         "can_name": row['can_name'], 
+    #         "can_address": row['can_address'],
+    #         "can_country": row['can_country'],
+    #         "can_house_number": row['can_house_number'],
+    #         "can_normalized_phone": row['can_normalized_phone'],
+    #         "can_latitude": row['can_latitude'],
+    #         "can_longitude": row['can_longitude'],
+    #         }
+    #         for idx, row in s.candidates.loc[[id]].iterrows()]  
+
 
     if next_id := s.next_candidate_id():
         app.logger.debug(f"Pre-generating HTML map for candidate {next_id}")
@@ -127,18 +158,14 @@ def _create_html(id):
         m = folium.Map(location=base_coords,tiles='Cartodb Positron')
         m.fit_bounds(_adjust_zoom_level(pairs, base_coords))
 
-
     # display candidates per base_poi
     if len(s.candidates) > 1:
-        #marker_cluster = MarkerCluster().add_to(m)
-    
         for _, row in pairs.iterrows():
             coords = [row['can_latitude']+1e-5, row['can_longitude']+1e-5] # Add a small offset to avoid overlapping markers
             folium.Marker(coords,
                         popup=_create_pop_up(row),
                         icon=folium.Icon(color='blue', icon=''),
                         opacity=0.8,
-                        #).add_to(marker_cluster)
                         ).add_to(m)
 
     else:
