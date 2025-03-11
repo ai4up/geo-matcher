@@ -22,12 +22,7 @@ conflator label
 ```
 
 ## Demo
-Download demo building data from git LFS:
-```
-git lfs pull
-```
-
-Create a dataset of potential duplicates of [government](https://eubucco.com/data/) and [Microsoft buildings](https://github.com/microsoft/GlobalMLBuildingFootprints) for a small region in France. Include only buildings which overlap slightly (0-20%).
+Create a dataset of potential duplicates of [government buildings](https://eubucco.com/data/) and [Microsoft buildings](https://github.com/microsoft/GlobalMLBuildingFootprints) for a small region in France using the [demo data](data/) in the repository. Include only buildings which overlap slightly (0-20%).
 ```bash
 conflator create-labeling-dataset \
     --min-intersection=0.0 \ # Minimum relative overlap for new buildings to be considered for duplicate labeling [0,1)
