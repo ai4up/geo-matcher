@@ -4,10 +4,8 @@ A web-based tool for conflating building footprint datasets, visually identifyin
 
 
 ## Install
-Build from source using [poetry](https://python-poetry.org/):
 ```bash
-poetry build
-pip install dist/eubucco_conflator-*.whl
+pip install git+https://github.com/ai4up/eubucco-conflation@main
 ```
 
 ## Usage
@@ -35,3 +33,22 @@ The resulting dataset is locally stored as `candidates.parquet`. To initiate the
 conflator label
 ```
 ![Example of Building Footprint Conflation Tool](example.png)
+
+
+## Development
+
+Install dev dependencies using [poetry](https://python-poetry.org/):
+```bash
+poetry install --only dev
+```
+
+Install git pre-commit hooks:
+```bash
+pre-commit install
+```
+
+Build from source:
+```bash
+poetry build
+pip install dist/eubucco_conflator-*.whl
+```
