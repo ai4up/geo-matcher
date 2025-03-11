@@ -5,9 +5,9 @@ from eubucco_conflator import app
 from eubucco_conflator.state import State
 
 if __name__ == '__main__':
+	
+	file_path = 'data/sample_data.parquet'
 
-	file_path = '<path of parquet file>'
 	# Initialize the state with your custom input file
-	State.init(file_path,fix_id=None, logger=print)
+	State.init(file_path, logger=print)
 	app.start()
-
