@@ -9,8 +9,9 @@ import folium
 import geopandas as gpd
 from flask import Flask, Response, jsonify, render_template, request
 from flask_executor import Executor
+from folium.plugins import Draw
 from geopandas import GeoDataFrame
-from shapely.geometry import Polygon
+from shapely.geometry import LineString
 from waitress import serve
 
 from eubucco_conflator.state import RESULTS_FILE
@@ -46,6 +47,19 @@ def store_label() -> Response:
     s.add_result(id, label, existing_id)
 
     return jsonify({"message": "Success", "candidate": s.current_candidate_id() or ""})
+
+
+@app.route("/store-neighborhood", methods=["POST"])
+def store_neighborhood() -> Response:
+    data = request.json
+
+    added = data.get("added")
+    removed = data.get("removed")
+
+    print("Added geometries:", added)
+    print("Removed geometries:", removed)
+
+    return jsonify({"message": "Saved", "candidate": s.current_candidate_id() or ""})
 
 
 @app.route("/show_candidate")
@@ -86,7 +100,6 @@ def _create_tutorial_html() -> None:
     m = _initialize_map(candidate)
     _create_existing_buildings_layer(gdf, candidate).add_to(m)
     _create_new_buildings_layer(gdf, candidate).add_to(m)
-    _create_candidate_building_layer(candidate).add_to(m)
 
     _add_tutorial_markers(m, gdf, candidate)
     m.get_root().html.add_child(folium.Element(_demo_labeling_func_js()))
@@ -94,7 +107,7 @@ def _create_tutorial_html() -> None:
     m.save(maps_dir / "candidate_demo.html")
 
 
-def _create_html(id: str) -> None:
+def _create_html(id: str, bulk: bool = True) -> None:
     if _html_exists(id):
         return
 
@@ -105,10 +118,15 @@ def _create_html(id: str) -> None:
 
     _create_existing_buildings_layer(gdf, candidate).add_to(m)
     _create_new_buildings_layer(gdf, candidate).add_to(m)
-    _create_candidate_building_layer(candidate).add_to(m)
 
     m.get_root().html.add_child(folium.Element(_labeling_func_js()))
     m.get_root().html.add_child(folium.Element(_legend_html()))
+
+    if bulk:
+        _create_drawing_layer().add_to(m)
+        _add_matching_edges(gdf, candidate, m)
+
+        m.get_root().html.add_child(folium.Element(_store_added_edges_js(m.get_name())))
 
     folium.LayerControl(collapsed=True).add_to(m)
 
@@ -159,14 +177,9 @@ def _create_existing_buildings_layer(
     existing_buildings = folium.FeatureGroup(name="Existing Buildings")
     gdf_existing = gdf[gdf["dataset"] != candidate.dataset]
 
-    for _, row in gdf_existing.iterrows():
-        html_str = f"<button onclick=\"labelPair('{candidate.name}', 'yes', '{row.name}')\">Duplicated</button>"
-        html = folium.Html(html_str, script=True)
-        popup = folium.Popup(html, max_width=300)
-        coords = _lat_lon(row.geometry)
-        folium.Polygon(
-            coords, popup=popup, color="skyblue", fill=True, fill_opacity=0.5
-        ).add_to(existing_buildings)
+    folium.GeoJson(
+        gdf_existing, style_function=lambda _: {"color": "skyblue", "fillOpacity": 0.5}
+    ).add_to(existing_buildings)
 
     return existing_buildings
 
@@ -174,8 +187,8 @@ def _create_existing_buildings_layer(
 def _create_new_buildings_layer(
     gdf: GeoDataFrame, candidate: GeoDataFrame
 ) -> folium.FeatureGroup:
-    new_buildings = folium.FeatureGroup(name="Other New Buildings")
-    gdf_new = gdf[(gdf["dataset"] == candidate.dataset) & (gdf.index != candidate.name)]
+    new_buildings = folium.FeatureGroup(name="New Buildings")
+    gdf_new = gdf[gdf["dataset"] == candidate.dataset]
 
     folium.GeoJson(
         gdf_new, style_function=lambda _: {"color": "coral", "fillOpacity": 0.2}
@@ -184,13 +197,102 @@ def _create_new_buildings_layer(
     return new_buildings
 
 
-def _create_candidate_building_layer(candidate: GeoDataFrame) -> folium.FeatureGroup:
-    candidate_building = folium.FeatureGroup(name="Duplicate Candidate")
-    coords = _lat_lon(candidate.geometry)
+def _add_matching_edges(
+    gdf: GeoDataFrame, candidate: GeoDataFrame, m: folium.Map
+) -> folium.FeatureGroup:
+    gdf_new = gdf[gdf["dataset"] == candidate.dataset]
+    gdf_existing = gdf[gdf["dataset"] != candidate.dataset]
+    gdf_initial_matches = _connect_nearest_neighbors(gdf_new, gdf_existing)
 
-    folium.Polygon(coords, color="red", weight=3, fill=False).add_to(candidate_building)
+    map_name = m.get_name()
+    m.get_root().html.add_child(
+        folium.Element(
+            f"""
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {{
+        window.removedMatches = [];
 
-    return candidate_building
+        const map = window.{map_name};
+        const initialMatches = {gdf_initial_matches.to_json()};
+        const matchLayer = L.geoJSON(initialMatches, {{
+            style: function(feature) {{
+                return {{ color: 'green', weight: 3 }};
+            }},
+            onEachFeature: function (feature, layer) {{
+
+                // Add click event to remove the match edge
+                layer.on('click', function () {{
+                    map.removeLayer(layer);
+                    window.removedMatches.push(feature);
+                    console.log("Removed match:", feature);
+                }});
+
+                // Highlight on hover
+                layer.on('mouseover', function () {{
+                    layer.setStyle({{
+                        color: 'lime',
+                        weight: 4
+                    }});
+                }});
+
+                // Reset style when mouse leaves
+                layer.on('mouseout', function () {{
+                    layer.setStyle({{
+                        color: 'green',
+                        weight: 3
+                    }});
+                }});
+            }}
+        }}).addTo(map);
+    }});
+    </script>
+    """
+        )
+    )
+
+
+def _create_drawing_layer() -> Draw:
+    draw = Draw(
+        show_geometry_on_click=False,
+        draw_options={
+            "polyline": True,
+            "polygon": False,
+            "circle": False,
+            "marker": False,
+            "rectangle": False,
+            "circlemarker": False,
+        },
+        edit_options={"edit": False, "remove": True},
+    )
+
+    return draw
+
+
+def _store_added_edges_js(map_name: str) -> str:
+    return f"""
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {{
+            const map = window.{map_name};
+            window.addedMatches = [];
+
+            map.on('draw:created', function (e) {{
+                const geojson = e.layer.toGeoJSON();
+                window.addedMatches.push({{
+                    layer: e.layer,
+                    geojson: geojson
+                }});
+                console.log("Added match edge:", geojson);
+            }});
+
+            map.on('draw:deleted', function (e) {{
+                e.layers.eachLayer(function (deletedLayer) {{
+                    window.addedMatches = window.addedMatches.filter(entry => entry.layer !== deletedLayer);
+                    console.log("Deleted layer:", deletedLayer);
+                }});
+            }});
+        }});
+    </script>
+    """
 
 
 def _labeling_func_js() -> str:
@@ -240,10 +342,19 @@ def _legend_html() -> str:
     """
 
 
-def _lat_lon(geom: Polygon) -> list[tuple[float, float]]:
-    return [(lat, lon) for lon, lat in geom.exterior.coords]
-
-
 def _clean_maps_dir() -> None:
     shutil.rmtree(maps_dir, ignore_errors=True)
     maps_dir.mkdir(parents=True, exist_ok=True)
+
+
+def _connect_nearest_neighbors(gdf1, gdf2):
+    # Use spatial index for nearest neighbor search
+    idx_1, idx_2 = gdf2.sindex.nearest(gdf1.geometry)
+
+    # Create lines connecting centroids
+    edges = [
+        LineString([c1, c2])
+        for c1, c2 in zip(gdf1.iloc[idx_1].centroid, gdf2.iloc[idx_2].centroid)
+    ]
+
+    return gpd.GeoDataFrame(geometry=edges, crs=gdf1.crs)

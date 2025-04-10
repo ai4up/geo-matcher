@@ -33,6 +33,16 @@ class State:
             cls.logger(f"Progress: {len(cls.results)} buildings labeled ({frequency})")
 
     @classmethod
+    def add_bulk_results(
+        cls, ids: List[str], labels: List[str], existing_ids: List[str]
+    ) -> None:
+        for id, label, existing_id in zip(ids, labels, existing_ids):
+            cls.results.append(
+                {"id": id, "duplicate": label, "existing_id": existing_id}
+            )
+        cls._store_progress()
+
+    @classmethod
     def current_candidate_id(cls) -> Optional[str]:
         try:
             ids = cls.candidates.index
@@ -70,7 +80,7 @@ class State:
             & (~cls.gdf["candidate_id"].isin(cls._already_labeled_id()))
         ]
         if candidates.index.has_duplicates:
-            msg = "Index of duplicate building candidates must be unique. Please check your dataset."   # noqa: E501
+            msg = "Index of duplicate building candidates must be unique. Please check your dataset."  # noqa: E501
             cls.logger(msg)
             raise ValueError(msg)
 
