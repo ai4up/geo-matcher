@@ -66,7 +66,7 @@ def create_neighborhood_html(id: str, filepath: Path) -> None:
 
     existing_buildings = S.get_existing_buildings(id)
     new_buildings = S.get_new_buildings(id)
-    candidate_pairs = S.get_candidate_pairs(id, geometry=True)
+    candidate_pairs = S.get_candidate_pairs(id)
 
     lat, lon = spatial.center_lat_lon(candidate_pairs["geometry_new"])
     m = _initialize_map(lat, lon, 19)

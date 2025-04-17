@@ -5,6 +5,7 @@ from typing import Callable, Dict, List, Optional, Union
 from geopandas import GeoDataFrame
 from pandas import DataFrame, Series, Index
 from shapely.geometry import Point
+import numpy as np
 import pandas as pd
 
 from eubucco_conflator.labeling_dataset import LabelingDataset
@@ -26,19 +27,19 @@ class State:
         cls.results = cls._load_progress()
 
     @classmethod
-    def get_existing_buildings(cls, iteration: str) -> GeoDataFrame:
-        mask = cls.data.dataset_a["neighborhood"] == iteration
-        nbh = cls.data.dataset_a[mask]
+    def get_existing_buildings(cls, neighborhood: str) -> GeoDataFrame:
+        nbh_a = cls.data.dataset_a[cls.data.dataset_a["neighborhood"] == neighborhood]
 
-        # Edge case: the existing building of a candidate pair can be in a different neighborhood
-        candidates = cls.get_candidates_existing(iteration)
-        return pd.concat([candidates, nbh]).drop_duplicates()
+        # Edge case: also get the existing buildings of candidate pairs, where only the new building is in the neighborhood of interest
+        nbh_b = cls.data.dataset_b[cls.data.dataset_b["neighborhood"] == neighborhood]
+        candidate_ids = cls.data.candidate_pairs[cls.data.candidate_pairs["id_new"].isin(nbh_b)]["id_existing"]
+        candidates = cls.data.dataset_a.loc[candidate_ids]
+
+        return pd.concat([nbh_a, candidates]).drop_duplicates()
 
     @classmethod
     def get_new_buildings(cls, iteration: str) -> GeoDataFrame:
-        mask = cls.data.dataset_b["neighborhood"] == iteration
-
-        return cls.data.dataset_b[mask]
+        return cls.data.dataset_b[cls.data.dataset_b["neighborhood"] == iteration]
 
     @classmethod
     def get_existing_buildings_at(cls, loc: Point) -> GeoDataFrame:
@@ -49,40 +50,26 @@ class State:
         return spatial.within(cls.data.dataset_b, loc, dis=150)
 
     @classmethod
-    def get_candidates_existing(cls, iteration: str) -> DataFrame:
-        pairs = cls.data.candidate_pairs.loc[[iteration]]
-        existing = cls.data.dataset_a.loc[pairs["id_existing"]]
-
-        return existing
-
-    @classmethod
-    def get_candidates_new(cls, iteration: str) -> DataFrame:
-        pairs = cls.data.candidate_pairs.loc[[iteration]]
-        new = cls.data.dataset_b.loc[pairs["id_new"]]
-
-        return new
-
-    @classmethod
     def get_candidate_pair(cls, id_existing: str, id_new: str) -> Series:
         return Series({
             "id_existing": id_existing,
             "id_new": id_new,
             "geometry_existing": cls.data.dataset_a.geometry[id_existing],
             "geometry_new": cls.data.dataset_b.geometry[id_new],
-        }, name=cls.data.dataset_b.loc[id_new]["neighborhood"])
+        })
 
     @classmethod
     def valid_pair(cls, id_existing: str, id_new: str) -> Series:
         return id_existing in cls.data.candidate_pairs["id_existing"].values and id_new in cls.data.candidate_pairs["id_new"].values
 
     @classmethod
-    def get_candidate_pairs(cls, neighborhood: str, geometry=False) -> Union[DataFrame, GeoDataFrame]:
-        pairs = cls.data.candidate_pairs.loc[[neighborhood]]
+    def get_candidate_pairs(cls, neighborhood: str) -> Union[DataFrame, GeoDataFrame]:
+        new = cls.get_new_buildings(neighborhood)
+        pairs = cls.data.candidate_pairs[cls.data.candidate_pairs["id_new"].isin(new.index)]
 
-        if geometry:
-            pairs = GeoDataFrame(pairs)
-            pairs["geometry_existing"] = pairs["id_existing"].map(cls.data.dataset_a.geometry)
-            pairs["geometry_new"] = pairs["id_new"].map(cls.data.dataset_b.geometry)
+        pairs = GeoDataFrame(pairs)
+        pairs["geometry_existing"] = pairs["id_existing"].map(cls.data.dataset_a.geometry)
+        pairs["geometry_new"] = pairs["id_new"].map(cls.data.dataset_b.geometry)
 
         return pairs
 
@@ -102,7 +89,7 @@ class State:
     def add_bulk_results(cls, df: DataFrame) -> None:
         if not df["match"].isin(["yes", "no", "unsure"]).all():
             raise ValueError("Match label must be one of: 'yes', 'no', 'unsure'.")
-        
+
         results = df[["neighborhood", "id_existing", "id_new", "match"]]
         cls.results.extend(results.to_dict(orient="records"))
         cls._store_progress()
@@ -124,6 +111,10 @@ class State:
 
         except IndexError:
             return None, None
+
+    @classmethod
+    def neighborhoods(cls) -> np.array:
+        return cls.data.candidate_pairs["id_new"].map(cls.data.dataset_b["neighborhood"]).unique()
 
     @classmethod
     def current_neighborhood(cls) -> Optional[str]:
@@ -157,8 +148,8 @@ class State:
     @classmethod
     def _unlabeled_neighborhoods(cls) -> Index:
         labeled_nbh = set(result["neighborhood"] for result in cls.results)
-        all_nbh = cls.data.candidate_pairs.index
-        unlabeled = all_nbh[~all_nbh.isin(labeled_nbh)]
+        all_nbh = set(cls.neighborhoods())
+        unlabeled = list(all_nbh - labeled_nbh)
 
         return unlabeled
 
@@ -169,7 +160,7 @@ class State:
         unlabeled = cls.data.candidate_pairs[~all_pairs.isin(labeled_pairs)]
 
         return unlabeled
-    
+
     @staticmethod
     def _load_progress() -> List[Dict[str, any]]:
         if _PROGRESS_FILEPATH.exists():

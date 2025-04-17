@@ -24,6 +24,7 @@ def create_candidate_pairs_dataset(
     ioa_range: Tuple[float, float] = None,
     similarity_range: Tuple[float, float] = None,
     n: int = None,
+    n_neighborhoods: int = None,
     h3_res: int = 9,
 ) -> None:
     """
@@ -40,13 +41,15 @@ def create_candidate_pairs_dataset(
     gdf2["neighborhood"] = spatial.h3_index(gdf2, h3_res)
 
     candidate_pairs = _identify_candidate_pairs(gdf1, gdf2)
-    candidate_pairs = _group_candidate_pairs_by_neighborhood(candidate_pairs, gdf2)
 
     if ioa_range:
         candidate_pairs = _filter_candidate_pairs_by_ioa(candidate_pairs, gdf1, gdf2, ioa_range)
 
     if similarity_range:
         candidate_pairs = _filter_candidate_pairs_by_shape_similarity(candidate_pairs, gdf1, gdf2, similarity_range)
+
+    if n_neighborhoods:
+        candidate_pairs = _sample_neighborhoods(candidate_pairs, gdf2, n_neighborhoods)
 
     if n:
         candidate_pairs = _sample_candidate_pairs(candidate_pairs, n)
@@ -98,15 +101,6 @@ def _drop_buildings_elsewhere(
     return gdf1, gdf2
 
 
-def _group_candidate_pairs_by_neighborhood(
-    candidate_pairs: DataFrame, gdf: GeoDataFrame
-) -> DataFrame:
-    """Group candidate pairs by their neighborhood."""
-    candidate_pairs.index = candidate_pairs["id_new"].map(gdf["neighborhood"])
-
-    return candidate_pairs
-
-
 def _identify_candidate_pairs(
     gdf1: GeoDataFrame, gdf2: GeoDataFrame
 ) -> DataFrame:
@@ -141,7 +135,7 @@ def _determine_overlapping_candidate_pairs(
 ) -> Tuple[pd.Index, pd.Index]:
     idx1, idx2 = spatial.overlapping(gdf1, gdf2)
 
-    # filter slightly overlapping buildings
+    # Filter slightly overlapping buildings
     ioa = spatial.intersection_to_area_ratio(gdf1.loc[idx1], gdf2.loc[idx2])
     mask = ioa > tolerance
 
@@ -177,10 +171,21 @@ def _filter_candidate_pairs_by_shape_similarity(
 def _sample_candidate_pairs(
     candidate_pairs: DataFrame, n: int
 ) -> DataFrame:
-    probs = candidate_pairs.index.value_counts(normalize=True)
-    samples = probs.sample(n=n, weights=probs, random_state=42)
+    return candidate_pairs.sample(n=n, random_state=42).reset_index(drop=True)
 
-    return candidate_pairs.loc[samples.index]
+
+def _sample_neighborhoods(
+    candidate_pairs: DataFrame, gdf: GeoDataFrame, n: int
+) -> DataFrame:
+    """
+    Sample candidate pairs from n neighborhoods, with selection weighted by the number of buildings per neighborhood.
+    """
+    neighborhoods = candidate_pairs["id_new"].map(gdf["neighborhood"])
+    probs = neighborhoods.value_counts(normalize=True)
+    samples = probs.sample(n=n, weights=probs, random_state=42)
+    mask = neighborhoods.isin(samples.index)
+
+    return candidate_pairs[mask]
 
 
 def _indices_overlap(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> bool:

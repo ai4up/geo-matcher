@@ -21,8 +21,6 @@ class LabelingDataset:
         self.dataset_b = dataset_b
         self.candidate_pairs = candidate_pairs
 
-        self._ensure_str_index()
-
     @staticmethod
     def load(filepath: str = DATASET_FILE) -> "LabelingDataset":
         """Load an instance from a pickle file."""
@@ -73,6 +71,3 @@ class LabelingDataset:
         invalid_new = ~candidate_pairs["id_new"].isin(dataset_b.index)
         if invalid_new.any():
             raise ValueError(f"Candidate pairs contain IDs not included in Dataset B: {candidate_pairs['id_new'][invalid_new].tolist()}")
-
-    def _ensure_str_index(self):
-        self.candidate_pairs.index = self.candidate_pairs.index.astype(str)

@@ -77,7 +77,7 @@ def show_neighborhood(id: Optional[str] = None) -> Response:
         S.store_results()
         return f"All buildings labeled! Results stored in {RESULTS_FILE}", 200
 
-    if id not in S.data.candidate_pairs.index:
+    if id not in S.neighborhoods():
         return "Neighborhood not found", 404
 
     fp = maps_dir / f"neighborhood_{id}.html"
@@ -116,7 +116,8 @@ def store_neighborhood() -> Response:
     app.logger.info(f"Adding {len(added)} additional matches in neighborhood {id}.")
     app.logger.info(f"Removing {len(removed)} matches in neighborhood {id}.")
 
-    results = S.get_candidate_pairs(id).reset_index(names="neighborhood")
+    results = S.get_candidate_pairs(id)
+    results["neighborhood"] = id
     results["match"] = results["match"].replace({True: "yes", False: "no"})
     results = _set_to_no_match(results, removed)
     results = _add_to_candidate_pairs(results, added)

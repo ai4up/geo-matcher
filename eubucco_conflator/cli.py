@@ -63,7 +63,13 @@ def label(filepath: str) -> None:
     "-n",
     default=None,
     type=int,
-    help="Sample n candidate pairs / candidate neighborhoods.",
+    help="Sample n candidate pairs.",
+)
+@click.option(
+    "--n-neighborhoods",
+    default=None,
+    type=int,
+    help="Sample candidates in n neighborhoods.",
 )
 @click.option(
     "--h3-res",
@@ -80,6 +86,7 @@ def create_labeling_dataset(
     min_similarity: float,
     max_similarity: float,
     sample_size: int,
+    n_neighborhoods: int,
     h3_res: int,
 ) -> None:
     """
@@ -97,6 +104,7 @@ def create_labeling_dataset(
         ioa_range=(min_intersection, max_intersection) if min_intersection != 0 or max_intersection != 1 else None,
         similarity_range=(min_similarity, max_similarity) if min_similarity != 0 or max_similarity != 1 else None,
         n=sample_size,
+        n_neighborhoods=n_neighborhoods,
         h3_res=h3_res,
     )
     click.echo(
