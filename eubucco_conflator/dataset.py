@@ -82,9 +82,10 @@ def _drop_buildings_elsewhere(
     nbh1 = candidate_pairs["id_existing"].map(gdf1["neighborhood"])
     nbh2 = candidate_pairs["id_new"].map(gdf2["neighborhood"])
     nbh = pd.concat([nbh1, nbh2]).unique()
+    nbh_w_neighbors = spatial.h3_disk(nbh, k=1)
 
-    gdf1 = gdf1[gdf1["neighborhood"].isin(nbh)]
-    gdf2 = gdf2[gdf2["neighborhood"].isin(nbh)]
+    gdf1 = gdf1[gdf1["neighborhood"].isin(nbh_w_neighbors)]
+    gdf2 = gdf2[gdf2["neighborhood"].isin(nbh_w_neighbors)]
 
     return gdf1, gdf2
 

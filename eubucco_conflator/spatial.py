@@ -72,6 +72,13 @@ def h3_index(gdf: gpd.GeoDataFrame, res: int) -> List[str]:
     return h3_idx
 
 
+def h3_disk(h3_indices: List[str], k: int) -> List[str]:
+    """
+    Determines all nearby cells for a list of h3 indices within k grid distance.
+    """
+    return np.unique(np.ravel([h3.grid_disk(idx, k) for idx in h3_indices]))
+
+
 def center_lat_lon(gdf: GeoDataFrame) -> Point:
     """
     Determine the longitude and latitude of the center of the total bounds of a GeoDataFrame.
