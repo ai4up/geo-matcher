@@ -143,7 +143,7 @@ class State:
 
     @classmethod
     def store_results(cls) -> None:
-        pd.DataFrame(cls.results).drop_duplicates(subset=["id_existing", "id_new"], keep="first").to_csv(
+        pd.DataFrame(cls.results).drop_duplicates(subset=["id_existing", "id_new"], keep="last").to_csv(
             RESULTS_FILE, index=False
         )
         cls.logger(
