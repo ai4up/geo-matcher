@@ -1,99 +1,163 @@
+from typing import Tuple
+import logging
 import warnings
-from typing import Callable, Tuple
 
+from geopandas import GeoDataFrame
+from pandas import DataFrame
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-from geopandas import GeoDataFrame
 
-from eubucco_conflator.state import CANDIDATES_FILE
+from eubucco_conflator.labeling_dataset import LabelingDataset
+from eubucco_conflator import spatial
 
 warnings.simplefilter(action="ignore", category=pd.errors.SettingWithCopyWarning)
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
+logger = logging.getLogger(__name__)
+log = logger.info
 
-def create_duplicate_candidates_dataset(
+def create_candidate_pairs_dataset(
     gdf_path1: str,
     gdf_path2: str,
     id_col: str,
-    ioa_range: Tuple[float, float],
-    dis: float,
-    logger: Callable[[str], None] = print,
+    ioa_range: Tuple[float, float] = None,
+    n: int = None,
+    h3_res: int = 9,
 ) -> None:
     cols = ["geometry", id_col] if id_col else ["geometry"]
     gdf1 = gpd.read_parquet(gdf_path1, columns=cols).to_crs(3035)
     gdf2 = gpd.read_parquet(gdf_path2, columns=cols).to_crs(3035)
 
-    gdf1["dataset"] = "A"
-    gdf2["dataset"] = "B"
+    gdf1, gdf2 = _ensure_unique_index(gdf1, gdf2, id_col)
 
+    gdf1["neighborhood"] = spatial.h3_index(gdf1, h3_res)
+    gdf2["neighborhood"] = spatial.h3_index(gdf2, h3_res)
+
+    candidate_pairs = _identify_candidate_pairs(gdf1, gdf2)
+    candidate_pairs = _group_candidate_pairs_by_neighborhood(candidate_pairs, gdf2)
+
+    if ioa_range:
+        candidate_pairs = _filter_candidate_pairs_by_ioa(candidate_pairs, gdf1, gdf2, ioa_range)
+
+    if n:
+        candidate_pairs = _sample_candidate_pairs(candidate_pairs, n)
+
+    gdf1, gdf2 = _drop_buildings_elsewhere(gdf1, gdf2, candidate_pairs)
+
+    LabelingDataset(
+        dataset_a=gdf1,
+        dataset_b=gdf2,
+        candidate_pairs=candidate_pairs,
+    ).save()
+
+
+def _ensure_unique_index(
+    gdf1: GeoDataFrame, gdf2: GeoDataFrame, id_col: str
+) -> Tuple[GeoDataFrame, GeoDataFrame]:
     if id_col:
         gdf1 = gdf1.set_index(id_col)
         gdf2 = gdf2.set_index(id_col)
 
-    elif _indices_overlap(gdf1, gdf2):
+    if not gdf1.index.is_unique or not gdf2.index.is_unique:
+        gdf1 = gdf1.reset_index()
+        gdf2 = gdf2.reset_index()
+        log("Unique index is required. Creating new, numerical index.")
+
+    if _indices_overlap(gdf1, gdf2):
         gdf1.index = "A-" + gdf1.index.astype(str)
         gdf2.index = "B-" + gdf2.index.astype(str)
-        logger(
+        log(
             "Indices of both datasets overlap. Adding the prefixes 'A-' and 'B-' to "
-            + "avoid ambiguities. Alternatively, consider specifying an ID column."
+            + "avoid ambiguities. Alternatively, consider specifying an unique ID column."
         )
 
-    candidates = _identify_duplicate_candidates(gdf1, gdf2, ioa_range, dis)
-    candidates.to_parquet(CANDIDATES_FILE)
+    return gdf1, gdf2
 
 
-def _identify_duplicate_candidates(
-    gdf1: GeoDataFrame, gdf2: GeoDataFrame, ioa_range: Tuple[float, float], dis: float
-) -> pd.DataFrame:
-    candidates = _identify_overlapping_buildings(gdf1, gdf2)
-    candidates = candidates[(candidates["ioa"].between(*ioa_range))]
+def _drop_buildings_elsewhere(
+    gdf1: GeoDataFrame, gdf2: GeoDataFrame, candidate_pairs: DataFrame
+) -> Tuple[GeoDataFrame, GeoDataFrame]:
+    """To reduce dataset size, remove buildings in different neighborhoods than candidate pairs."""
+    nbh1 = candidate_pairs["id_existing"].map(gdf1["neighborhood"])
+    nbh2 = candidate_pairs["id_new"].map(gdf2["neighborhood"])
+    nbh = pd.concat([nbh1, nbh2]).unique()
 
-    gdf1_ngbh = _get_candidate_neighbors(candidates, gdf1, dis)
-    gdf2_ngbh = _get_candidate_neighbors(candidates, gdf2, dis)
+    gdf1 = gdf1[gdf1["neighborhood"].isin(nbh)]
+    gdf2 = gdf2[gdf2["neighborhood"].isin(nbh)]
 
-    return pd.concat([gdf1_ngbh, gdf2_ngbh])
+    return gdf1, gdf2
 
 
-def _identify_overlapping_buildings(
+def _group_candidate_pairs_by_neighborhood(
+    candidate_pairs: DataFrame, gdf: GeoDataFrame
+) -> DataFrame:
+    """Group candidate pairs by their neighborhood."""
+    candidate_pairs.index = candidate_pairs["id_new"].map(gdf["neighborhood"])
+
+    return candidate_pairs
+
+
+def _identify_candidate_pairs(
     gdf1: GeoDataFrame, gdf2: GeoDataFrame
-) -> GeoDataFrame:
-    # determine intersecting buildings
-    int_idx2, int_idx1 = gdf1.sindex.query(gdf2.geometry, predicate="intersects")
-    gdf2_int = gdf2.iloc[int_idx2]
-    gdf1_int = gdf1.iloc[int_idx1]
+) -> DataFrame:
+    """
+    Determine the best match for each building in gdf1 and gdf2 by identifying overlaps
+    or, if none, the nearest building in the other GeoDataFrame.
+    """
+    # Determine pairs of overlapping buildings
+    idx1, idx2 = _determine_overlapping_candidate_pairs(gdf1, gdf2)
 
-    # assess degree of overlap
-    gdf2_int["ioa"] = _intersection_to_area_ratio(gdf1_int, gdf2_int)
-    gdf2_int = _keep_building_with_largest_intersection(gdf2_int)
+    # For non-overlapping buildings, determine the respective nearest building
+    gdf1_non_intersect = gdf1.drop(idx1)
+    gdf2_non_intersect = gdf2.drop(idx2)
 
-    return gdf2_int
+    log(f"For {len(gdf1_non_intersect) / len(gdf1) * 100:.1f}% and {len(gdf2_non_intersect) / len(gdf2) * 100:.1f}% non-overlapping buildings in gdf1 and gdf2, respectively, find the nearest building in the other GeoDataFrame.")
+    idx1_nearest_a, idx2_nearest_a = spatial.nearest_neighbor(gdf1_non_intersect, gdf2)
+    idx2_nearest_b, idx1_nearest_b = spatial.nearest_neighbor(gdf2_non_intersect, gdf1)
 
+    idx1 = np.concatenate([idx1, idx1_nearest_a, idx1_nearest_b])
+    idx2 = np.concatenate([idx2, idx2_nearest_a, idx2_nearest_b])
 
-def _get_candidate_neighbors(
-    candidates: GeoDataFrame, neighborhood: GeoDataFrame, dis: float
-) -> GeoDataFrame:
-    candidate_idx, neighbor_idx = neighborhood.sindex.query(
-        candidates.geometry, predicate="dwithin", distance=dis
-    )
-    neighbors = neighborhood.iloc[neighbor_idx]
-    neighbors["candidate_id"] = candidates.iloc[candidate_idx].index.values
-    return neighbors
+    pairs = DataFrame({"id_existing": idx1, "id_new": idx2})
 
+    # Drop duplicate pairs which were introduced because the two buildings are both nearest to each other 
+    pairs = pairs.drop_duplicates()
 
-def _intersection_to_area_ratio(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> np.ndarray:
-    geoms1 = gdf1.geometry.reset_index()
-    geoms2 = gdf2.geometry.reset_index()
-
-    intersection = geoms1.intersection(geoms2).area
-    area = np.minimum(geoms1.area, geoms2.area)
-
-    return (intersection / area).values
+    return pairs
 
 
-def _keep_building_with_largest_intersection(gdf: GeoDataFrame) -> GeoDataFrame:
-    gdf = gdf.sort_values("ioa", ascending=False)
-    return gdf[~gdf.index.duplicated(keep="first")]
+def _determine_overlapping_candidate_pairs(
+    gdf1: GeoDataFrame, gdf2: GeoDataFrame, tolerance: float = 0.01
+) -> Tuple[pd.Index, pd.Index]:
+    idx1, idx2 = spatial.overlapping(gdf1, gdf2)
+
+    # filter slightly overlapping buildings
+    ioa = spatial.intersection_to_area_ratio(gdf1.loc[idx1], gdf2.loc[idx2])
+    mask = ioa > tolerance
+
+    return idx1[mask], idx2[mask]
+
+
+def _filter_candidate_pairs_by_ioa(
+        candidate_pairs: DataFrame, gdf1: GeoDataFrame, gdf2: GeoDataFrame, ioa_range: Tuple[float, float]
+    ) -> DataFrame:
+    """Filter candidate pairs based on their intersection-to-area ratio (IOA)."""
+    gdf1_can = gdf1.loc[candidate_pairs["id_existing"]]
+    gdf2_can = gdf2.loc[candidate_pairs["id_new"]]
+
+    ioa = spatial.intersection_to_area_ratio(gdf1_can, gdf2_can)
+    mask = (ioa >= ioa_range[0]) & (ioa <= ioa_range[1])
+
+    return candidate_pairs[mask]
+
+
+def _sample_candidate_pairs(
+    candidate_pairs: DataFrame, n: int
+) -> DataFrame:
+    samples = pd.Series(candidate_pairs.index.unique()).sample(n, random_state=42)
+
+    return candidate_pairs.loc[samples]
 
 
 def _indices_overlap(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> bool:
