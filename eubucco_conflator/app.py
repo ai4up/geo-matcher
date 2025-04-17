@@ -34,14 +34,14 @@ def start() -> None:
 
 
 @app.route("/")
-def home() -> str:
+def home() -> Response:
     _create_tutorial_html()
-    return render_template("index.html")
+    return render_template("index.html"), 200
 
 
 @app.route("/show-pair")
 @app.route("/show-pair/<id_existing>/<id_new>")
-def show_candidate(id_existing: str = None, id_new: str = None) -> str:
+def show_candidate(id_existing: str = None, id_new: str = None) -> Response:
     if id_existing is None or id_new is None:
         id_existing, id_new = S.current_pair()
 
@@ -60,11 +60,11 @@ def show_candidate(id_existing: str = None, id_new: str = None) -> str:
 
     return render_template(
         "show_candidate.html", id_existing=id_existing, id_new=id_new, map_file=filename
-    )
+    ), 200
 
 @app.route("/show-neighborhood")
 @app.route("/show-neighborhood/<id>")
-def show_neighborhood(id: Optional[str] = None) -> str:
+def show_neighborhood(id: Optional[str] = None) -> Response:
     if id is None:
         id = S.current_neighborhood()
 
@@ -81,7 +81,7 @@ def show_neighborhood(id: Optional[str] = None) -> str:
         app.logger.debug(f"Pre-generating HTML map for neighborhood {next_id}")
         executor.submit(_create_neighborhood_html, next_id)
 
-    return render_template("show_neighborhood.html", id=id, map_file=filename)
+    return render_template("show_neighborhood.html", id=id, map_file=filename), 200
 
 
 @app.route("/store-label", methods=["POST"])
@@ -93,7 +93,7 @@ def store_label() -> Response:
     match = data.get("match")
     S.add_result(id_existing, id_new, match)
 
-    return jsonify({"message": "success"})
+    return jsonify({"status": "ok", "message": "Label stored"}), 200
 
 
 @app.route("/store-neighborhood", methods=["POST"])
@@ -116,7 +116,7 @@ def store_neighborhood() -> Response:
 
     S.add_bulk_results(results)
 
-    return jsonify({"message": "success"})
+    return jsonify({"status": "ok", "message": "Neighborhood labels stored"}), 200
 
 
 def _create_tutorial_html() -> None:
