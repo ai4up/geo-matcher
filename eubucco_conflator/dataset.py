@@ -26,6 +26,10 @@ def create_candidate_pairs_dataset(
     n: int = None,
     h3_res: int = 9,
 ) -> None:
+    """
+    Identifies pairs of potentially matching buildings from two datasets and stores them in a new dataset.
+    Pairs are determined based on spatial proximity, topological overlap, and shape similarity.
+    """
     cols = ["geometry", id_col] if id_col else ["geometry"]
     gdf1 = gpd.read_parquet(gdf_path1, columns=cols).to_crs(3035)
     gdf2 = gpd.read_parquet(gdf_path2, columns=cols).to_crs(3035)
