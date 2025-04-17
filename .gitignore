@@ -1,4 +1,8 @@
-data/
+__pycache__/
+.progress/
 .vscode/
+data/
+dist/
 static/
-dist
+labeling-dataset.parquet
+results.csv
