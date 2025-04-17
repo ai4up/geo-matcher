@@ -2,11 +2,11 @@ from typing import Tuple, List
 
 from pyproj import Transformer
 from geopandas import GeoDataFrame
+from pandas import DataFrame, Series, Index, MultiIndex
 from shapely.geometry import LineString, Point, Polygon
-import geopandas as gpd
 import h3
 import numpy as np
-import pandas as pd
+import momepy
 
 
 def intersection_to_area_ratio(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> np.ndarray:
@@ -32,7 +32,7 @@ def corresponding(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> np.array:
 
 def overlapping(
     gdf1: GeoDataFrame, gdf2: GeoDataFrame
-) -> Tuple[pd.Index, pd.Index]:
+) -> Tuple[Index, Index]:
     """
     Find all overlapping building pairs between two GeoDataFrames.
     """
@@ -50,7 +50,7 @@ def within(gdf: GeoDataFrame, loc: Point, dis: float) -> GeoDataFrame:
     return gdf.iloc[idx]
 
 
-def nearest_neighbor(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> Tuple[pd.Index, pd.Index]:
+def nearest_neighbor(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> Tuple[Index, Index]:
     """
     For each building in gdf1, find the nearest building in gdf2 and return its index.
     """
@@ -59,7 +59,7 @@ def nearest_neighbor(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> Tuple[pd.Index, 
     return gdf1.index[idx1], gdf2.index[idx2]
 
 
-def h3_index(gdf: gpd.GeoDataFrame, res: int) -> List[str]:
+def h3_index(gdf: GeoDataFrame, res: int) -> List[str]:
     """
     Generate H3 indexes for the geometries in a GeoDataFrame.
     """
@@ -109,7 +109,7 @@ def connect_with_lines(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> GeoDataFrame:
         for c1, c2 in zip(gdf1.centroid, gdf2.centroid)
     ]
 
-    return gpd.GeoDataFrame(geometry=edges, crs=gdf1.crs)
+    return GeoDataFrame(geometry=edges, crs=gdf1.crs)
 
 
 def line_connects_two_polygons(line: LineString, poly1: Polygon, poly2: Polygon) -> bool:
@@ -119,3 +119,43 @@ def line_connects_two_polygons(line: LineString, poly1: Polygon, poly2: Polygon)
     start = Point(line.coords[0])
     end = Point(line.coords[-1])
     return (poly1.contains(start) and poly2.contains(end)) or (poly1.contains(end) and poly2.contains(start))
+
+
+def shape_similarity(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> Series:
+    """
+    Calculate the shape similarity between building pairs.
+    The shape similarity of two polygons is defined as the average
+    percentage difference across a selection of shape features.
+    """
+    fts1 = shape_characteristics(gdf1)
+    fts2 = shape_characteristics(gdf2)
+    similarity = 1 - _average_percentage_diff(fts1, fts2)
+
+    return similarity
+
+
+def shape_characteristics(gdf: GeoDataFrame) -> DataFrame:
+    """
+    Calculate shape characteristics of buildings in a GeoDataFrame, namely:
+    - footprint area
+    - longest axis length
+    - elongation
+    - orientation
+    """
+    orig_index = gdf.index
+    gdf = gdf[~orig_index.duplicated()]
+
+    fts = DataFrame(index=gdf.index)
+    fts["bldg_footprint_area"] = gdf.area
+    fts["bldg_longest_axis_length"] = momepy.longest_axis_length(gdf)
+    fts["bldg_elongation"] = momepy.elongation(gdf)
+    fts["bldg_orientation"] = momepy.orientation(gdf)
+
+    return fts.loc[orig_index]
+
+
+def _average_percentage_diff(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> Series:
+    p_diff = (gdf1.values - gdf2.values) / gdf2.values
+    avg_p_diff = np.abs(p_diff).mean(axis=1)
+
+    return Series(avg_p_diff, index=MultiIndex.from_tuples(zip(gdf1.index, gdf2.index)))

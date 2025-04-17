@@ -49,6 +49,16 @@ def label(filepath: str) -> None:
     help="Maximum relative overlap for new buildings to be included in labeling dataset (0,1].",  # noqa: E501
 )
 @click.option(
+    "--min-similarity",
+    default=0.0,
+    help="Minimum shape similarity for a building pair to be included in labeling dataset [0,1).",  # noqa: E501
+)
+@click.option(
+    "--max-similarity",
+    default=1.0,
+    help="Maximum shape similarity for a building pair to be included in labeling dataset (0,1].",  # noqa: E501
+)
+@click.option(
     "--sample-size",
     "-n",
     default=None,
@@ -67,6 +77,8 @@ def create_labeling_dataset(
     id_col: str,
     min_intersection: float,
     max_intersection: float,
+    min_similarity: float,
+    max_similarity: float,
     sample_size: int,
     h3_res: int,
 ) -> None:
@@ -82,7 +94,8 @@ def create_labeling_dataset(
         gdf_path1=filepath1,
         gdf_path2=filepath2,
         id_col=id_col,
-        ioa_range=(min_intersection, max_intersection),
+        ioa_range=(min_intersection, max_intersection) if min_intersection != 0 or max_intersection != 1 else None,
+        similarity_range=(min_similarity, max_similarity) if min_similarity != 0 or max_similarity != 1 else None,
         n=sample_size,
         h3_res=h3_res,
     )

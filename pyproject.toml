@@ -17,6 +17,7 @@ pyarrow = "^19.0"
 click = "^8.1"
 waitress = "^3.0"
 h3 = "^4.2.2"
+momepy = "^0.9.1"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^4.1.0"

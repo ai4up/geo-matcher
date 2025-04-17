@@ -22,6 +22,7 @@ def create_candidate_pairs_dataset(
     gdf_path2: str,
     id_col: str,
     ioa_range: Tuple[float, float] = None,
+    similarity_range: Tuple[float, float] = None,
     n: int = None,
     h3_res: int = 9,
 ) -> None:
@@ -39,6 +40,9 @@ def create_candidate_pairs_dataset(
 
     if ioa_range:
         candidate_pairs = _filter_candidate_pairs_by_ioa(candidate_pairs, gdf1, gdf2, ioa_range)
+
+    if similarity_range:
+        candidate_pairs = _filter_candidate_pairs_by_shape_similarity(candidate_pairs, gdf1, gdf2, similarity_range)
 
     if n:
         candidate_pairs = _sample_candidate_pairs(candidate_pairs, n)
@@ -149,6 +153,19 @@ def _filter_candidate_pairs_by_ioa(
 
     ioa = spatial.intersection_to_area_ratio(gdf1_can, gdf2_can)
     mask = (ioa >= ioa_range[0]) & (ioa <= ioa_range[1])
+
+    return candidate_pairs[mask]
+
+
+def _filter_candidate_pairs_by_shape_similarity(
+        candidate_pairs: DataFrame, gdf1: GeoDataFrame, gdf2: GeoDataFrame, similarity_range: Tuple[float, float]
+    ) -> DataFrame:
+    """Filter candidate pairs based on their shape similarity."""
+    gdf1_can = gdf1.loc[candidate_pairs["id_existing"]]
+    gdf2_can = gdf2.loc[candidate_pairs["id_new"]]
+
+    similarity = spatial.shape_similarity(gdf1_can, gdf2_can)
+    mask = ((similarity >= similarity_range[0]) & (similarity <= similarity_range[1])).values
 
     return candidate_pairs[mask]
 
