@@ -123,19 +123,16 @@ def _create_tutorial_html() -> None:
     # Load demo data
     demo_data_path = Path(__file__).parent / "data" / "tutorial-candidate.parquet"
     gdf = gpd.read_parquet(demo_data_path)
-    candidate_existing = gdf.loc["A_candidate"].geometry
-    candidate_new = gdf.loc["B_candidate"].geometry
-    existing_buildings = gdf.loc["A"]
-    new_buildings = gdf.loc["B"]
+    existing_buildings = gdf.loc[["A", "A_candidate"]]
+    new_buildings = gdf.loc[["B", "B_candidate"]]
 
-    c = candidate_new.centroid
+    c = new_buildings.centroid.loc["B_candidate"]
     lat, lon = spatial.to_lat_lon(c.x, c.y, existing_buildings.crs)
 
     # Initialize map and add demo buildings
     m = _initialize_map(lat, lon, 20)
-    _create_existing_buildings_layer(existing_buildings).add_to(m)
-    _create_new_buildings_layer(new_buildings).add_to(m)
-    _create_candidate_pair_layer({"geometry_existing": candidate_existing, "geometry_new": candidate_new}).add_to(m)
+    _create_existing_buildings_layer(existing_buildings, "A_candidate").add_to(m)
+    _create_new_buildings_layer(new_buildings, "B_candidate").add_to(m)
     _add_tutorial_markers(lat, lon).add_to(m)
 
     m.save(maps_dir / "candidate_demo.html")
@@ -157,9 +154,8 @@ def _create_candidate_pair_html(id_existing: str, id_new: str) -> str:
     lat, lon = spatial.to_lat_lon(c.x, c.y, existing_buildings.crs)
     m = _initialize_map(lat, lon, 20)
 
-    _create_existing_buildings_layer(existing_buildings).add_to(m)
-    _create_new_buildings_layer(new_buildings).add_to(m)
-    _create_candidate_pair_layer(candidate_pair).add_to(m)
+    _create_existing_buildings_layer(existing_buildings, id_existing).add_to(m)
+    _create_new_buildings_layer(new_buildings, id_new).add_to(m)
     _add_legend(m, candidates_highlighted=True)
 
     folium.LayerControl(collapsed=True).add_to(m)
@@ -216,33 +212,31 @@ def _add_tutorial_markers(lat: float, lon: float) -> folium.Marker:
         icon=folium.Icon(color="lightred", icon="info-sign"),
     )
 
+def _create_existing_buildings_layer(gdf: GeoDataFrame, highlight_id: Optional[str] = None) -> folium.FeatureGroup:
+    def style_function(feature):
+        if highlight_id and feature["properties"].get("index") == highlight_id:
+            return {"color": "steelblue", "fillOpacity": 0.5, "fillColor": "skyblue", "weight": 5}
+        else:
+            return {"color": "skyblue", "fillOpacity": 0.5}
 
-def _create_existing_buildings_layer(gdf: GeoDataFrame) -> folium.FeatureGroup:
     existing_buildings = folium.FeatureGroup(name="Existing Buildings")
-    folium.GeoJson(
-        gdf, style_function=lambda _: {"color": "skyblue", "fillOpacity": 0.5}
-    ).add_to(existing_buildings)
+    folium.GeoJson(gdf.reset_index(), style_function=style_function).add_to(existing_buildings)
 
     return existing_buildings
 
 
-def _create_new_buildings_layer(gdf: GeoDataFrame) -> folium.FeatureGroup:
+def _create_new_buildings_layer(gdf: GeoDataFrame, highlight_id: Optional[str] = None) -> folium.FeatureGroup:
+    def style_function(feature):
+        print(feature["properties"])
+        if highlight_id and feature["properties"].get("index") == highlight_id:
+            return {"color": "orangered", "fillOpacity": 0.2, "fillColor": "coral", "weight": 5}
+        else:
+            return {"color": "coral", "fillOpacity": 0.2}
+
     new_buildings = folium.FeatureGroup(name="New Buildings")
-    folium.GeoJson(
-        gdf, style_function=lambda _: {"color": "coral", "fillOpacity": 0.2}
-    ).add_to(new_buildings)
+    folium.GeoJson(gdf.reset_index(), style_function=style_function).add_to(new_buildings)
 
     return new_buildings
-
-
-def _create_candidate_pair_layer(candidate_pair: GeoDataFrame) -> folium.FeatureGroup:
-    candidates = folium.FeatureGroup(name="Candidate Pair")
-    gdf1 = GeoDataFrame(geometry=[candidate_pair["geometry_existing"]], crs=3035)
-    gdf2 = GeoDataFrame(geometry=[candidate_pair["geometry_new"]], crs=3035)
-    folium.GeoJson(gdf1, style_function=lambda _: {"color": "steelblue", "weight": 5, "fillColor": "skyblue", "fillOpacity": 0.5}).add_to(candidates)
-    folium.GeoJson(gdf2, style_function=lambda _: {"color": "orangered", "weight": 5, "fillColor": "coral", "fillOpacity": 0.2}).add_to(candidates)
-
-    return candidates
 
 
 def _add_matching_layer(m: folium.Map, candidate_pairs: GeoDataFrame) -> None:
