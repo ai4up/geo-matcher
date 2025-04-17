@@ -155,9 +155,10 @@ def _filter_candidate_pairs_by_ioa(
 def _sample_candidate_pairs(
     candidate_pairs: DataFrame, n: int
 ) -> DataFrame:
-    samples = pd.Series(candidate_pairs.index.unique()).sample(n, random_state=42)
+    probs = candidate_pairs.index.value_counts(normalize=True)
+    samples = probs.sample(n=n, weights=probs, random_state=42)
 
-    return candidate_pairs.loc[samples]
+    return candidate_pairs.loc[samples.index]
 
 
 def _indices_overlap(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> bool:
