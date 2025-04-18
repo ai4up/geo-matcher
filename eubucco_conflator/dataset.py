@@ -23,6 +23,7 @@ def create_candidate_pairs_dataset(
     id_col: str,
     ioa_range: Tuple[float, float] = None,
     similarity_range: Tuple[float, float] = None,
+    one_to_one_matches_only: bool = False,
     n: int = None,
     n_neighborhoods: int = None,
     h3_res: int = 9,
@@ -47,6 +48,9 @@ def create_candidate_pairs_dataset(
 
     if similarity_range:
         pairs = _filter_candidate_pairs_by_shape_similarity(pairs, gdf1, gdf2, similarity_range)
+
+    if one_to_one_matches_only:
+        pairs = _filter_one_to_one_correspondences(pairs, gdf1, gdf2)
 
     if n_neighborhoods:
         pairs = _sample_neighborhoods(pairs, gdf2, n_neighborhoods)
@@ -124,7 +128,7 @@ def _identify_candidate_pairs(
 
     pairs = DataFrame({"id_existing": idx1, "id_new": idx2})
 
-    # Drop duplicate pairs which were introduced because the two buildings are both nearest to each other 
+    # Drop duplicate pairs which were introduced because the two buildings are both nearest to each other
     pairs = pairs.drop_duplicates()
 
     return pairs
@@ -136,7 +140,7 @@ def _determine_overlapping_candidate_pairs(
     idx1, idx2 = spatial.overlapping(gdf1, gdf2)
 
     # Filter slightly overlapping buildings
-    ioa = spatial.intersection_to_area_ratio(gdf1.loc[idx1], gdf2.loc[idx2])
+    ioa = spatial.symmetrical_pairwise_relative_overlap(gdf1.loc[idx1], gdf2.loc[idx2])
     mask = ioa > tolerance
 
     return idx1[mask], idx2[mask]
@@ -149,7 +153,7 @@ def _filter_candidate_pairs_by_ioa(
     gdf1_can = gdf1.loc[pairs["id_existing"]]
     gdf2_can = gdf2.loc[pairs["id_new"]]
 
-    ioa = spatial.intersection_to_area_ratio(gdf1_can, gdf2_can)
+    ioa = spatial.symmetrical_pairwise_relative_overlap(gdf1_can, gdf2_can)
     mask = (ioa >= ioa_range[0]) & (ioa <= ioa_range[1])
 
     return pairs[mask]
@@ -166,6 +170,38 @@ def _filter_candidate_pairs_by_shape_similarity(
     mask = ((similarity >= similarity_range[0]) & (similarity <= similarity_range[1])).values
 
     return candidate_pairs[mask]
+
+
+def _filter_one_to_one_correspondences(
+    pairs: DataFrame, gdf1: GeoDataFrame, gdf2: GeoDataFrame
+) -> DataFrame:
+    """
+    Keep only candidate pairs that are likely one-to-one match.
+    """
+    gdf1_can = gdf1[gdf1.index.isin(pairs["id_existing"])]
+    gdf2_can = gdf2[gdf2.index.isin(pairs["id_new"])]
+
+    # Calculate relative overlap between candidates and all other buildings
+    gdf1_can["overlap"] = spatial.relative_overlap(gdf1_can, gdf2)
+    gdf2_can["overlap"] = spatial.relative_overlap(gdf2_can, gdf1)
+
+    pairs["overlap_existing"] = pairs["id_existing"].map(gdf1_can["overlap"].fillna(0))
+    pairs["overlap_new"] = pairs["id_new"].map(gdf2_can["overlap"].fillna(0))
+
+    # Calculate relative overlap between candidate pair buildings
+    pair_geom_existing = gdf1.loc[pairs["id_existing"]]
+    pair_geom_new = gdf2.loc[pairs["id_new"]]
+    pairs["overlap_pair_existing"] = spatial.pairwise_relative_overlap(pair_geom_existing, pair_geom_new)
+    pairs["overlap_pair_new"] = spatial.pairwise_relative_overlap(pair_geom_new, pair_geom_existing)
+
+    # Calculate relative overlap with other buildings only (apart from the candidate pair)
+    pairs["overlap_others_existing"] = pairs["overlap_existing"] - pairs["overlap_pair_existing"]
+    pairs["overlap_others_new"] = pairs["overlap_new"] - pairs["overlap_pair_new"]
+
+    # Identify candidate pairs with low overlap with other buildings suggesting a one-to-one match
+    mask = (pairs["overlap_others_existing"] < 0.2) & (pairs["overlap_others_new"] < 0.2)
+
+    return pairs[mask][["id_existing", "id_new"]]
 
 
 def _sample_candidate_pairs(

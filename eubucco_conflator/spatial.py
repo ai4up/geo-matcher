@@ -9,24 +9,54 @@ import numpy as np
 import momepy
 
 
-def intersection_to_area_ratio(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> np.ndarray:
+def relative_overlap(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> Series:
     """
-    Two-Way Area Overlap (TWAO) between buildings of two GeoDataFrames.
+    Calculate the share of each building's footprint overlapped by buildings in another GeoDataFrame.
+    """
+    geoms1 = gdf1.geometry
+    geoms2 = gdf2.geometry
+
+    idx1, idx2 = gdf2.sindex.query(geoms1, predicate='intersects')
+
+    intersection = geoms1.iloc[idx1].intersection(geoms2.iloc[idx2], align=False)
+    intersection_area = intersection.area.groupby(level=0).sum()
+    area = geoms1.area.loc[intersection_area.index]
+
+    return intersection_area / area
+
+
+def pairwise_relative_overlap(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> np.ndarray:
+    """
+    Calculate the share of each building's footprint overlapped by its pair in another GeoDataFrame.
     """
     geoms1 = gdf1.geometry.reset_index()
     geoms2 = gdf2.geometry.reset_index()
 
-    intersection = geoms1.intersection(geoms2).area
+    intersection_area = geoms1.intersection(geoms2).area
+    area = geoms1.area
+
+    return (intersection_area / area).values
+
+
+def symmetrical_pairwise_relative_overlap(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> np.ndarray:
+    """
+    Calculate Two-Way Area Overlap (TWAO) between building pairs.
+    """
+    geoms1 = gdf1.geometry.reset_index()
+    geoms2 = gdf2.geometry.reset_index()
+
+    intersection_area = geoms1.intersection(geoms2).area
     area = np.minimum(geoms1.area, geoms2.area)
 
-    return (intersection / area).values
+    return (intersection_area / area).values
 
 
 def corresponding(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> np.array:
     """
     Estimate whether pairs of buildings match based on their intersection area.
     """
-    ioa = intersection_to_area_ratio(gdf1, gdf2)
+    ioa = symmetrical_pairwise_relative_overlap(gdf1, gdf2)
+
     return ioa > 0.1
 
 
