@@ -59,6 +59,13 @@ def label(filepath: str) -> None:
     help="Maximum shape similarity for a building pair to be included in labeling dataset (0,1].",  # noqa: E501
 )
 @click.option(
+    "--max-distance",
+    "-d",
+    default=None,
+    type=int,
+    help="Maximum distance between a building pair to be included in labeling dataset [meters].",
+)
+@click.option(
     "--one-to-one-matches-only",
     default=False,
     is_flag=True,
@@ -91,6 +98,7 @@ def create_labeling_dataset(
     max_intersection: float,
     min_similarity: float,
     max_similarity: float,
+    max_distance: float,
     one_to_one_matches_only: bool,
     sample_size: int,
     n_neighborhoods: int,
@@ -110,6 +118,7 @@ def create_labeling_dataset(
         id_col=id_col,
         ioa_range=(min_intersection, max_intersection) if min_intersection != 0 or max_intersection != 1 else None,
         similarity_range=(min_similarity, max_similarity) if min_similarity != 0 or max_similarity != 1 else None,
+        max_distance=max_distance,
         one_to_one_matches_only=one_to_one_matches_only,
         n=sample_size,
         n_neighborhoods=n_neighborhoods,

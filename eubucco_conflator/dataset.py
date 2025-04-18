@@ -23,6 +23,7 @@ def create_candidate_pairs_dataset(
     id_col: str,
     ioa_range: Tuple[float, float] = None,
     similarity_range: Tuple[float, float] = None,
+    max_distance: float = None,
     one_to_one_matches_only: bool = False,
     n: int = None,
     n_neighborhoods: int = None,
@@ -41,7 +42,7 @@ def create_candidate_pairs_dataset(
     gdf1["neighborhood"] = spatial.h3_index(gdf1, h3_res)
     gdf2["neighborhood"] = spatial.h3_index(gdf2, h3_res)
 
-    pairs = _identify_candidate_pairs(gdf1, gdf2)
+    pairs = _identify_candidate_pairs(gdf1, gdf2, max_distance)
 
     if ioa_range:
         pairs = _filter_candidate_pairs_by_ioa(pairs, gdf1, gdf2, ioa_range)
@@ -106,7 +107,7 @@ def _drop_buildings_elsewhere(
 
 
 def _identify_candidate_pairs(
-    gdf1: GeoDataFrame, gdf2: GeoDataFrame
+    gdf1: GeoDataFrame, gdf2: GeoDataFrame, max_distance: float
 ) -> DataFrame:
     """
     Determine the best match for each building in gdf1 and gdf2 by identifying overlaps
@@ -120,8 +121,8 @@ def _identify_candidate_pairs(
     gdf2_non_intersect = gdf2.drop(idx2)
 
     log(f"For {len(gdf1_non_intersect) / len(gdf1) * 100:.1f}% and {len(gdf2_non_intersect) / len(gdf2) * 100:.1f}% non-overlapping buildings in gdf1 and gdf2, respectively, find the nearest building in the other GeoDataFrame.")
-    idx1_nearest_a, idx2_nearest_a = spatial.nearest_neighbor(gdf1_non_intersect, gdf2)
-    idx2_nearest_b, idx1_nearest_b = spatial.nearest_neighbor(gdf2_non_intersect, gdf1)
+    idx1_nearest_a, idx2_nearest_a = spatial.nearest_neighbor(gdf1_non_intersect, gdf2, max_distance)
+    idx2_nearest_b, idx1_nearest_b = spatial.nearest_neighbor(gdf2_non_intersect, gdf1, max_distance)
 
     idx1 = np.concatenate([idx1, idx1_nearest_a, idx1_nearest_b])
     idx2 = np.concatenate([idx2, idx2_nearest_a, idx2_nearest_b])

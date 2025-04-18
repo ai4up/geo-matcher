@@ -80,11 +80,11 @@ def within(gdf: GeoDataFrame, loc: Point, dis: float) -> GeoDataFrame:
     return gdf.iloc[idx]
 
 
-def nearest_neighbor(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> Tuple[Index, Index]:
+def nearest_neighbor(gdf1: GeoDataFrame, gdf2: GeoDataFrame, max_distance: float = None) -> Tuple[Index, Index]:
     """
     For each building in gdf1, find the nearest building in gdf2 and return its index.
     """
-    idx1, idx2 = gdf2.sindex.nearest(gdf1.geometry, return_all=False, max_distance=None)
+    idx1, idx2 = gdf2.sindex.nearest(gdf1.geometry, return_all=False, max_distance=max_distance)
 
     return gdf1.index[idx1], gdf2.index[idx2]
 
