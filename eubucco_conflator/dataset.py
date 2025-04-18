@@ -40,26 +40,26 @@ def create_candidate_pairs_dataset(
     gdf1["neighborhood"] = spatial.h3_index(gdf1, h3_res)
     gdf2["neighborhood"] = spatial.h3_index(gdf2, h3_res)
 
-    candidate_pairs = _identify_candidate_pairs(gdf1, gdf2)
+    pairs = _identify_candidate_pairs(gdf1, gdf2)
 
     if ioa_range:
-        candidate_pairs = _filter_candidate_pairs_by_ioa(candidate_pairs, gdf1, gdf2, ioa_range)
+        pairs = _filter_candidate_pairs_by_ioa(pairs, gdf1, gdf2, ioa_range)
 
     if similarity_range:
-        candidate_pairs = _filter_candidate_pairs_by_shape_similarity(candidate_pairs, gdf1, gdf2, similarity_range)
+        pairs = _filter_candidate_pairs_by_shape_similarity(pairs, gdf1, gdf2, similarity_range)
 
     if n_neighborhoods:
-        candidate_pairs = _sample_neighborhoods(candidate_pairs, gdf2, n_neighborhoods)
+        pairs = _sample_neighborhoods(pairs, gdf2, n_neighborhoods)
 
     if n:
-        candidate_pairs = _sample_candidate_pairs(candidate_pairs, n)
+        pairs = _sample_candidate_pairs(pairs, n)
 
-    gdf1, gdf2 = _drop_buildings_elsewhere(gdf1, gdf2, candidate_pairs)
+    gdf1, gdf2 = _drop_buildings_elsewhere(gdf1, gdf2, pairs)
 
     LabelingDataset(
         dataset_a=gdf1,
         dataset_b=gdf2,
-        candidate_pairs=candidate_pairs,
+        candidate_pairs=pairs,
     ).save()
 
 
@@ -87,11 +87,11 @@ def _ensure_unique_index(
 
 
 def _drop_buildings_elsewhere(
-    gdf1: GeoDataFrame, gdf2: GeoDataFrame, candidate_pairs: DataFrame
+    gdf1: GeoDataFrame, gdf2: GeoDataFrame, pairs: DataFrame
 ) -> Tuple[GeoDataFrame, GeoDataFrame]:
     """To reduce dataset size, remove buildings in different neighborhoods than candidate pairs."""
-    nbh1 = candidate_pairs["id_existing"].map(gdf1["neighborhood"])
-    nbh2 = candidate_pairs["id_new"].map(gdf2["neighborhood"])
+    nbh1 = pairs["id_existing"].map(gdf1["neighborhood"])
+    nbh2 = pairs["id_new"].map(gdf2["neighborhood"])
     nbh = pd.concat([nbh1, nbh2]).unique()
     nbh_w_neighbors = spatial.h3_disk(nbh, k=1)
 
@@ -143,16 +143,16 @@ def _determine_overlapping_candidate_pairs(
 
 
 def _filter_candidate_pairs_by_ioa(
-        candidate_pairs: DataFrame, gdf1: GeoDataFrame, gdf2: GeoDataFrame, ioa_range: Tuple[float, float]
+        pairs: DataFrame, gdf1: GeoDataFrame, gdf2: GeoDataFrame, ioa_range: Tuple[float, float]
     ) -> DataFrame:
     """Filter candidate pairs based on their intersection-to-area ratio (IOA)."""
-    gdf1_can = gdf1.loc[candidate_pairs["id_existing"]]
-    gdf2_can = gdf2.loc[candidate_pairs["id_new"]]
+    gdf1_can = gdf1.loc[pairs["id_existing"]]
+    gdf2_can = gdf2.loc[pairs["id_new"]]
 
     ioa = spatial.intersection_to_area_ratio(gdf1_can, gdf2_can)
     mask = (ioa >= ioa_range[0]) & (ioa <= ioa_range[1])
 
-    return candidate_pairs[mask]
+    return pairs[mask]
 
 
 def _filter_candidate_pairs_by_shape_similarity(
@@ -169,23 +169,23 @@ def _filter_candidate_pairs_by_shape_similarity(
 
 
 def _sample_candidate_pairs(
-    candidate_pairs: DataFrame, n: int
+    pairs: DataFrame, n: int
 ) -> DataFrame:
-    return candidate_pairs.sample(n=n, random_state=42).reset_index(drop=True)
+    return pairs.sample(n=n, random_state=42).reset_index(drop=True)
 
 
 def _sample_neighborhoods(
-    candidate_pairs: DataFrame, gdf: GeoDataFrame, n: int
+    pairs: DataFrame, gdf: GeoDataFrame, n: int
 ) -> DataFrame:
     """
     Sample candidate pairs from n neighborhoods, with selection weighted by the number of buildings per neighborhood.
     """
-    neighborhoods = candidate_pairs["id_new"].map(gdf["neighborhood"])
+    neighborhoods = pairs["id_new"].map(gdf["neighborhood"])
     probs = neighborhoods.value_counts(normalize=True)
     samples = probs.sample(n=n, weights=probs, random_state=42)
     mask = neighborhoods.isin(samples.index)
 
-    return candidate_pairs[mask]
+    return pairs[mask]
 
 
 def _indices_overlap(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> bool:
