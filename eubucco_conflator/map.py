@@ -114,8 +114,9 @@ def _create_existing_buildings_layer(gdf: GeoDataFrame, highlight_id: Optional[s
             return {"color": "skyblue", "fillOpacity": 0.5}
 
     existing_buildings = folium.FeatureGroup(name="Existing Buildings")
-    popup = folium.GeoJsonPopup(fields=["index"], aliases=["Building ID"])
-    folium.GeoJson(gdf.reset_index(), popup=popup, style_function=style_function).add_to(existing_buildings)
+    if not gdf.empty:
+        popup = folium.GeoJsonPopup(fields=["index"], aliases=["Building ID"])
+        folium.GeoJson(gdf.reset_index(), popup=popup, style_function=style_function).add_to(existing_buildings)
 
     return existing_buildings
 
