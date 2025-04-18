@@ -99,6 +99,8 @@
                 labelPair('{{ id_existing }}', '{{ id_new }}', 'yes')
             } else if (event.key === "ArrowRight") {
                 labelPair('{{ id_existing }}', '{{ id_new }}', 'unsure')
+            } else if (event.key === "ArrowLeft") {
+                window.history.back();
             } else if (event.key === "?") {
                 toggleLegend();
             }
@@ -116,7 +118,7 @@
             })
             .then(response => response.json())
             .then(data => {
-                window.location.href = `/show-pair`;
+                window.location.href = `/show-pair/${data.next_existing_id}/${data.next_new_id}`;
             });
         }
 

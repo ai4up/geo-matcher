@@ -83,7 +83,7 @@
             })
             .then(response => response.json())
             .then(data => {
-                window.location.href = `/show-neighborhood`;
+                window.location.href = `/show-neighborhood/${data.next_id}`;
             })
             .catch(err => console.error("Submission error:", err));
         }

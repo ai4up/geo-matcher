@@ -98,9 +98,11 @@ def store_label() -> Response:
     id_existing = data.get("id_existing")
     id_new = data.get("id_new")
     match = data.get("match")
+
+    next_pair = S.next_pair()
     S.add_result(id_existing, id_new, match)
 
-    return jsonify({"status": "ok", "message": "Label stored"}), 200
+    return jsonify({"status": "ok", "next_existing_id": next_pair[0] or "", "next_new_id": next_pair[1] or ""}), 200
 
 
 @app.route("/store-neighborhood", methods=["POST"])
@@ -122,9 +124,10 @@ def store_neighborhood() -> Response:
     results = _set_to_no_match(results, removed)
     results = _add_to_candidate_pairs(results, added)
 
+    next_id = S.next_neighborhood()
     S.add_bulk_results(results)
 
-    return jsonify({"status": "ok", "message": "Neighborhood labels stored"}), 200
+    return jsonify({"status": "ok", "next_id": next_id or ""}), 200
 
 
 def _add_to_candidate_pairs(candidate_pairs: DataFrame, added: GeoDataFrame) -> DataFrame:
