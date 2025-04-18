@@ -55,9 +55,9 @@ def corresponding(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> np.array:
     """
     Estimate whether pairs of buildings match based on their intersection area.
     """
-    ioa = symmetrical_pairwise_relative_overlap(gdf1, gdf2)
+    overlap = symmetrical_pairwise_relative_overlap(gdf1, gdf2)
 
-    return ioa > 0.1
+    return overlap > 0.1
 
 
 def overlapping(

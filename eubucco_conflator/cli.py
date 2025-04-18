@@ -116,7 +116,7 @@ def create_labeling_dataset(
         gdf_path1=filepath1,
         gdf_path2=filepath2,
         id_col=id_col,
-        ioa_range=(min_intersection, max_intersection) if min_intersection != 0 or max_intersection != 1 else None,
+        overlap_range=(min_intersection, max_intersection) if min_intersection != 0 or max_intersection != 1 else None,
         similarity_range=(min_similarity, max_similarity) if min_similarity != 0 or max_similarity != 1 else None,
         max_distance=max_distance,
         one_to_one_matches_only=one_to_one_matches_only,

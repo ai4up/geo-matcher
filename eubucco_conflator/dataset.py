@@ -21,7 +21,7 @@ def create_candidate_pairs_dataset(
     gdf_path1: str,
     gdf_path2: str,
     id_col: str,
-    ioa_range: Tuple[float, float] = None,
+    overlap_range: Tuple[float, float] = None,
     similarity_range: Tuple[float, float] = None,
     max_distance: float = None,
     one_to_one_matches_only: bool = False,
@@ -44,8 +44,8 @@ def create_candidate_pairs_dataset(
 
     pairs = _identify_candidate_pairs(gdf1, gdf2, max_distance)
 
-    if ioa_range:
-        pairs = _filter_candidate_pairs_by_ioa(pairs, gdf1, gdf2, ioa_range)
+    if overlap_range:
+        pairs = _filter_candidate_pairs_by_overlap(pairs, gdf1, gdf2, overlap_range)
 
     if similarity_range:
         pairs = _filter_candidate_pairs_by_shape_similarity(pairs, gdf1, gdf2, similarity_range)
@@ -141,21 +141,21 @@ def _determine_overlapping_candidate_pairs(
     idx1, idx2 = spatial.overlapping(gdf1, gdf2)
 
     # Filter slightly overlapping buildings
-    ioa = spatial.symmetrical_pairwise_relative_overlap(gdf1.loc[idx1], gdf2.loc[idx2])
-    mask = ioa > tolerance
+    overlap = spatial.symmetrical_pairwise_relative_overlap(gdf1.loc[idx1], gdf2.loc[idx2])
+    mask = overlap > tolerance
 
     return idx1[mask], idx2[mask]
 
 
-def _filter_candidate_pairs_by_ioa(
-        pairs: DataFrame, gdf1: GeoDataFrame, gdf2: GeoDataFrame, ioa_range: Tuple[float, float]
+def _filter_candidate_pairs_by_overlap(
+        pairs: DataFrame, gdf1: GeoDataFrame, gdf2: GeoDataFrame, overlap_range: Tuple[float, float]
     ) -> DataFrame:
-    """Filter candidate pairs based on their intersection-to-area ratio (IOA)."""
+    """Filter candidate pairs based on their degree of overlap, i.e. their Two-Way Area Overlap (TWAO)."""
     gdf1_can = gdf1.loc[pairs["id_existing"]]
     gdf2_can = gdf2.loc[pairs["id_new"]]
 
-    ioa = spatial.symmetrical_pairwise_relative_overlap(gdf1_can, gdf2_can)
-    mask = (ioa >= ioa_range[0]) & (ioa <= ioa_range[1])
+    overlap = spatial.symmetrical_pairwise_relative_overlap(gdf1_can, gdf2_can)
+    mask = (overlap >= overlap_range[0]) & (overlap <= overlap_range[1])
 
     return pairs[mask]
 
