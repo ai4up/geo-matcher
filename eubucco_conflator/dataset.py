@@ -208,6 +208,9 @@ def _filter_one_to_one_correspondences(
 def _sample_candidate_pairs(
     pairs: DataFrame, n: int
 ) -> DataFrame:
+    if n > len(pairs):
+        log(f"Sampling size n ({n}) is larger than the number of candidate pairs ({len(pairs)}). Reducing n to {len(pairs)}.")
+        n = len(pairs)
     return pairs.sample(n=n, random_state=42).reset_index(drop=True)
 
 
@@ -219,6 +222,10 @@ def _sample_neighborhoods(
     """
     neighborhoods = pairs["id_new"].map(gdf["neighborhood"])
     probs = neighborhoods.value_counts(normalize=True)
+    if n > len(probs):
+        log(f"Sampling size n ({n}) is larger than the number of neighborhoods ({len(probs)}). Reducing n to {len(probs)}.")
+        n = len(probs)
+
     samples = probs.sample(n=n, weights=probs, random_state=42)
     mask = neighborhoods.isin(samples.index)
 
