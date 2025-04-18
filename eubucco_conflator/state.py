@@ -37,7 +37,7 @@ class State:
 
         # Edge case: also get the existing buildings of candidate pairs, where only the new building is in the neighborhood of interest
         nbh_b = cls.data_b[cls.data_b["neighborhood"] == neighborhood]
-        candidate_ids = cls.pairs[cls.pairs["id_new"].isin(nbh_b)]["id_existing"]
+        candidate_ids = cls.pairs[cls.pairs["id_new"].isin(nbh_b.index)]["id_existing"]
         candidates = cls.data_a.loc[candidate_ids]
 
         return pd.concat([nbh_a, candidates]).drop_duplicates()
