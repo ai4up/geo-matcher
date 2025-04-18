@@ -11,12 +11,12 @@ def cli() -> None:
 
 
 @cli.command()
-@click.argument("filepath", default="labeling-dataset.parquet", type=click.Path(exists=True))
+@click.argument("filepath", default=DATASET_FILE, type=click.Path(exists=True))
 def label(filepath: str) -> None:
     """
-    Start labeling of building pairs.
+    Start the labeling of building pairs.
 
-    FILEPATH to GeoParquet file containing the building pairs to label.
+    FILEPATH to the dataset of building pairs.
     """
     State.init(filepath, logger=click.echo)
     click.echo(f"Loaded {len(State.data.candidate_pairs)} candidate pairs")

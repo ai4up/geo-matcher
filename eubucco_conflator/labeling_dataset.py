@@ -6,7 +6,7 @@ import pandas as pd
 
 from eubucco_conflator import spatial
 
-DATASET_FILE = "labeling-dataset.parquet"
+DATASET_FILE = "labeling-dataset.pickle"
 
 class LabelingDataset:
     def __init__(

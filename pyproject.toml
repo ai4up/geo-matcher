@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "eubucco-conflator"
 version = "0.1.0"
-description = "Tool to detect and label duplicates when conflating multiple building footprint datasets."
+description = "Tool for matching and labeling building pairs across building footprint datasets."
 authors = ["Florian Nachtigall <nachtigall.florian@gmail.com>"]
 readme = "README.md"
 packages = [{include = "eubucco_conflator"}]
