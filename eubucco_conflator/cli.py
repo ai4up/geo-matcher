@@ -1,9 +1,9 @@
 import click
 
 from eubucco_conflator import app, dataset
-from eubucco_conflator.state import State
-from eubucco_conflator.labeling_dataset import DATASET_FILE
 
+DATASET_FILE = "labeling-dataset.pickle"
+RESULTS_FILE = "results.csv"
 
 @click.group()
 def cli() -> None:
@@ -11,21 +11,17 @@ def cli() -> None:
 
 
 @cli.command()
-@click.argument("filepath", default=DATASET_FILE, type=click.Path(exists=True))
-def label(filepath: str) -> None:
+@click.argument("path", default=DATASET_FILE, type=click.Path(exists=True))
+@click.argument("results_path", default=RESULTS_FILE, type=click.Path())
+def label(path: str, results_path: str) -> None:
     """
     Start the labeling of building pairs.
 
-    FILEPATH to the dataset of building pairs.
+    PATH to the dataset of building pairs.
+    RESULTS_PATH to where the results will be stored.
     """
-    State.init(filepath, logger=click.echo)
-    click.echo(f"Loaded {len(State.data.candidate_pairs)} candidate pairs")
-    click.echo(
-        f"Loaded latest labeling state: {len(State.results)} buildings already labeled"
-    )
-
     click.echo("Starting browser app...")
-    app.start()
+    app.start_locally(path, results_path)
 
 
 @cli.command()
@@ -123,7 +119,7 @@ def create_labeling_dataset(
         n=sample_size,
         n_neighborhoods=n_neighborhoods,
         h3_res=h3_res,
-    )
+    ).save(DATASET_FILE)
     click.echo(
         f"Dataset of candidate pairs created and stored in {DATASET_FILE}"
     )

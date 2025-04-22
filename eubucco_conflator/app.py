@@ -5,43 +5,51 @@ import webbrowser
 from pathlib import Path
 from typing import Optional
 
-from flask import Flask, Response, jsonify, render_template, request, session
-
+from flask import Blueprint, Flask, Response, jsonify, current_app, render_template, request, session
 from flask_executor import Executor
 from geopandas import GeoDataFrame
 from pandas import DataFrame
 from shapely.geometry import Point, LineString
-from waitress import serve
 import geopandas as gpd
 import pandas as pd
+import waitress
 
-from eubucco_conflator.state import RESULTS_FILE
 from eubucco_conflator.state import State as S
 from eubucco_conflator import spatial, map
 
-app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY', 'dev-mode')
-app.url_map.strict_slashes = False
-executor = Executor(app)
-maps_dir = Path(app.static_folder) / "maps"
+bp = Blueprint('matching', __name__)
+executor = Executor()
+
+def create_app(data_path: str, results_path: str) -> Flask:
+    app = Flask(__name__)
+    app.secret_key = os.getenv('SECRET_KEY', 'dev-mode')
+    app.maps_dir = Path(app.static_folder) / "maps"
+    app.url_map.strict_slashes = False
+    app.register_blueprint(bp)
+    executor.init_app(app)
+
+    _ensure_empty_dir(app.maps_dir)
+
+    S.init(data_path, results_path)
+
+    return app
 
 
-def start() -> None:
-    _clean_static_dir()
+def start_locally(*args, **kwargs) -> None:
+    app = create_app(*args, **kwargs)
     atexit.register(S.store_results)
-
     webbrowser.open("http://127.0.0.1:5001/")
-    serve(app, host="127.0.0.1", port=5001)
+    waitress.serve(app, host="127.0.0.1", port=5001)
 
 
-@app.route("/")
+@bp.route("/")
 def home() -> Response:
-    fp = maps_dir / "candidate_demo.html"
+    fp = current_app.maps_dir / "candidate_demo.html"
     map.create_tutorial_html(fp)
     return render_template("index.html"), 200
 
 
-@app.route('/set-username', methods=['POST'])
+@bp.route('/set-username', methods=['POST'])
 def set_username():
     username = request.form.get('username')
     cross_validate = request.form.get('cross_validate') == 'true'
@@ -54,8 +62,8 @@ def set_username():
     return 'Missing username', 400
 
 
-@app.route("/show-pair")
-@app.route("/show-pair/<id_existing>/<id_new>")
+@bp.route("/show-pair")
+@bp.route("/show-pair/<id_existing>/<id_new>")
 def show_candidate(id_existing: str = None, id_new: str = None) -> Response:
     cv = session.get('cross_validate', False)
 
@@ -64,20 +72,20 @@ def show_candidate(id_existing: str = None, id_new: str = None) -> Response:
 
     if id_existing is None:
         S.store_results()
-        return f"All buildings labeled! Results stored in {RESULTS_FILE}", 200
+        return f"All buildings labeled! Results stored in {S.results_path}", 200
 
     if not S.valid_pair(id_existing, id_new):
         return "Candidate pairs not found", 404
 
     name = _unq_name(id_existing, id_new)
-    fp = maps_dir / f"candidate_{name}.html"
+    fp = current_app.maps_dir / f"candidate_{name}.html"
     map.create_candidate_pair_html(id_existing, id_new, fp)
 
     next_pair = S.next_pair(cv)
     if next_pair[0]:
-        app.logger.debug(f"Pre-generating HTML map for candidate pair {next_pair}")
+        current_app.logger.debug(f"Pre-generating HTML map for candidate pair {next_pair}")
         next_name = _unq_name(*next_pair)
-        next_fp = maps_dir / f"candidate_{next_name}.html"
+        next_fp = current_app.maps_dir / f"candidate_{next_name}.html"
         executor.submit(map.create_candidate_pair_html, *next_pair, next_fp)
 
     return render_template(
@@ -85,8 +93,8 @@ def show_candidate(id_existing: str = None, id_new: str = None) -> Response:
     ), 200
 
 
-@app.route("/show-neighborhood")
-@app.route("/show-neighborhood/<id>")
+@bp.route("/show-neighborhood")
+@bp.route("/show-neighborhood/<id>")
 def show_neighborhood(id: Optional[str] = None) -> Response:
     cv = session.get('cross_validate', False)
 
@@ -95,23 +103,23 @@ def show_neighborhood(id: Optional[str] = None) -> Response:
 
     if id is None:
         S.store_results()
-        return f"All buildings labeled! Results stored in {RESULTS_FILE}", 200
+        return f"All buildings labeled! Results stored in {S.results_path}", 200
 
     if id not in S.neighborhoods():
         return "Neighborhood not found", 404
 
-    fp = maps_dir / f"neighborhood_{id}.html"
+    fp = current_app.maps_dir / f"neighborhood_{id}.html"
     map.create_neighborhood_html(id, fp)
 
     if next_id := S.next_neighborhood(cv):
-        app.logger.debug(f"Pre-generating HTML map for neighborhood {next_id}")
-        next_fp = maps_dir / f"neighborhood_{next_id}.html"
+        current_app.logger.debug(f"Pre-generating HTML map for neighborhood {next_id}")
+        next_fp = current_app.maps_dir / f"neighborhood_{next_id}.html"
         executor.submit(map.create_neighborhood_html, next_id, next_fp)
 
     return render_template("show_neighborhood.html", id=id, map_file=fp.name), 200
 
 
-@app.route("/store-label", methods=["POST"])
+@bp.route("/store-label", methods=["POST"])
 def store_label() -> Response:
     data = request.json
 
@@ -127,7 +135,7 @@ def store_label() -> Response:
     return jsonify({"status": "ok", "next_existing_id": next_pair[0] or "", "next_new_id": next_pair[1] or ""}), 200
 
 
-@app.route("/store-neighborhood", methods=["POST"])
+@bp.route("/store-neighborhood", methods=["POST"])
 def store_neighborhood() -> Response:
     data = request.json
 
@@ -140,8 +148,8 @@ def store_neighborhood() -> Response:
     added = gpd.GeoDataFrame.from_features(added, columns=["geometry"], crs="EPSG:4326")
     removed = gpd.GeoDataFrame.from_features(removed, columns=["geometry"], crs="EPSG:4326")
 
-    app.logger.info(f"Adding {len(added)} additional matches in neighborhood {id}.")
-    app.logger.info(f"Removing {len(removed)} matches in neighborhood {id}.")
+    current_app.logger.info(f"Adding {len(added)} additional matches in neighborhood {id}.")
+    current_app.logger.info(f"Removing {len(removed)} matches in neighborhood {id}.")
 
     results = S.get_candidate_pairs(id)
     results["username"] = username
@@ -225,9 +233,9 @@ def _find_matching_building(line: LineString, gdf: GeoDataFrame) -> Optional[str
     matches = gdf[gdf.contains(start) | gdf.contains(end)]
 
     if matches.empty:
-        app.logger.warning(f"Drawn line ({line}) does not connect two buildings.")
+        current_app.logger.warning(f"Drawn line ({line}) does not connect two buildings.")
     elif len(matches) > 1:
-        app.logger.warning("End of drawn line is located inside multiple buildings. Added match is ambiguous.")
+        current_app.logger.warning("End of drawn line is located inside multiple buildings. Added match is ambiguous.")
     else:
         return matches.index[0]
 
@@ -236,6 +244,6 @@ def _unq_name(id_existing: str, id_new: str) -> str:
     return f"{id_existing}--{id_new}"
 
 
-def _clean_static_dir() -> None:
-    shutil.rmtree(maps_dir, ignore_errors=True)
-    maps_dir.mkdir(parents=True, exist_ok=True)
+def _ensure_empty_dir(path: Path) -> None:
+    shutil.rmtree(path, ignore_errors=True)
+    path.mkdir(parents=True, exist_ok=True)

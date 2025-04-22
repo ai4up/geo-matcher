@@ -11,7 +11,6 @@ import pandas as pd
 from eubucco_conflator.labeling_dataset import LabelingDataset
 from eubucco_conflator import spatial
 
-RESULTS_FILE = "results.csv"
 _PROGRESS_FILEPATH = Path(".progress", "labeling-progress.pickle")
 
 
@@ -20,9 +19,10 @@ class State:
     results: List[Dict[str, any]] = []
 
     @classmethod
-    def init(cls, geodata_path: str, logger: Callable[[str], None] = print) -> None:
+    def init(cls, data_path: str, results_path: str, logger: Callable[[str], None] = print) -> None:
         cls.logger = logger
-        cls.data = LabelingDataset.load(geodata_path)
+        cls.results_path = results_path
+        cls.data = LabelingDataset.load(data_path)
         cls.data.preliminary_matching_estimate()
         cls.results = cls._load_progress()
 
@@ -159,9 +159,9 @@ class State:
 
     @classmethod
     def store_results(cls) -> None:
-        cls._unique_results().to_csv(RESULTS_FILE, index=False)
+        cls._unique_results().to_csv(cls.results_path, index=False)
         cls.logger(
-            f"All buildings successfully labeled. Results stored in {RESULTS_FILE}."
+            f"All buildings successfully labeled. Results stored in {cls.results_path}."
         )
 
     @classmethod

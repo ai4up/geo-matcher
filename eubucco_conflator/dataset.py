@@ -28,7 +28,7 @@ def create_candidate_pairs_dataset(
     n: int = None,
     n_neighborhoods: int = None,
     h3_res: int = 9,
-) -> None:
+) -> LabelingDataset:
     """
     Identifies pairs of potentially matching buildings from two datasets and stores them in a new dataset.
     Pairs are determined based on spatial proximity, topological overlap, and shape similarity.
@@ -61,11 +61,11 @@ def create_candidate_pairs_dataset(
 
     gdf1, gdf2 = _drop_buildings_elsewhere(gdf1, gdf2, pairs)
 
-    LabelingDataset(
+    return LabelingDataset(
         dataset_a=gdf1,
         dataset_b=gdf2,
         candidate_pairs=pairs,
-    ).save()
+    )
 
 
 def _ensure_unique_index(

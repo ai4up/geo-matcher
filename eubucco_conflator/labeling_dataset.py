@@ -6,7 +6,6 @@ import pandas as pd
 
 from eubucco_conflator import spatial
 
-DATASET_FILE = "labeling-dataset.pickle"
 
 class LabelingDataset:
     def __init__(
@@ -22,12 +21,12 @@ class LabelingDataset:
         self.candidate_pairs = candidate_pairs
 
     @staticmethod
-    def load(filepath: str = DATASET_FILE) -> "LabelingDataset":
+    def load(filepath: str) -> "LabelingDataset":
         """Load an instance from a pickle file."""
         with open(filepath, 'rb') as f:
             return pickle.load(f)
 
-    def save(self, filepath: str = DATASET_FILE) -> None:
+    def save(self, filepath: str) -> None:
         """Save the instance to a file using pickle."""
         with open(filepath, 'wb') as f:
             pickle.dump(self, f)
