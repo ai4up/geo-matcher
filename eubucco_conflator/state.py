@@ -21,7 +21,7 @@ class State:
     @classmethod
     def init(cls, data_path: str, results_path: str, logger: Callable[[str], None] = print) -> None:
         cls.logger = logger
-        cls.results_path = results_path
+        cls.results_path = Path(results_path)
         cls.data = CandidatePairs.load(data_path)
         cls.data.preliminary_matching_estimate()
         cls.results = cls._load_progress()

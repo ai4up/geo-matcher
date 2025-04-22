@@ -5,7 +5,7 @@ import webbrowser
 from pathlib import Path
 from typing import Optional
 
-from flask import Blueprint, Flask, Response, jsonify, current_app, render_template, request, session
+from flask import Blueprint, Flask, Response, jsonify, current_app, render_template, request, send_file, session
 from flask_executor import Executor
 from geopandas import GeoDataFrame
 from pandas import DataFrame
@@ -162,6 +162,13 @@ def store_neighborhood() -> Response:
     S.add_bulk_results(results)
 
     return jsonify({"status": "ok", "next_id": next_id or ""}), 200
+
+
+@bp.route("/download-results")
+def download_results() -> Response:
+    S.store_results()
+
+    return send_file(S.results_path.absolute(), as_attachment=True)
 
 
 def _add_to_candidate_pairs(candidate_pairs: DataFrame, added: GeoDataFrame) -> DataFrame:

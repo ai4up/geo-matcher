@@ -42,6 +42,24 @@
         .btn:hover {
             opacity: 0.8;
         }
+
+        #download-link {
+            position: fixed;
+            bottom: 20px;
+            right: 10px;
+            font-size: 12px;
+            font-family: Arial, sans-serif;
+            color: #333;
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 5px 10px;
+            border-radius: 5px;
+            text-decoration: none;
+            z-index: 1000;
+        }
+
+        #download-link:hover {
+            background-color: rgba(240, 240, 240, 0.9);
+        }
     </style>
 </head>
 <body>
@@ -52,6 +70,8 @@
     <div id="buttons">
         <button class="btn btn-submit" onclick="sendLabeledGeometry('{{ id }}')">Submit</button>
     </div>
+
+    <a href="/download-results" id="download-link" target="_blank">Download Results</a>
 
     <script type="text/javascript">
         function sendLabeledGeometry(id) {
