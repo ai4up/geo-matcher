@@ -9,12 +9,12 @@ pip install git+https://github.com/ai4up/eubucco-conflation@main
 ```
 
 ## Usage
-Create a dataset of potential building pairs from two datasets:
+Step 1: Create a dataset of potential building pairs from two datasets:
 ```bash
 conflator create-labeling-dataset dataset1.parquet dataset2.parquet
 ```
 
-Start browser-based labeling of building pairs:
+Step 2: Start browser-based labeling of building pairs:
 ```bash
 conflator label
 ```
@@ -33,6 +33,14 @@ conflator label
 ```
 ![Example of Building Footprint Matching Tool](example.png)
 
+
+## Dockerized approach
+*Prerequisites: Ensure a dataset of candidate pairs (`candidate-pairs.pickle`) is present in the `data` directory.*
+
+Serve the dockerized Flask app with an Nginx proxy at `0.0.0.0:80`:
+```bash
+SECRET_KEY=<some-flask-session-secret> docker-compose up
+```
 
 ## Development
 
