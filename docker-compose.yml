@@ -9,7 +9,7 @@ services:
       - ./data:/app/data
     environment:
       - SECRET_KEY=${SECRET_KEY}
-      - DATA_PATH=/app/data/labeling-dataset.pickle
+      - DATA_PATH=/app/data/candidate-pairs.pickle
       - RESULTS_PATH=/app/data/results.csv
 
   nginx:

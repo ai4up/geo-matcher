@@ -8,28 +8,28 @@ from shapely.geometry import Point
 import numpy as np
 import pandas as pd
 
-from eubucco_conflator.labeling_dataset import LabelingDataset
+from eubucco_conflator.candidate_pairs import CandidatePairs
 from eubucco_conflator import spatial
 
 _PROGRESS_FILEPATH = Path(".progress", "labeling-progress.pickle")
 
 
 class State:
-    data: Optional[LabelingDataset] = None
+    data: Optional[CandidatePairs] = None
     results: List[Dict[str, any]] = []
 
     @classmethod
     def init(cls, data_path: str, results_path: str, logger: Callable[[str], None] = print) -> None:
         cls.logger = logger
         cls.results_path = results_path
-        cls.data = LabelingDataset.load(data_path)
+        cls.data = CandidatePairs.load(data_path)
         cls.data.preliminary_matching_estimate()
         cls.results = cls._load_progress()
 
         # Add pointers to improve readability
         cls.data_a = cls.data.dataset_a
         cls.data_b = cls.data.dataset_b
-        cls.pairs = cls.data.candidate_pairs
+        cls.pairs = cls.data.pairs
 
     @classmethod
     def get_existing_buildings(cls, neighborhood: str) -> GeoDataFrame:

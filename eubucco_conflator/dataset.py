@@ -8,7 +8,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 
-from eubucco_conflator.labeling_dataset import LabelingDataset
+from eubucco_conflator.candidate_pairs import CandidatePairs
 from eubucco_conflator import spatial
 
 warnings.simplefilter(action="ignore", category=pd.errors.SettingWithCopyWarning)
@@ -28,7 +28,7 @@ def create_candidate_pairs_dataset(
     n: int = None,
     n_neighborhoods: int = None,
     h3_res: int = 9,
-) -> LabelingDataset:
+) -> CandidatePairs:
     """
     Identifies pairs of potentially matching buildings from two datasets and stores them in a new dataset.
     Pairs are determined based on spatial proximity, topological overlap, and shape similarity.
@@ -61,10 +61,10 @@ def create_candidate_pairs_dataset(
 
     gdf1, gdf2 = _drop_buildings_elsewhere(gdf1, gdf2, pairs)
 
-    return LabelingDataset(
+    return CandidatePairs(
         dataset_a=gdf1,
         dataset_b=gdf2,
-        candidate_pairs=pairs,
+        pairs=pairs,
     )
 
 

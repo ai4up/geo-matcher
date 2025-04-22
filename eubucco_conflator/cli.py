@@ -2,7 +2,7 @@ import click
 
 from eubucco_conflator import app, dataset
 
-DATASET_FILE = "labeling-dataset.pickle"
+DATASET_FILE = "candidate-pairs.pickle"
 RESULTS_FILE = "results.csv"
 
 @click.group()

@@ -27,7 +27,7 @@ conflator create-labeling-dataset \
     --max-intersection=0.2 \ # Maximum relative overlap for new buildings to be included in labeling dataset (0,1]
     data/demo-gov.parquet data/demo-microsoft.parquet
 ```
-The resulting dataset is locally stored as `labeling-dataset.pickle`. To initiate the browser-based labeling, run:
+The resulting dataset is locally stored as `candidate-pairs.pickle`. To initiate the browser-based labeling, run:
 ```bash
 conflator label
 ```
