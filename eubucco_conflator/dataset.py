@@ -24,7 +24,7 @@ def create_candidate_pairs_dataset(
     overlap_range: Tuple[float, float] = None,
     similarity_range: Tuple[float, float] = None,
     max_distance: float = None,
-    one_to_one_matches_only: bool = False,
+    max_overlap_others: float = None,
     n: int = None,
     n_neighborhoods: int = None,
     h3_res: int = 9,
@@ -50,8 +50,8 @@ def create_candidate_pairs_dataset(
     if similarity_range:
         pairs = _filter_candidate_pairs_by_shape_similarity(pairs, gdf1, gdf2, similarity_range)
 
-    if one_to_one_matches_only:
-        pairs = _filter_one_to_one_correspondences(pairs, gdf1, gdf2)
+    if max_overlap_others:
+        pairs = _filter_candidate_pairs_by_overlap_of_others(pairs, gdf1, gdf2, max_overlap_others)
 
     if n_neighborhoods:
         pairs = _sample_neighborhoods(pairs, gdf2, n_neighborhoods)
@@ -173,8 +173,8 @@ def _filter_candidate_pairs_by_shape_similarity(
     return candidate_pairs[mask]
 
 
-def _filter_one_to_one_correspondences(
-    pairs: DataFrame, gdf1: GeoDataFrame, gdf2: GeoDataFrame
+def _filter_candidate_pairs_by_overlap_of_others(
+    pairs: DataFrame, gdf1: GeoDataFrame, gdf2: GeoDataFrame, max_overlap_others: float
 ) -> DataFrame:
     """
     Keep only candidate pairs that are likely one-to-one match.
@@ -200,7 +200,7 @@ def _filter_one_to_one_correspondences(
     pairs["overlap_others_new"] = pairs["overlap_new"] - pairs["overlap_pair_new"]
 
     # Identify candidate pairs with low overlap with other buildings suggesting a one-to-one match
-    mask = (pairs["overlap_others_existing"] < 0.2) & (pairs["overlap_others_new"] < 0.2)
+    mask = (pairs["overlap_others_existing"] < max_overlap_others) & (pairs["overlap_others_new"] < max_overlap_others)
 
     return pairs[mask][["id_existing", "id_new"]]
 

@@ -66,10 +66,10 @@ def label(filepath: str) -> None:
     help="Maximum distance between a building pair to be included in labeling dataset [meters].",
 )
 @click.option(
-    "--one-to-one-matches-only",
-    default=False,
-    is_flag=True,
-    help="Include only estimated one-to-one matches in labeling dataset.",
+    "--max-intersection-others",
+    default=None,
+    type=float,
+    help="Maximum relative overlap of a candidate pair by other buildings to be included in labeling dataset (0,1].",  # noqa: E501
 )
 @click.option(
     "--sample-size",
@@ -99,7 +99,7 @@ def create_labeling_dataset(
     min_similarity: float,
     max_similarity: float,
     max_distance: float,
-    one_to_one_matches_only: bool,
+    max_intersection_others: float,
     sample_size: int,
     n_neighborhoods: int,
     h3_res: int,
@@ -119,7 +119,7 @@ def create_labeling_dataset(
         overlap_range=(min_intersection, max_intersection) if min_intersection != 0 or max_intersection != 1 else None,
         similarity_range=(min_similarity, max_similarity) if min_similarity != 0 or max_similarity != 1 else None,
         max_distance=max_distance,
-        one_to_one_matches_only=one_to_one_matches_only,
+        max_overlap_others=max_intersection_others,
         n=sample_size,
         n_neighborhoods=n_neighborhoods,
         h3_res=h3_res,
