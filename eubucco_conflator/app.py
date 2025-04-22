@@ -1,10 +1,12 @@
 import atexit
+import os
 import shutil
 import webbrowser
 from pathlib import Path
 from typing import Optional
 
-from flask import Flask, Response, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request, session
+
 from flask_executor import Executor
 from geopandas import GeoDataFrame
 from pandas import DataFrame
@@ -18,6 +20,7 @@ from eubucco_conflator.state import State as S
 from eubucco_conflator import spatial, map
 
 app = Flask(__name__)
+app.secret_key = os.getenv('SECRET_KEY', 'dev-mode')
 app.url_map.strict_slashes = False
 executor = Executor(app)
 maps_dir = Path(app.static_folder) / "maps"
@@ -36,6 +39,16 @@ def home() -> Response:
     fp = maps_dir / "candidate_demo.html"
     map.create_tutorial_html(fp)
     return render_template("index.html"), 200
+
+
+@app.route('/set-username', methods=['POST'])
+def set_username():
+    username = request.form.get('username')
+    if username:
+        session['username'] = username
+        return '', 200
+
+    return 'Missing username', 400
 
 
 @app.route("/show-pair")
@@ -95,12 +108,13 @@ def show_neighborhood(id: Optional[str] = None) -> Response:
 def store_label() -> Response:
     data = request.json
 
+    username = session.get('username', 'unknown')
     id_existing = data.get("id_existing")
     id_new = data.get("id_new")
     match = data.get("match")
 
     next_pair = S.next_pair()
-    S.add_result(id_existing, id_new, match)
+    S.add_result(id_existing, id_new, match, username)
 
     return jsonify({"status": "ok", "next_existing_id": next_pair[0] or "", "next_new_id": next_pair[1] or ""}), 200
 
@@ -108,6 +122,8 @@ def store_label() -> Response:
 @app.route("/store-neighborhood", methods=["POST"])
 def store_neighborhood() -> Response:
     data = request.json
+
+    username = session.get('username', 'unknown')
     id = data.get("id")
     added = data.get("added")
     removed = data.get("removed")
@@ -119,6 +135,7 @@ def store_neighborhood() -> Response:
     app.logger.info(f"Removing {len(removed)} matches in neighborhood {id}.")
 
     results = S.get_candidate_pairs(id)
+    results["username"] = username
     results["neighborhood"] = id
     results["match"] = results["match"].replace({True: "yes", False: "no"})
     results = _set_to_no_match(results, removed)

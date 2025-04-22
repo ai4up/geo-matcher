@@ -75,11 +75,17 @@ class State:
         return pairs
 
     @classmethod
-    def add_result(cls, id_existing: str, id_new: str, match: str) -> None:
+    def add_result(cls, id_existing: str, id_new: str, match: str, username: str) -> None:
         if match not in ["yes", "no", "unsure"]:
             raise ValueError(f"Match label '{match}' must be one of: 'yes', 'no', 'unsure'.")
 
-        cls.results.append({"neighborhood": None, "id_existing": id_existing, "id_new": id_new, "match": match})
+        cls.results.append({
+            "neighborhood": None,
+            "id_existing": id_existing,
+            "id_new": id_new,
+            "match": match,
+            "username": username,
+        })
         cls._store_progress()
 
         if len(cls.results) % 10 == 0:
@@ -91,7 +97,7 @@ class State:
         if not df["match"].isin(["yes", "no", "unsure"]).all():
             raise ValueError("Match label must be one of: 'yes', 'no', 'unsure'.")
 
-        results = df[["neighborhood", "id_existing", "id_new", "match"]]
+        results = df[["neighborhood", "id_existing", "id_new", "match", "username"]]
         cls.results.extend(results.to_dict(orient="records"))
         cls._store_progress()
 
@@ -139,7 +145,7 @@ class State:
 
     @classmethod
     def store_results(cls) -> None:
-        pd.DataFrame(cls.results).drop_duplicates(subset=["id_existing", "id_new"], keep="last").to_csv(
+        pd.DataFrame(cls.results).drop_duplicates(subset=["id_existing", "id_new", "username"], keep="last").to_csv(
             RESULTS_FILE, index=False
         )
         cls.logger(

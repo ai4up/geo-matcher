@@ -54,8 +54,8 @@
             padding: 15px;
             border-radius: 10px;
             z-index: 1000;
-            width: 50%;
-            font-size: 16px;
+            width: 40%;
+            font-size: 15px;
             font-family: Arial, sans-serif;
         }
 
@@ -70,8 +70,8 @@
     </div>
 
     <div id="tutorial">
-        <h3>Welcome to the Building Dataset Matching Tool!</h3>
-        <p>The tool iterates through pairs of buildings from two different datasets and asks you whether they match (i.e. describe the same actual building).</p>
+        <h2 style="text-align: center;">Welcome to the Building Footprint Matching Tool!</h3>
+        <p>The tool iterates through pairs of buildings from two different datasets and asks you whether they match<br>(i.e. describe the same actual building).</p>
 
         <div style="padding-left: 20px;">
             <div style="margin-bottom: 6px;">
@@ -94,11 +94,16 @@
 
         <p>Use the buttons below to label the <strong>highlighted building pair</strong> as either a <strong>'Match'</strong>, <strong>'No Match'</strong>, or <strong>'Unsure'</strong>.</p>
 
-        <div style="text-align: center; margin-top: 20px;">
-            <button onclick="window.location.href='/show-pair'" style="padding: 15px 25px; font-size: 18px; background-color: #4CAF50; color: white; border: none; border-radius: 8px; cursor: pointer;">
+        <form id="username-form" method="post" action="/set-username" onsubmit="return handleFormSubmit(event)" style="text-align: center; margin-top: 20px;">
+            <input type="text" id="username" name="username" placeholder="Enter your username" required
+                   style="padding: 14px 20px; font-size: 16px; border-radius: 10px; border: 1px solid #ccc; margin-right: 14px;">
+
+            <button type="submit"
+                    style="padding: 14px 20px; font-size: 16px; background-color: #4CAF50; color: white;
+                           border: none; border-radius: 10px; cursor: pointer;">
                 Get Started!
             </button>
-        </div>
+        </form>
     </div>
 
     <div id="buttons">
@@ -106,5 +111,32 @@
         <button class="btn btn-no-match" onclick="alert('Demo only. No data will be saved.');">No Match</button>
         <button class="btn btn-unsure" onclick="alert('Demo only. No data will be saved.');">Unsure</button>
     </div>
+
+    <script>
+        async function handleFormSubmit(event) {
+            event.preventDefault(); // Stop normal form submit
+
+            const usernameInput = document.getElementById('username');
+            const username = usernameInput.value.trim();
+
+            if (!username) { // Prevent submitting white spaces
+                alert('Please enter your username.');
+                return false;
+            }
+
+            const response = await fetch('/set-username', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ username })
+            });
+
+            if (response.ok) {
+                window.location.href = '/show-pair';
+            } else {
+                alert('There was a problem saving your username.');
+                return false;
+            }
+        }
+    </script>
 </body>
 </html>
