@@ -64,7 +64,7 @@ def set_username():
 
 @bp.route("/show-pair")
 @bp.route("/show-pair/<id_existing>/<id_new>")
-def show_candidate(id_existing: str = None, id_new: str = None) -> Response:
+def show_candidate_pair(id_existing: str = None, id_new: str = None) -> Response:
     cv = session.get('cross_validate', False)
 
     if id_existing is None or id_new is None:
@@ -89,7 +89,7 @@ def show_candidate(id_existing: str = None, id_new: str = None) -> Response:
         executor.submit(map.create_candidate_pair_html, *next_pair, next_fp)
 
     return render_template(
-        "show_candidate.html", id_existing=id_existing, id_new=id_new, map_file=fp.name
+        "show_candidate_pair.html", id_existing=id_existing, id_new=id_new, map_file=fp.name
     ), 200
 
 
