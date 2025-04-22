@@ -94,16 +94,23 @@
 
         <p>Use the buttons below to label the <strong>highlighted building pair</strong> as either a <strong>'Match'</strong>, <strong>'No Match'</strong>, or <strong>'Unsure'</strong>.</p>
 
-        <form id="username-form" method="post" action="/set-username" onsubmit="return handleFormSubmit(event)" style="text-align: center; margin-top: 20px;">
+        <form id="username-form" onsubmit="return handleFormSubmit(event)" style="text-align: center; margin-top: 20px;">
             <input type="text" id="username" name="username" placeholder="Enter your username" required
-                   style="padding: 14px 20px; font-size: 16px; border-radius: 10px; border: 1px solid #ccc; margin-right: 14px;">
+                style="padding: 14px 20px; font-size: 16px; border-radius: 10px; border: 1px solid #ccc; margin-right: 14px;">
 
             <button type="submit"
-                    style="padding: 14px 20px; font-size: 16px; background-color: #4CAF50; color: white;
-                           border: none; border-radius: 10px; cursor: pointer;">
+                style="padding: 14px 20px; font-size: 16px; background-color: #4CAF50; color: white;
+                    border: none; border-radius: 10px; cursor: pointer;">
                 Get Started!
             </button>
         </form>
+
+        <div style="text-align: center; margin-top: 10px;">
+            <label style="font-size: 14px;">
+                <input type="checkbox" id="cv-toggle" style="margin-right: 6px;">
+                Redundantly label buildings to cross-validate previous annotations.
+            </label>
+        </div>
     </div>
 
     <div id="buttons">
@@ -118,16 +125,23 @@
 
             const usernameInput = document.getElementById('username');
             const username = usernameInput.value.trim();
+            const cv = document.getElementById('cv-toggle').checked;
+
 
             if (!username) { // Prevent submitting white spaces
                 alert('Please enter your username.');
                 return false;
             }
 
+            const formData = new URLSearchParams({
+                username,
+                cross_validate: cv ? 'true' : 'false'
+            });
+
             const response = await fetch('/set-username', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({ username })
+                body: formData
             });
 
             if (response.ok) {

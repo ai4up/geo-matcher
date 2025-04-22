@@ -44,8 +44,11 @@ def home() -> Response:
 @app.route('/set-username', methods=['POST'])
 def set_username():
     username = request.form.get('username')
+    cross_validate = request.form.get('cross_validate') == 'true'
+
     if username:
         session['username'] = username
+        session['cross_validate'] = cross_validate
         return '', 200
 
     return 'Missing username', 400
@@ -54,8 +57,10 @@ def set_username():
 @app.route("/show-pair")
 @app.route("/show-pair/<id_existing>/<id_new>")
 def show_candidate(id_existing: str = None, id_new: str = None) -> Response:
+    cv = session.get('cross_validate', False)
+
     if id_existing is None or id_new is None:
-        id_existing, id_new = S.current_pair()
+        id_existing, id_new = S.current_pair(cv)
 
     if id_existing is None:
         S.store_results()
@@ -68,7 +73,7 @@ def show_candidate(id_existing: str = None, id_new: str = None) -> Response:
     fp = maps_dir / f"candidate_{name}.html"
     map.create_candidate_pair_html(id_existing, id_new, fp)
 
-    next_pair = S.next_pair()
+    next_pair = S.next_pair(cv)
     if next_pair[0]:
         app.logger.debug(f"Pre-generating HTML map for candidate pair {next_pair}")
         next_name = _unq_name(*next_pair)
@@ -83,8 +88,10 @@ def show_candidate(id_existing: str = None, id_new: str = None) -> Response:
 @app.route("/show-neighborhood")
 @app.route("/show-neighborhood/<id>")
 def show_neighborhood(id: Optional[str] = None) -> Response:
+    cv = session.get('cross_validate', False)
+
     if id is None:
-        id = S.current_neighborhood()
+        id = S.current_neighborhood(cv)
 
     if id is None:
         S.store_results()
@@ -96,7 +103,7 @@ def show_neighborhood(id: Optional[str] = None) -> Response:
     fp = maps_dir / f"neighborhood_{id}.html"
     map.create_neighborhood_html(id, fp)
 
-    if next_id := S.next_neighborhood():
+    if next_id := S.next_neighborhood(cv):
         app.logger.debug(f"Pre-generating HTML map for neighborhood {next_id}")
         next_fp = maps_dir / f"neighborhood_{next_id}.html"
         executor.submit(map.create_neighborhood_html, next_id, next_fp)
@@ -109,11 +116,12 @@ def store_label() -> Response:
     data = request.json
 
     username = session.get('username', 'unknown')
+    cv = session.get('cross_validate', False)
     id_existing = data.get("id_existing")
     id_new = data.get("id_new")
     match = data.get("match")
 
-    next_pair = S.next_pair()
+    next_pair = S.next_pair(cv)
     S.add_result(id_existing, id_new, match, username)
 
     return jsonify({"status": "ok", "next_existing_id": next_pair[0] or "", "next_new_id": next_pair[1] or ""}), 200
@@ -124,6 +132,7 @@ def store_neighborhood() -> Response:
     data = request.json
 
     username = session.get('username', 'unknown')
+    cv = session.get('cross_validate', False)
     id = data.get("id")
     added = data.get("added")
     removed = data.get("removed")
@@ -141,7 +150,7 @@ def store_neighborhood() -> Response:
     results = _set_to_no_match(results, removed)
     results = _add_to_candidate_pairs(results, added)
 
-    next_id = S.next_neighborhood()
+    next_id = S.next_neighborhood(cv)
     S.add_bulk_results(results)
 
     return jsonify({"status": "ok", "next_id": next_id or ""}), 200

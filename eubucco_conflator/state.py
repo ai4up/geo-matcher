@@ -106,19 +106,27 @@ class State:
         return id_existing in cls.pairs["id_existing"].values and id_new in cls.pairs["id_new"].values
 
     @classmethod
-    def current_pair(cls) -> Optional[tuple[str, str]]:
+    def current_pair(cls, cross_validate: bool = False) -> Optional[tuple[str, str]]:
         try:
-            unlabeled = cls._unlabeled_candidate_pairs()
-            return tuple(unlabeled[["id_existing", "id_new"]].values[0])
+            if cross_validate:
+                remaining = cls._non_consensus_candidate_pairs()
+            else:
+                remaining = cls._unlabeled_candidate_pairs()
+
+            return tuple(remaining[["id_existing", "id_new"]].values[0])
 
         except IndexError:
             return None, None
 
     @classmethod
-    def next_pair(cls) -> Optional[tuple[str, str]]:
+    def next_pair(cls, cross_validate: bool = False) -> Optional[tuple[str, str]]:
         try:
-            unlabeled = cls._unlabeled_candidate_pairs()
-            return tuple(unlabeled[["id_existing", "id_new"]].values[1])
+            if cross_validate:
+                remaining = cls._non_consensus_candidate_pairs()
+            else:
+                remaining = cls._unlabeled_candidate_pairs()
+
+            return tuple(remaining[["id_existing", "id_new"]].values[1])
 
         except IndexError:
             return None, None
@@ -128,16 +136,22 @@ class State:
         return cls.pairs["id_new"].map(cls.data_b["neighborhood"]).unique()
 
     @classmethod
-    def current_neighborhood(cls) -> Optional[str]:
+    def current_neighborhood(cls, cross_validate: bool = False) -> Optional[str]:
         try:
+            if cross_validate:
+                return cls._neighborhoods_labeled_once()[0]
+
             return cls._unlabeled_neighborhoods()[0]
 
         except IndexError:
             return None
 
     @classmethod
-    def next_neighborhood(cls) -> Optional[str]:
+    def next_neighborhood(cls, cross_validate: bool = False) -> Optional[str]:
         try:
+            if cross_validate:
+                return cls._neighborhoods_labeled_once()[1]
+
             return cls._unlabeled_neighborhoods()[1]
 
         except IndexError:
@@ -145,9 +159,7 @@ class State:
 
     @classmethod
     def store_results(cls) -> None:
-        pd.DataFrame(cls.results).drop_duplicates(subset=["id_existing", "id_new", "username"], keep="last").to_csv(
-            RESULTS_FILE, index=False
-        )
+        cls._unique_results().to_csv(RESULTS_FILE, index=False)
         cls.logger(
             f"All buildings successfully labeled. Results stored in {RESULTS_FILE}."
         )
@@ -165,6 +177,10 @@ class State:
         return []
 
     @classmethod
+    def _unique_results(cls) -> DataFrame:
+        return pd.DataFrame(cls.results).drop_duplicates(subset=["id_existing", "id_new", "username"], keep="last")
+
+    @classmethod
     def _unlabeled_neighborhoods(cls) -> Index:
         labeled_nbh = set(result["neighborhood"] for result in cls.results)
         all_nbh = set(cls.neighborhoods())
@@ -173,9 +189,34 @@ class State:
         return unlabeled
 
     @classmethod
+    def _neighborhoods_labeled_once(cls) -> Index:
+        labeling_count = pd.DataFrame(cls.results).groupby("neighborhood")["username"].nunique()
+        labeled_once =  labeling_count[labeling_count == 1].index
+
+        return labeled_once
+
+    @classmethod
     def _unlabeled_candidate_pairs(cls) -> DataFrame:
         labeled_pairs = set((result["id_existing"], result["id_new"]) for result in cls.results)
         all_pairs = cls.pairs[["id_existing", "id_new"]].apply(tuple, axis=1)
         unlabeled = cls.pairs[~all_pairs.isin(labeled_pairs)]
 
         return unlabeled
+
+    @classmethod
+    def _non_consensus_candidate_pairs(cls) -> DataFrame:
+        return cls._candidate_pairs_labeled_once().union(cls._ambiguously_labeled_candidate_pairs()).to_frame()
+
+    @classmethod
+    def _candidate_pairs_labeled_once(cls) -> Index:
+        labeling_count = pd.DataFrame(cls.results).groupby(["id_existing", "id_new"])["username"].nunique()
+        labeled_once = labeling_count[labeling_count == 1].index
+
+        return labeled_once
+
+    @classmethod
+    def _ambiguously_labeled_candidate_pairs(cls) -> Index:
+        label_counts = cls._unique_results().groupby(["id_existing", "id_new"])["match"].value_counts().unstack()
+        ambiguous_pairs = label_counts[label_counts["yes"] == label_counts["no"]].index
+
+        return ambiguous_pairs
