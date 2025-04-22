@@ -22,7 +22,7 @@ executor = Executor()
 
 def create_app(data_path: str, results_path: str) -> Flask:
     app = Flask(__name__)
-    app.secret_key = os.getenv('SECRET_KEY', 'dev-mode')
+    app.secret_key = os.getenv('SECRET_KEY') or 'dev-mode'
     app.maps_dir = Path(app.static_folder) / "maps"
     app.url_map.strict_slashes = False
     app.register_blueprint(bp)

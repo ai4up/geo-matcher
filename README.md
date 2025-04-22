@@ -35,11 +35,13 @@ conflator label
 
 
 ## Dockerized approach
-*Prerequisites: Ensure a dataset of candidate pairs (`candidate-pairs.pickle`) is present in the `data` directory.*
+> Prerequisites
+> * Ensure a dataset of candidate pairs (`candidate-pairs.pickle`) is present in the `data` directory.
+> * For production deployment, set a [Flask session](https://flask.palletsprojects.com/en/stable/quickstart/#sessions) `SECRET_KEY` environment variable.
 
 Serve the dockerized Flask app with an Nginx proxy at `0.0.0.0:80`:
 ```bash
-SECRET_KEY=<some-flask-session-secret> docker-compose up
+docker-compose up
 ```
 
 ## Development
