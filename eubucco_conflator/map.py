@@ -27,7 +27,8 @@ def create_tutorial_html(filepath: str) -> None:
     m = _initialize_map(lat, lon, 20)
     _create_existing_buildings_layer(existing_buildings, "A_candidate").add_to(m)
     _create_new_buildings_layer(new_buildings, "B_candidate").add_to(m)
-    _add_tutorial_markers(lat, lon).add_to(m)
+    _add_tutorial_marker(lat, lon).add_to(m)
+    _add_baselayer_marker().add_to(m)
 
     m.save(filepath)
 
@@ -99,12 +100,21 @@ def _initialize_map(lat: float, lon: float, zoom_level: int) -> folium.Map:
     return m
 
 
-def _add_tutorial_markers(lat: float, lon: float) -> folium.Marker:
+def _add_tutorial_marker(lat: float, lon: float) -> folium.Marker:
     return folium.Marker(
         location=[lat, lon],
         tooltip="Building pair to be labeled as 'Match' / 'No Match' / 'Unsure'.",
         icon=folium.Icon(color="lightred", icon="info-sign"),
     )
+
+
+def _add_baselayer_marker() -> folium.Marker:
+    return folium.Marker(
+        location=[44.80484, 3.34594],
+        tooltip="Building from the baselayer. Can be ignored. Choose 'Esri WorldTopoMap' for a baselayer without buildings (lower resolution).",
+        icon=folium.Icon(color="lightgray", icon="info-sign"),
+    )
+
 
 def _create_existing_buildings_layer(gdf: GeoDataFrame, highlight_id: Optional[str] = None) -> folium.FeatureGroup:
     def style_function(feature):
