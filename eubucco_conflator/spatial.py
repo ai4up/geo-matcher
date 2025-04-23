@@ -139,7 +139,7 @@ def connect_with_lines(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> GeoDataFrame:
         for c1, c2 in zip(gdf1.centroid, gdf2.centroid)
     ]
 
-    return GeoDataFrame(geometry=edges, crs=gdf1.crs)
+    return GeoDataFrame(geometry=edges, index=MultiIndex.from_tuples(zip(gdf1.index, gdf2.index)), crs=gdf1.crs)
 
 
 def line_connects_two_polygons(line: LineString, poly1: Polygon, poly2: Polygon) -> bool:

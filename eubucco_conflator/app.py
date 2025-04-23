@@ -4,7 +4,7 @@ import re
 import shutil
 import webbrowser
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional, List
 
 from flask import Blueprint, Flask, Response, jsonify, current_app, render_template, request, send_file, session
 from flask_executor import Executor
@@ -165,31 +165,27 @@ def store_label() -> Response:
 @bp.route("/store-neighborhood", methods=["POST"])
 def store_neighborhood() -> Response:
     """
-    Store manual label adjustments for an entire neighborhood.
+    Stores the labeling decisions for all candidate pairs in a neighborhood and returns the next neighborhood ID.
 
-    Accepts GeoJSON features representing added and removed matches.
-    Updates the candidate pair results accordingly and returns the next neighborhood ID.
+    Accepts label adjustments (added and removed matches) and updates candidate pairs accordingly.
     """
     data = request.json
 
     username = session.get('username', 'unknown')
     cv = session.get('cross_validate', False)
     id = data.get("id")
-    added = data.get("added")
-    removed = data.get("removed")
+    added = data.get("added", [])
+    removed = data.get("removed", [])
 
-    added = gpd.GeoDataFrame.from_features(added, columns=["geometry"], crs="EPSG:4326")
-    removed = gpd.GeoDataFrame.from_features(removed, columns=["geometry"], crs="EPSG:4326")
-
-    current_app.logger.info(f"Adding {len(added)} additional matches in neighborhood {id}.")
-    current_app.logger.info(f"Removing {len(removed)} matches in neighborhood {id}.")
+    current_app.logger.info(f"Adding {len(added)} matches, removing {len(removed)} in neighborhood {id}.")
 
     results = S.get_candidate_pairs(id)
+    results = _update_removed_matches(results, removed)
+    results = _update_added_matches(results, added)
+
     results["username"] = username
     results["neighborhood"] = id
     results["match"] = results["match"].replace({True: "yes", False: "no"})
-    results = _set_to_no_match(results, removed)
-    results = _add_to_candidate_pairs(results, added)
 
     next_id = S.next_neighborhood(cv)
     S.add_bulk_results(results)
@@ -207,80 +203,35 @@ def download_results() -> Response:
     return send_file(S.results_path.absolute(), as_attachment=True)
 
 
-def _add_to_candidate_pairs(candidate_pairs: DataFrame, added: GeoDataFrame) -> DataFrame:
-    """
-    Add geometries to candidate pairs.
-    """
-    if added.empty:
-        return candidate_pairs
+def _update_added_matches(candidate_pairs: DataFrame, added: List[Dict]) -> DataFrame:
+    return _update_matches(candidate_pairs, added, label="yes", add_if_missing=True)
 
-    neighborhood = candidate_pairs["neighborhood"].iloc[0]
-    existing = S.get_existing_buildings(neighborhood)
-    new = S.get_new_buildings(neighborhood)
 
+def _update_removed_matches(candidate_pairs: DataFrame, removed: List[Dict]) -> DataFrame:
+    return _update_matches(candidate_pairs, removed, label="no", add_if_missing=False)
+
+
+def _update_matches(candidate_pairs: DataFrame, matches: List[Dict], label: str, add_if_missing: bool) -> DataFrame:
     new_candidate_pairs = []
-    for line in added.to_crs(existing.crs).geometry:
-        id_existing = _find_matching_building(line, existing)
-        id_new = _find_matching_building(line, new)
+    for match in matches:
+        id_existing = match.get("id_existing")
+        id_new = match.get("id_new")
         if not id_existing or not id_new:
             continue
 
         mask = (candidate_pairs["id_existing"] == id_existing) & (candidate_pairs["id_new"] == id_new)
         if mask.any():
-            candidate_pairs.loc[mask, "match"] = "yes"
-        else:
-            new_candidate_pairs.append(
-                {
-                    "id_existing": id_existing,
-                    "id_new": id_new,
-                    "neighborhood": neighborhood,
-                    "match": "yes",
-                }
-            )
+            candidate_pairs.loc[mask, "match"] = label
+        elif add_if_missing:
+            new_candidate_pairs.append({
+                "id_existing": id_existing,
+                "id_new": id_new,
+                "match": label
+            })
 
     candidate_pairs = pd.concat([candidate_pairs, DataFrame(new_candidate_pairs)], ignore_index=True)
 
     return candidate_pairs
-
-
-def _set_to_no_match(candidate_pairs: DataFrame, removed: GeoDataFrame) -> DataFrame:
-    """
-    Remove geometries from candidate pairs.
-    """
-    if removed.empty:
-        return candidate_pairs
-
-    existing = S.data.dataset_a.loc[candidate_pairs["id_existing"]]
-    new = S.data.dataset_b.loc[candidate_pairs["id_new"]]
-
-    for line in removed.to_crs(existing.crs).geometry:
-        idx = _find_matching_building_pair(line, existing, new)
-        if idx:
-            col_idx = candidate_pairs.columns.get_loc("match")
-            candidate_pairs.iloc[idx, col_idx] = "no"
-
-    return candidate_pairs
-
-
-def _find_matching_building_pair(line: LineString, gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> Optional[int]:
-    for i, (g1, g2) in enumerate(zip(gdf1.geometry, gdf2.geometry)):
-        if spatial.line_connects_two_polygons(line, g1, g2):
-            return i
-
-    return None
-
-
-def _find_matching_building(line: LineString, gdf: GeoDataFrame) -> Optional[str]:
-    start = Point(line.coords[0])
-    end = Point(line.coords[-1])
-    matches = gdf[gdf.contains(start) | gdf.contains(end)]
-
-    if matches.empty:
-        current_app.logger.warning(f"Drawn line ({line}) does not connect two buildings.")
-    elif len(matches) > 1:
-        current_app.logger.warning("End of drawn line is located inside multiple buildings. Added match is ambiguous.")
-    else:
-        return matches.index[0]
 
 
 def _unq_name(id_existing: str, id_new: str) -> str:

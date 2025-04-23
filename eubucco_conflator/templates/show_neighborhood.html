@@ -68,31 +68,24 @@
     </div>
 
     <div id="buttons">
-        <button class="btn btn-submit" onclick="sendLabeledGeometry('{{ id }}')">Submit</button>
+        <button class="btn btn-submit" onclick="sendLabeledMatches('{{ id }}')">Submit</button>
     </div>
 
     <a href="/download-results" id="download-link" target="_blank">Download Results</a>
 
     <script type="text/javascript">
-        function sendLabeledGeometry(id) {
+        function sendLabeledMatches(id) {
             const iframe = document.querySelector("iframe");
             const iframeWindow = iframe.contentWindow;
 
             const removed = iframeWindow.removedMatches || [];
-            const added = (iframeWindow.addedMatches || []).map(e => e.geojson);
+            const added = iframeWindow.addedMatches || [];
 
             const payload = {
                 id: id,
-                added: {
-                    type: "FeatureCollection",
-                    features: added
-                },
-                removed: {
-                    type: "FeatureCollection",
-                    features: removed
-                }
+                added: added.map(m => ({ id_existing: m.id_existing, id_new: m.id_new })),
+                removed: removed.map(m => ({ id_existing: m.id_existing, id_new: m.id_new }))
             };
-
 
             fetch('/store-neighborhood', {
                 method: 'POST',

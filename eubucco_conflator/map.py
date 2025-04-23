@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Optional
 
-from folium.plugins import Draw
 from geopandas import GeoDataFrame
 import folium
 import geopandas as gpd
@@ -126,14 +125,15 @@ def _create_existing_buildings_layer(gdf: GeoDataFrame, highlight_id: Optional[s
     def highlight_function(_):
             return {"fillOpacity": 0.8}
 
+    gdf["type"] = "existing"
     existing_buildings = folium.FeatureGroup(name="Existing Buildings")
     if not gdf.empty:
-        popup = folium.GeoJsonPopup(fields=["index"], aliases=["Building ID"])
+        tooltip = folium.GeoJsonTooltip(fields=["index"], aliases=["Building ID"])
         folium.GeoJson(
             gdf.reset_index(),
-            popup=popup,
+            tooltip=tooltip,
             style_function=style_function,
-            highlight_function=highlight_function,
+            highlight_function=highlight_function if highlight_id else None,
         ).add_to(existing_buildings)
 
     return existing_buildings
@@ -149,13 +149,14 @@ def _create_new_buildings_layer(gdf: GeoDataFrame, highlight_id: Optional[str] =
     def highlight_function(_):
             return {"fillOpacity": 0.5}
 
+    gdf["type"] = "new"
     new_buildings = folium.FeatureGroup(name="New Buildings")
-    popup = folium.GeoJsonPopup(fields=["index"], aliases=["Building ID"])
+    tooltip = folium.GeoJsonTooltip(fields=["index"], aliases=["Building ID"])
     folium.GeoJson(
         gdf.reset_index(),
-        popup=popup,
+        tooltip=tooltip,
         style_function=style_function,
-        highlight_function=highlight_function,
+        highlight_function=highlight_function if highlight_id else None,
     ).add_to(new_buildings)
 
     return new_buildings
@@ -163,95 +164,139 @@ def _create_new_buildings_layer(gdf: GeoDataFrame, highlight_id: Optional[str] =
 
 def _add_matching_layer(m: folium.Map, candidate_pairs: GeoDataFrame) -> None:
     matches = candidate_pairs[candidate_pairs["match"]]
-    matching_edges = spatial.connect_with_lines(matches["geometry_existing"], matches["geometry_new"])
+    matching_edges = spatial.connect_with_lines(
+        matches.set_index("id_existing")["geometry_existing"],
+        matches.set_index("id_new")["geometry_new"]
+    ).reset_index(names=["id_existing", "id_new"])
+
     _add_matching_edges(matching_edges, m)
-    _add_drawing_layer(m)
 
 
-def _add_matching_edges(gdf_initial_matches: GeoDataFrame, m: folium.Map) -> None:
-    map_name = m.get_name()
+def _add_matching_edges(edges: GeoDataFrame, m: folium.Map) -> None:
+    _inject_mouseover_effects(m)
     m.get_root().html.add_child(folium.Element(f"""
     <script>
     document.addEventListener("DOMContentLoaded", function () {{
         window.removedMatches = [];
+        window.addedMatches = [];
+        let selected = {{ existing: null, new: null }};
+        let highlightedLayer = null;
 
-        const map = window.{map_name};
-        const initialMatches = {gdf_initial_matches.to_json(to_wgs84=True)};
+        const map = window.{m.get_name()};
+
+        const initialMatches = {edges.to_json(to_wgs84=True)};
         const matchLayer = L.geoJSON(initialMatches, {{
             style: function(feature) {{
                 return {{ color: 'green', weight: 3 }};
             }},
             onEachFeature: function (feature, layer) {{
-
-                // Add click event to remove the match edge
-                layer.on('click', function () {{
+                // Allow users to remove initial matching edges
+                layer.on("click", function () {{
                     map.removeLayer(layer);
-                    window.removedMatches.push(feature);
-                    console.log("Removed match:", feature);
-                }});
-
-                // Highlight on hover
-                layer.on('mouseover', function () {{
-                    layer.setStyle({{
-                        color: 'lime',
-                        weight: 4
+                    window.removedMatches.push({{
+                        id_existing: feature.properties.id_existing,
+                        id_new: feature.properties.id_new
                     }});
+                    console.log("Removed match:", feature.properties.id_existing, "→", feature.properties.id_new);
                 }});
-
-                // Reset style when mouse leaves
-                layer.on('mouseout', function () {{
-                    layer.setStyle({{
-                        color: 'green',
-                        weight: 3
-                    }});
-                }});
+                applyLineHoverEffects(layer);
             }}
         }}).addTo(map);
+
+        // Allow users to add matching edges by subsequently clicking on existing and new buildings
+        map.eachLayer(layer => {{
+            if (layer.feature && layer.feature.properties && layer.feature.geometry) {{
+                const type = layer.feature.properties.type;
+                const id = layer.feature.properties.index;
+                const centroid = L.geoJSON(layer.feature).getBounds().getCenter();
+
+                if (type === "existing" || type === "new") {{
+                    layer.on("click", function () {{
+                        const alreadySelected = selected[type]?.id === id;
+
+                        if (alreadySelected) {{
+                            selected[type] = null;
+                            if (highlightedLayer && highlightedLayer._originalStyle) {{
+                                highlightedLayer.setStyle(highlightedLayer._originalStyle);
+                                highlightedLayer = null;
+                            }}
+                            return;
+                        }}
+
+                        if (highlightedLayer && highlightedLayer._originalStyle) {{
+                            highlightedLayer.setStyle(highlightedLayer._originalStyle);
+                        }}
+
+                        selected[type] = {{
+                            id: id,
+                            latlng: centroid
+                        }};
+
+                        layer._originalStyle = {{
+                            color: layer.options.color,
+                            weight: layer.options.weight,
+                            dashArray: layer.options.dashArray || null
+                        }};
+
+                        layer.setStyle({{
+                            color: "gold",
+                            weight: 5,
+                            dashArray: "5,5"
+                        }});
+                        highlightedLayer = layer;
+
+                        if (selected.existing && selected.new) {{
+                            const from = selected.existing;
+                            const to = selected.new;
+
+                            const line = L.polyline([from.latlng, to.latlng], {{
+                                color: "green",
+                                weight: 3
+                            }}).addTo(map);
+
+                            applyLineHoverEffects(line);
+
+                            line.on("click", function () {{
+                                map.removeLayer(line);
+                                window.addedMatches = window.addedMatches.filter(match => match.layer !== line);
+                                console.log("Removed added match:", from.id, "→", to.id);
+                            }});
+
+                            window.addedMatches.push({{
+                                id_existing: from.id,
+                                id_new: to.id,
+                                layer: line
+                            }});
+                            console.log("Added match:", from.id, "→", to.id);
+
+                            selected = {{ existing: null, new: null }};
+                            if (highlightedLayer && highlightedLayer._originalStyle) {{
+                                highlightedLayer.setStyle(highlightedLayer._originalStyle);
+                                highlightedLayer = null;
+                            }}
+                        }}
+                    }});
+                }}
+            }}
+        }});
     }});
     </script>
     """
     ))
 
 
-def _add_drawing_layer(m: folium.Map) -> None:
-    Draw(
-        show_geometry_on_click=False,
-        draw_options={
-            "polyline": True,
-            "polygon": False,
-            "circle": False,
-            "marker": False,
-            "rectangle": False,
-            "circlemarker": False,
-        },
-        edit_options={"edit": False, "remove": True},
-    ).add_to(m)
-    _store_added_edges_js(m)
-
-
-def _store_added_edges_js(m: folium.Map) -> None:
-    m.get_root().html.add_child(folium.Element(f"""
+def _inject_mouseover_effects(m: folium.Map) -> None:
+    m.get_root().html.add_child(folium.Element("""
     <script>
-        document.addEventListener("DOMContentLoaded", function () {{
-            const map = window.{m.get_name()};
-            window.addedMatches = [];
+    function applyLineHoverEffects(line) {
+        line.on("mouseover", function () {
+            line.setStyle({ color: "lime", weight: 4 });
+        });
 
-            map.on('draw:created', function (e) {{
-                const geojson = e.layer.toGeoJSON();
-                window.addedMatches.push({{
-                    layer: e.layer,
-                    geojson: geojson
-                }});
-                console.log("Added match edge:", geojson);
-            }});
-
-            map.on('draw:deleted', function (e) {{
-                e.layers.eachLayer(function (deletedLayer) {{
-                    window.addedMatches = window.addedMatches.filter(entry => entry.layer !== deletedLayer);
-                    console.log("Deleted layer:", deletedLayer);
-                }});
-            }});
-        }});
+        line.on("mouseout", function () {
+            line.setStyle({ color: "green", weight: 3 });
+        });
+    }
     </script>
     """
     ))
