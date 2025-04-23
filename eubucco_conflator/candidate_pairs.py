@@ -60,6 +60,9 @@ class CandidatePairs:
         if dataset_b.active_geometry_name is None:
             raise ValueError("Dataset B must contain an active geometry column.")
 
+        if dataset_a.crs != dataset_b.crs:
+            raise ValueError("Dataset A and Dataset B must have the same CRS.")
+
         if not "neighborhood" in dataset_a.columns:
             raise ValueError("Dataset A must contain a 'neighborhood' column.")
 
