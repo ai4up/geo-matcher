@@ -50,6 +50,7 @@ def create_candidate_pair_html(id_existing: str, id_new: str, filepath: Path) ->
 
     _create_existing_buildings_layer(existing_buildings, id_existing).add_to(m)
     _create_new_buildings_layer(new_buildings, id_new).add_to(m)
+    _disable_leaflet_click_outline(m)
     _add_legend(m, candidates_highlighted=True)
 
     folium.LayerControl(collapsed=True).add_to(m)
@@ -77,6 +78,7 @@ def create_neighborhood_html(id: str, filepath: Path) -> None:
     _create_existing_buildings_layer(existing_buildings).add_to(m)
     _create_new_buildings_layer(new_buildings).add_to(m)
     _add_matching_layer(m, candidate_pairs)
+    _disable_leaflet_click_outline(m)
     _add_legend(m)
 
     folium.LayerControl(collapsed=True).add_to(m)
@@ -173,6 +175,16 @@ def _add_matching_layer(m: folium.Map, candidate_pairs: GeoDataFrame) -> None:
         ).reset_index(names=["id_existing", "id_new"])
 
     _add_matching_edges(matching_edges, m)
+
+
+def _disable_leaflet_click_outline(m: folium.Map) -> None:
+    m.get_root().header.add_child(folium.Element("""
+    <style>
+    .leaflet-interactive:focus {
+        outline: none;
+    }
+    </style>
+    """))
 
 
 def _add_matching_edges(edges: GeoDataFrame, m: folium.Map) -> None:
