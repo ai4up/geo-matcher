@@ -164,13 +164,15 @@ def _create_new_buildings_layer(gdf: GeoDataFrame, highlight_id: Optional[str] =
 
 def _add_matching_layer(m: folium.Map, candidate_pairs: GeoDataFrame) -> None:
     matches = candidate_pairs[candidate_pairs["match"]]
-    matching_edges = spatial.connect_with_lines(
-        matches.set_index("id_existing")["geometry_existing"],
-        matches.set_index("id_new")["geometry_new"]
-    ).reset_index(names=["id_existing", "id_new"])
+    if matches.empty:
+        matching_edges = gpd.GeoDataFrame(geometry=[], crs=candidate_pairs["geometry_existing"].crs)
+    else:
+        matching_edges = spatial.connect_with_lines(
+            matches.set_index("id_existing")["geometry_existing"],
+            matches.set_index("id_new")["geometry_new"]
+        ).reset_index(names=["id_existing", "id_new"])
 
     _add_matching_edges(matching_edges, m)
-
 
 def _add_matching_edges(edges: GeoDataFrame, m: folium.Map) -> None:
     _inject_mouseover_effects(m)
