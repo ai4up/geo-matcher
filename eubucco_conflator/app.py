@@ -1,5 +1,6 @@
 import atexit
 import os
+import re
 import shutil
 import webbrowser
 from pathlib import Path
@@ -53,6 +54,9 @@ def home() -> Response:
 def set_username():
     username = request.form.get('username')
     cross_validate = request.form.get('cross_validate') == 'true'
+
+    if not re.match(r'^[a-zA-Z0-9_-]+$', username):
+        return 'Invalid characters in username', 400
 
     if username:
         session['username'] = username
