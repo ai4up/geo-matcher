@@ -174,6 +174,7 @@ def _add_matching_layer(m: folium.Map, candidate_pairs: GeoDataFrame) -> None:
 
     _add_matching_edges(matching_edges, m)
 
+
 def _add_matching_edges(edges: GeoDataFrame, m: folium.Map) -> None:
     _inject_mouseover_effects(m)
     m.get_root().html.add_child(folium.Element(f"""
@@ -205,7 +206,23 @@ def _add_matching_edges(edges: GeoDataFrame, m: folium.Map) -> None:
             }}
         }}).addTo(map);
 
-        // Allow users to add matching edges by subsequently clicking on existing and new buildings
+        const initialMatchKeys = new Set(
+            initialMatches.features.map(f => `${{f.properties.id_existing}}--${{f.properties.id_new}}`)
+        );
+
+        function matchExists(from_id, to_id) {{
+            const key = `${{from_id}}--${{to_id}}`;
+            if (initialMatchKeys.has(key) &&
+                !window.removedMatches.some(m => m.id_existing === from_id && m.id_new === to_id)) {{
+                return true;
+            }}
+            if (window.addedMatches.some(m => m.id_existing === from_id && m.id_new === to_id)) {{
+                return true;
+            }}
+            return false;
+        }}
+
+        // Add new matches by clicking existing + new buildings
         map.eachLayer(layer => {{
             if (layer.feature && layer.feature.properties && layer.feature.geometry) {{
                 const type = layer.feature.properties.type;
@@ -251,6 +268,16 @@ def _add_matching_edges(edges: GeoDataFrame, m: folium.Map) -> None:
                             const from = selected.existing;
                             const to = selected.new;
 
+                            if (matchExists(from.id, to.id)) {{
+                                console.log("Skipped adding match (duplicate):", from.id, "→", to.id);
+                                selected = {{ existing: null, new: null }};
+                                if (highlightedLayer && highlightedLayer._originalStyle) {{
+                                    highlightedLayer.setStyle(highlightedLayer._originalStyle);
+                                    highlightedLayer = null;
+                                }}
+                                return;
+                            }}
+
                             const line = L.polyline([from.latlng, to.latlng], {{
                                 color: "green",
                                 weight: 3
@@ -264,12 +291,19 @@ def _add_matching_edges(edges: GeoDataFrame, m: folium.Map) -> None:
                                 console.log("Removed added match:", from.id, "→", to.id);
                             }});
 
-                            window.addedMatches.push({{
-                                id_existing: from.id,
-                                id_new: to.id,
-                                layer: line
-                            }});
-                            console.log("Added match:", from.id, "→", to.id);
+                            if (window.removedMatches.some(m => m.id_existing === from.id && m.id_new === to.id)) {{
+                            window.removedMatches = window.removedMatches.filter(
+                                m => !(m.id_existing === from.id && m.id_new === to.id)
+                            );
+                            console.log("Re-added removed match:", from.id, "→", to.id);
+                            }} else {{
+                                window.addedMatches.push({{
+                                    id_existing: from.id,
+                                    id_new: to.id,
+                                    layer: line
+                                }});
+                                console.log("Added match:", from.id, "→", to.id);
+                            }}
 
                             selected = {{ existing: null, new: null }};
                             if (highlightedLayer && highlightedLayer._originalStyle) {{
