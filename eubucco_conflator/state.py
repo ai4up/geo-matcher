@@ -15,11 +15,20 @@ _PROGRESS_FILEPATH = Path(".progress", "labeling-progress.pickle")
 
 
 class State:
+    """
+    Manage the state of the candidate building pair labeling process.
+
+    Handles loading data, tracking progress, and storing results for
+    individual candidate pairs and neighborhood-level matches.
+    """
     data: Optional[CandidatePairs] = None
     results: List[Dict[str, any]] = []
 
     @classmethod
     def init(cls, data_path: str, results_path: str, logger: Callable[[str], None] = print) -> None:
+        """
+        Initialize the labeling state for a given candidate pair dataset, taking into account previously labeled pairs.
+        """
         cls.logger = logger
         cls.results_path = Path(results_path)
         cls.data = CandidatePairs.load(data_path)
@@ -33,6 +42,9 @@ class State:
 
     @classmethod
     def get_existing_buildings(cls, neighborhood: str) -> GeoDataFrame:
+        """
+        Return existing buildings in or linked to the given neighborhood.
+        """
         nbh_a = cls.data_a[cls.data_a["neighborhood"] == neighborhood]
 
         # Edge case: also get the existing buildings of candidate pairs, where only the new building is in the neighborhood of interest
@@ -44,18 +56,30 @@ class State:
 
     @classmethod
     def get_new_buildings(cls, iteration: str) -> GeoDataFrame:
+        """
+        Return new buildings in the given neighborhood.
+        """
         return cls.data_b[cls.data_b["neighborhood"] == iteration]
 
     @classmethod
     def get_existing_buildings_at(cls, loc: Point) -> GeoDataFrame:
+        """
+        Return existing buildings within 150 meters of the given location.
+        """
         return spatial.within(cls.data_a, loc, dis=150)
 
     @classmethod
     def get_new_building_at(cls, loc: Point) -> GeoDataFrame:
+        """
+        Return new buildings within 150 meters of the given location.
+        """
         return spatial.within(cls.data_b, loc, dis=150)
 
     @classmethod
     def get_candidate_pair(cls, id_existing: str, id_new: str) -> Series:
+        """
+        Return a candidate pair including the geometry of both buildings.
+        """
         return Series({
             "id_existing": id_existing,
             "id_new": id_new,
@@ -65,6 +89,9 @@ class State:
 
     @classmethod
     def get_candidate_pairs(cls, neighborhood: str) -> Union[DataFrame, GeoDataFrame]:
+        """
+        Return all candidate pairs in the given neighborhood including their geometries.
+        """
         new = cls.get_new_buildings(neighborhood)
         pairs = cls.pairs[cls.pairs["id_new"].isin(new.index)]
 
@@ -76,6 +103,9 @@ class State:
 
     @classmethod
     def add_result(cls, id_existing: str, id_new: str, match: str, username: str) -> None:
+        """
+        Store a labeling decision for a candidate pair.
+        """
         if match not in ["yes", "no", "unsure"]:
             raise ValueError(f"Match label '{match}' must be one of: 'yes', 'no', 'unsure'.")
 
@@ -94,6 +124,9 @@ class State:
 
     @classmethod
     def add_bulk_results(cls, df: DataFrame) -> None:
+        """
+        Store multiple labeling decisions from a DataFrame.
+        """
         if not df["match"].isin(["yes", "no", "unsure"]).all():
             raise ValueError("Match label must be one of: 'yes', 'no', 'unsure'.")
 
@@ -103,10 +136,19 @@ class State:
 
     @classmethod
     def valid_pair(cls, id_existing: str, id_new: str) -> Series:
+        """
+        Check whether a given ID pair exists in the candidate pairs.
+        """
         return id_existing in cls.pairs["id_existing"].values and id_new in cls.pairs["id_new"].values
 
     @classmethod
     def current_pair(cls, cross_validate: bool = False) -> Optional[tuple[str, str]]:
+        """
+        Return the next candidate pair to be labeled, or None if all are labeled.
+
+        If cross_validate is True, a pair is returned that has been labeled once or
+        ambiguously by multiple users to allow cross-checking of the labels.
+        """
         try:
             if cross_validate:
                 remaining = cls._non_consensus_candidate_pairs()
@@ -120,6 +162,12 @@ class State:
 
     @classmethod
     def next_pair(cls, cross_validate: bool = False) -> Optional[tuple[str, str]]:
+        """
+        Return the next but one candidate pair to be labeled, or None if all are labeled.
+
+        If cross_validate is True, a pair is returned that has been labeled once or
+        ambiguously by multiple users to allow cross-checking of the labels.
+        """
         try:
             if cross_validate:
                 remaining = cls._non_consensus_candidate_pairs()
@@ -133,10 +181,19 @@ class State:
 
     @classmethod
     def neighborhoods(cls) -> np.array:
+        """
+        Return the unique list of neighborhoods in the dataset.
+        """
         return cls.pairs["id_new"].map(cls.data_b["neighborhood"]).unique()
 
     @classmethod
     def current_neighborhood(cls, cross_validate: bool = False) -> Optional[str]:
+        """
+        Return the next neighborhood to be labeled, or None if all are labeled.
+
+        If cross_validate is True, a neighborhood is returned that has been labeled
+        only once to allow cross-checking of the labels.
+        """
         try:
             if cross_validate:
                 return cls._neighborhoods_labeled_once()[0]
@@ -148,6 +205,12 @@ class State:
 
     @classmethod
     def next_neighborhood(cls, cross_validate: bool = False) -> Optional[str]:
+        """
+        Return the next but one neighborhood to be labeled, or None if all are labeled.
+
+        If cross_validate is True, a neighborhood is returned that has been labeled
+        only once to allow cross-checking of the labels.
+        """
         try:
             if cross_validate:
                 return cls._neighborhoods_labeled_once()[1]
@@ -159,9 +222,12 @@ class State:
 
     @classmethod
     def store_results(cls) -> None:
+        """
+        Save all labeled candidate pairs to disk as a CSV file.
+        """
         cls._unique_results().to_csv(cls.results_path, index=False)
         cls.logger(
-            f"All buildings successfully labeled. Results stored in {cls.results_path}."
+            f"Labeled building pairs stored in {cls.results_path}."
         )
 
     @classmethod

@@ -8,6 +8,10 @@ from eubucco_conflator import spatial
 
 
 class CandidatePairs:
+    """
+    Class to store and persist potential matching pairs of buildings from two datasets.
+    """
+
     def __init__(
         self,
         dataset_a: GeoDataFrame,
@@ -22,17 +26,23 @@ class CandidatePairs:
 
     @staticmethod
     def load(filepath: str) -> "CandidatePairs":
-        """Load an instance from a pickle file."""
+        """
+        Load an instance from a pickle file.
+        """
         with open(filepath, 'rb') as f:
             return pickle.load(f)
 
     def save(self, filepath: str) -> None:
-        """Save the instance to a file using pickle."""
+        """
+        Save the instance to a file using pickle.
+        """
         with open(filepath, 'wb') as f:
             pickle.dump(self, f)
 
     def preliminary_matching_estimate(self) -> None:
-        """Estimate the matching between buildings in dataset_a and dataset_b."""
+        """
+        Estimate the matching between buildings in dataset_a and dataset_b.
+        """
         existing_geom = self.dataset_a.loc[self.pairs["id_existing"]]
         new_geom = self.dataset_b.loc[self.pairs["id_new"]]
         self.pairs["match"] = spatial.corresponding(existing_geom, new_geom)

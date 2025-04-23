@@ -22,6 +22,9 @@ bp = Blueprint('matching', __name__)
 executor = Executor()
 
 def create_app(data_path: str, results_path: str) -> Flask:
+    """
+    Create and configure the Flask app.
+    """
     app = Flask(__name__)
     app.secret_key = os.getenv('SECRET_KEY') or 'dev-mode'
     app.maps_dir = Path(app.static_folder) / "maps"
@@ -37,6 +40,9 @@ def create_app(data_path: str, results_path: str) -> Flask:
 
 
 def start_locally(*args, **kwargs) -> None:
+    """
+    Start the Flask app locally in the browser. Ensures that results are persisted on exit.
+    """
     app = create_app(*args, **kwargs)
     atexit.register(S.store_results)
     webbrowser.open("http://127.0.0.1:5001/")
@@ -45,6 +51,9 @@ def start_locally(*args, **kwargs) -> None:
 
 @bp.route("/")
 def home() -> Response:
+    """
+    Display the home page including a labeling tutorial and a username prompt.
+    """
     fp = current_app.maps_dir / "candidate_demo.html"
     map.create_tutorial_html(fp)
     return render_template("index.html"), 200
@@ -52,6 +61,11 @@ def home() -> Response:
 
 @bp.route('/set-username', methods=['POST'])
 def set_username():
+    """
+    Store the username and cross-validation mode in the session.
+
+    The username must be alphanumeric (including underscores and hyphens).
+    """
     username = request.form.get('username')
     cross_validate = request.form.get('cross_validate') == 'true'
 
@@ -69,6 +83,9 @@ def set_username():
 @bp.route("/show-pair")
 @bp.route("/show-pair/<id_existing>/<id_new>")
 def show_candidate_pair(id_existing: str = None, id_new: str = None) -> Response:
+    """
+    Display a map of a candidate building pair for manual labeling.
+    """
     cv = session.get('cross_validate', False)
 
     if id_existing is None or id_new is None:
@@ -100,6 +117,9 @@ def show_candidate_pair(id_existing: str = None, id_new: str = None) -> Response
 @bp.route("/show-neighborhood")
 @bp.route("/show-neighborhood/<id>")
 def show_neighborhood(id: Optional[str] = None) -> Response:
+    """
+    Display a map of all candidate building pairs in a neighborhood for bulk labeling.
+    """
     cv = session.get('cross_validate', False)
 
     if id is None:
@@ -125,6 +145,9 @@ def show_neighborhood(id: Optional[str] = None) -> Response:
 
 @bp.route("/store-label", methods=["POST"])
 def store_label() -> Response:
+    """
+    Store the labeling decision for a candidate pair and return the next one.
+    """
     data = request.json
 
     username = session.get('username', 'unknown')
@@ -141,6 +164,12 @@ def store_label() -> Response:
 
 @bp.route("/store-neighborhood", methods=["POST"])
 def store_neighborhood() -> Response:
+    """
+    Store manual label adjustments for an entire neighborhood.
+
+    Accepts GeoJSON features representing added and removed matches.
+    Updates the candidate pair results accordingly and returns the next neighborhood ID.
+    """
     data = request.json
 
     username = session.get('username', 'unknown')
@@ -170,6 +199,9 @@ def store_neighborhood() -> Response:
 
 @bp.route("/download-results")
 def download_results() -> Response:
+    """
+    Download the results of the labeling process as a CSV file.
+    """
     S.store_results()
 
     return send_file(S.results_path.absolute(), as_attachment=True)

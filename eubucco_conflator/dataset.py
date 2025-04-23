@@ -94,7 +94,9 @@ def _ensure_unique_index(
 def _drop_buildings_elsewhere(
     gdf1: GeoDataFrame, gdf2: GeoDataFrame, pairs: DataFrame
 ) -> Tuple[GeoDataFrame, GeoDataFrame]:
-    """To reduce dataset size, remove buildings in different neighborhoods than candidate pairs."""
+    """
+    To reduce dataset size, remove buildings in different neighborhoods than candidate pairs.
+    """
     nbh1 = pairs["id_existing"].map(gdf1["neighborhood"])
     nbh2 = pairs["id_new"].map(gdf2["neighborhood"])
     nbh = pd.concat([nbh1, nbh2]).unique()
@@ -150,7 +152,9 @@ def _determine_overlapping_candidate_pairs(
 def _filter_candidate_pairs_by_overlap(
         pairs: DataFrame, gdf1: GeoDataFrame, gdf2: GeoDataFrame, overlap_range: Tuple[float, float]
     ) -> DataFrame:
-    """Filter candidate pairs based on their degree of overlap, i.e. their Two-Way Area Overlap (TWAO)."""
+    """
+    Filter candidate pairs based on their degree of overlap, i.e. their Two-Way Area Overlap (TWAO).
+    """
     gdf1_can = gdf1.loc[pairs["id_existing"]]
     gdf2_can = gdf2.loc[pairs["id_new"]]
 
@@ -163,7 +167,9 @@ def _filter_candidate_pairs_by_overlap(
 def _filter_candidate_pairs_by_shape_similarity(
         candidate_pairs: DataFrame, gdf1: GeoDataFrame, gdf2: GeoDataFrame, similarity_range: Tuple[float, float]
     ) -> DataFrame:
-    """Filter candidate pairs based on their shape similarity."""
+    """
+    Filter candidate pairs based on their shape similarity.
+    """
     gdf1_can = gdf1.loc[candidate_pairs["id_existing"]]
     gdf2_can = gdf2.loc[candidate_pairs["id_new"]]
 
