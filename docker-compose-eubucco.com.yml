@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    expose:
+      - "5000"
+    container_name: matching-app
+    volumes:
+      - /home/eubucco-conflation/data:/app/data
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - DATA_PATH=/app/data/candidate-pairs.pickle
+      - RESULTS_PATH=/app/data/results.csv
+    networks:
+      - proxy
+    labels:
+      # Service definition
+      - "traefik.enable=true"
+      - "traefik.http.routers.matching-http.service=matching-app"
+      - "traefik.http.routers.matching-https.service=matching-app"
+      - "traefik.http.services.matching-app.loadbalancer.server.port=5000"
+
+      # Routers: HTTP to HTTPS redirect
+      - "traefik.http.routers.matching-http.rule=Host(`matching.eubucco.com`,`www.matching.eubucco.com`)"
+      - "traefik.http.routers.matching-http.entrypoints=http"
+      - "traefik.http.routers.matching-http.middlewares=redirect-to-https"
+
+      # Middleware: redirect HTTP to HTTPS
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+
+      # Routers: HTTPS
+      - "traefik.http.routers.matching-https.rule=Host(`matching.eubucco.com`,`www.matching.eubucco.com`)"
+      - "traefik.http.routers.matching-https.entrypoints=https"
+      - "traefik.http.routers.matching-https.tls=true"
+      - "traefik.http.routers.matching-https.tls.certresolver=http"
+    restart: always
+
+networks:
+  proxy:
+    external: true
