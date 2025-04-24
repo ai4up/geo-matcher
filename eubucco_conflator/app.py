@@ -90,7 +90,6 @@ def set_username():
     return "", 200
 
 
-
 @bp.route("/show-pair")
 @bp.route("/show-pair/<id_existing>/<id_new>")
 def show_candidate_pair(id_existing: str = None, id_new: str = None) -> Response:
@@ -101,7 +100,7 @@ def show_candidate_pair(id_existing: str = None, id_new: str = None) -> Response
     mode = session.get("label_mode")
 
     if id_existing is None or id_new is None:
-        id_existing, id_new = S.get_current_pair(mode, username)
+        id_existing, id_new = S.get_next_pair(mode, username)
 
     if id_existing is None:
         S.store_results()
@@ -114,12 +113,12 @@ def show_candidate_pair(id_existing: str = None, id_new: str = None) -> Response
     fp = current_app.maps_dir / f"candidate_{name}.html"
     map.create_candidate_pair_html(id_existing, id_new, fp)
 
-    next_pair = S.get_next_pair(mode, username)
-    if next_pair[0]:
-        current_app.logger.debug(f"Pre-generating HTML map for candidate pair {next_pair}")
-        next_name = _unq_name(*next_pair)
+    subsequent_pair = S.get_pair_after_next(mode, username)
+    if subsequent_pair[0]:
+        current_app.logger.debug(f"Pre-generating HTML map for candidate pair {subsequent_pair}")
+        next_name = _unq_name(*subsequent_pair)
         next_fp = current_app.maps_dir / f"candidate_{next_name}.html"
-        executor.submit(map.create_candidate_pair_html, *next_pair, next_fp)
+        executor.submit(map.create_candidate_pair_html, *subsequent_pair, next_fp)
 
     return render_template(
         "show_candidate_pair.html", id_existing=id_existing, id_new=id_new, map_file=fp.name
@@ -136,7 +135,7 @@ def show_neighborhood(id: Optional[str] = None) -> Response:
     mode = session.get("label_mode")
 
     if id is None:
-        id = S.get_current_neighborhood(mode, username)
+        id = S.get_next_neighborhood(mode, username)
 
     if id is None:
         S.store_results()
@@ -148,10 +147,10 @@ def show_neighborhood(id: Optional[str] = None) -> Response:
     fp = current_app.maps_dir / f"neighborhood_{id}.html"
     map.create_neighborhood_html(id, fp)
 
-    if next_id := S.get_next_neighborhood(mode, username):
-        current_app.logger.debug(f"Pre-generating HTML map for neighborhood {next_id}")
-        next_fp = current_app.maps_dir / f"neighborhood_{next_id}.html"
-        executor.submit(map.create_neighborhood_html, next_id, next_fp)
+    if subsequent_id := S.get_neighborhood_after_next(mode, username):
+        current_app.logger.debug(f"Pre-generating HTML map for neighborhood {subsequent_id}")
+        next_fp = current_app.maps_dir / f"neighborhood_{subsequent_id}.html"
+        executor.submit(map.create_neighborhood_html, subsequent_id, next_fp)
 
     return render_template("show_neighborhood.html", id=id, map_file=fp.name), 200
 
@@ -170,7 +169,7 @@ def store_label() -> Response:
     match = data.get("match")
 
     S.add_result(id_existing, id_new, match, username)
-    next_pair = S.get_current_pair(mode, username)
+    next_pair = S.get_next_pair(mode, username)
 
     return jsonify({"status": "ok", "next_existing_id": next_pair[0] or "", "next_new_id": next_pair[1] or ""}), 200
 
@@ -203,7 +202,7 @@ def store_neighborhood() -> Response:
     results["match"] = results["match"].replace({True: "yes", False: "no"})
 
     S.add_bulk_results(results)
-    next_id = S.get_current_neighborhood(mode, username)
+    next_id = S.get_next_neighborhood(mode, username)
 
     return jsonify({"status": "ok", "next_id": next_id or ""}), 200
 

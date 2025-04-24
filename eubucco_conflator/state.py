@@ -145,7 +145,7 @@ class State:
         return id_existing in cls.pairs["id_existing"].values and id_new in cls.pairs["id_new"].values
 
     @classmethod
-    def get_current_pair(cls, label_mode: str, user: str = None) -> Optional[tuple[str, str]]:
+    def get_next_pair(cls, label_mode: str, user: str = None) -> Optional[tuple[str, str]]:
         """
         Return the next candidate pair to be labeled based on the selected labeling mode.
 
@@ -166,7 +166,7 @@ class State:
             return None, None
 
     @classmethod
-    def get_next_pair(cls, label_mode: str, user: str = None) -> Optional[tuple[str, str]]:
+    def get_pair_after_next(cls, label_mode: str, user: str = None) -> Optional[tuple[str, str]]:
         """
         Return the next but one candidate pair to be labeled based on the selected labeling mode.
 
@@ -194,7 +194,7 @@ class State:
         return cls.pairs["id_new"].map(cls.data_b["neighborhood"]).unique()
 
     @classmethod
-    def get_current_neighborhood(cls, label_mode: str, user: str = None) -> Optional[str]:
+    def get_next_neighborhood(cls, label_mode: str, user: str = None) -> Optional[str]:
         """
         Return the next neighborhood to be labeled based on the selected labeling mode.
 
@@ -215,7 +215,7 @@ class State:
             return None
 
     @classmethod
-    def get_next_neighborhood(cls, label_mode: str, user: str = None) -> Optional[str]:
+    def get_neighborhood_after_next(cls, label_mode: str, user: str = None) -> Optional[str]:
         """
         Return the next but one neighborhood to be labeled based on the selected labeling mode.
 
