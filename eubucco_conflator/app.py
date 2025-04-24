@@ -56,13 +56,23 @@ def ensure_session_defaults() -> None:
 
 
 @bp.route("/")
-def home() -> Response:
+def home_pairwise() -> Response:
     """
-    Display the home page including a labeling tutorial and a username prompt.
+    Display the home page for pair-wise labeling including a tutorial and a username prompt.
     """
     fp = current_app.maps_dir / "candidate_demo.html"
     map.create_tutorial_html(fp)
     return render_template("index.html"), 200
+
+
+@bp.route("/batch")
+def home_batch() -> Response:
+    """
+    Display the home page for neighborhood-wise labeling including a tutorial and a username prompt.
+    """
+    fp = current_app.maps_dir / "neighborhood_demo.html"
+    map.create_neighborhood_tutorial_html(fp)
+    return render_template("neighborhood_index.html"), 200
 
 
 @bp.route("/set-username", methods=["POST"])

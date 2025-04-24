@@ -8,6 +8,7 @@ import geopandas as gpd
 
 from eubucco_conflator.state import State as S
 from eubucco_conflator import spatial
+from eubucco_conflator.candidate_pairs import CandidatePairs
 
 
 def create_tutorial_html(filepath: str) -> None:
@@ -29,6 +30,31 @@ def create_tutorial_html(filepath: str) -> None:
     _create_new_buildings_layer(new_buildings, "B_candidate").add_to(m)
     _add_tutorial_marker(lat, lon).add_to(m)
     _add_baselayer_marker().add_to(m)
+
+    m.save(filepath)
+
+def create_neighborhood_tutorial_html(filepath: str) -> None:
+    """
+    Create a demo Folium HTML map with an example neighborhood and an instruction text.
+    """
+    # Load demo data
+    demo_data_path = Path(__file__).parent / "data" / "tutorial-neighborhood.pickle"
+    data = CandidatePairs.load(demo_data_path)
+    data.preliminary_matching_estimate()
+
+    pairs = GeoDataFrame(data.pairs)
+    pairs["geometry_existing"] = pairs["id_existing"].map(data.dataset_a.geometry)
+    pairs["geometry_new"] = pairs["id_new"].map(data.dataset_b.geometry)
+
+    # Initialize map and add demo buildings
+    m = _initialize_map(44.8031, 3.42505, 20)
+    _create_existing_buildings_layer(data.dataset_a).add_to(m)
+    _create_new_buildings_layer(data.dataset_b).add_to(m)
+    _add_matching_layer(m, pairs)
+    _disable_leaflet_click_outline(m)
+    _add_legend(m)
+
+    folium.LayerControl(collapsed=True).add_to(m)
 
     m.save(filepath)
 

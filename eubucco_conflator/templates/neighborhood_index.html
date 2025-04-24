@@ -37,9 +37,7 @@
             cursor: pointer;
         }
 
-        .btn-match { background: #4caf50; color: white; }
-        .btn-no-match { background: #ff4d4d; color: white; }
-        .btn-unsure { background: #f0ad4e; color: white; }
+        .btn-submit { background: #4caf50; color: white; }
 
         .btn:hover {
             opacity: 0.8;
@@ -85,38 +83,24 @@
 </head>
 <body>
     <div id="map">
-        <iframe src="{{ url_for('static', filename='maps/candidate_demo.html') }}" width="100%" height="100%"></iframe>
+        <iframe src="{{ url_for('static', filename='maps/neighborhood_demo.html') }}" width="100%" height="100%"></iframe>
     </div>
 
     <div id="tutorial">
         <div id="labeling-tabs" style="text-align: center; margin-top: 10px; margin-bottom: 10px;">
-            <a href="/" class="nav-link active">Pair-wise Labeling</a>
-            <a href="/batch" class="nav-link">Neighborhood-wise Labeling</a>
+            <a href="/" class="nav-link">Pair-wise Labeling</a>
+            <a href="/batch" class="nav-link active">Neighborhood-wise Labeling</a>
         </div>
 
         <h2 style="text-align: center;">Welcome to the Building Footprint Matching Tool!</h2>
-        <p>The tool iterates through pairs of buildings from two different datasets and asks you whether they match<br>(i.e. describe the same actual building).</p>
+        <p>This mode presents you with entire neighborhoods, where all presumed matching building pairs have been pre-connected by green edges. Your task is to:</p>
+        <ul>
+            <li><strong>Remove</strong> incorrect matches by clicking on their connecting lines.</li>
+            <li><strong>Add</strong> missing matches by clicking one building from each dataset — in any order.</li>
+        </ul>
 
-        <div style="padding-left: 20px;">
-            <div style="margin-bottom: 6px;">
-                <span style="display: inline-block; width: 26px; height: 18px; position: relative; vertical-align: middle;">
-                    <i style="background: rgba(255, 127, 80, 0.2); width: 18px; height: 18px; display: inline-block;
-                        border: 3px solid orangered; position: absolute; bottom: 0; left: -6px; z-index: 2;"></i>
-                    <i style="background: rgba(135, 206, 235, 0.5); width: 18px; height: 18px; display: inline-block;
-                        border: 3px solid steelblue; position: absolute; bottom: 0; left: 0; z-index: 1;"></i>
-                </span>
-                The building pair in question is highlighted with a thick boundary in red and blue.<br>
-            </div>
-
-            <div style="margin-bottom: 6px;">
-                <i style="background: rgba(135, 206, 235, 0.5); width: 18px; height: 18px; vertical-align: middle; display: inline-block; border: 2px solid skyblue;"></i> For reference, the other existing buildings are displayed in light blue.<br>
-            </div>
-            <div>
-                <i style="background: rgba(255, 127, 80, 0.2); width: 18px; height: 18px; vertical-align: middle; display: inline-block; border: 2px solid coral;"></i> For reference, the other new buildings are displayed in light orange.
-            </div>
-        </div>
-
-        <p>Use the buttons below to label the <strong>highlighted building pair</strong> as either a <strong>'Match'</strong>, <strong>'No Match'</strong>, or <strong>'Unsure'</strong>.</p>
+        <p>Take a moment to explore the functionality and get comfortable before getting started with the real data.</p>
+        <p>Once you've reviewed the neighborhood and are confident in your changes, click the <strong>Submit</strong> button to save your labels and continue.</p>
 
         <form id="username-form" onsubmit="return handleFormSubmit(event)" style="text-align: center; margin-top: 30px;">
             <input type="text" id="username" name="username" placeholder="Enter your username" required
@@ -136,7 +120,7 @@
             </label>
             <label style="font-size: 14px; margin-right: 20px;">
                 <input type="radio" name="label_mode" value="unlabeled" checked>
-                Label only unlabeled building pairs
+                Label only unlabeled neighborhoods
             </label>
             <label style="font-size: 14px;">
                 <input type="radio" name="label_mode" value="cross-validate">
@@ -146,9 +130,7 @@
     </div>
 
     <div id="buttons">
-        <button class="btn btn-match" onclick="alert('Demo only. No data will be saved.');">Match</button>
-        <button class="btn btn-no-match" onclick="alert('Demo only. No data will be saved.');">No Match</button>
-        <button class="btn btn-unsure" onclick="alert('Demo only. No data will be saved.');">Unsure</button>
+        <button class="btn btn-submit" onclick="alert('Demo only. No data will be saved.');">Submit</button>
     </div>
 
     <script>
@@ -177,7 +159,7 @@
             });
 
             if (response.ok) {
-                window.location.href = '/show-pair';
+                window.location.href = '/show-neighborhood';
             } else {
                 alert('There was a problem saving your username.');
                 return false;
