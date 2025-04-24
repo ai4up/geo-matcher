@@ -15,7 +15,7 @@ import waitress
 from eubucco_conflator.state import State as S
 from eubucco_conflator import map
 
-bp = Blueprint('matching', __name__)
+bp = Blueprint("matching", __name__)
 executor = Executor()
 
 def create_app(data_path: str, results_path: str) -> Flask:
@@ -23,7 +23,7 @@ def create_app(data_path: str, results_path: str) -> Flask:
     Create and configure the Flask app.
     """
     app = Flask(__name__)
-    app.secret_key = os.getenv('SECRET_KEY') or 'dev-mode'
+    app.secret_key = os.getenv("SECRET_KEY") or "dev-mode"
     app.maps_dir = Path(app.static_folder) / "maps"
     app.url_map.strict_slashes = False
     app.register_blueprint(bp)

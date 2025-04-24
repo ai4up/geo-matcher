@@ -29,14 +29,14 @@ class CandidatePairs:
         """
         Load an instance from a pickle file.
         """
-        with open(filepath, 'rb') as f:
+        with open(filepath, "rb") as f:
             return pickle.load(f)
 
     def save(self, filepath: str) -> None:
         """
         Save the instance to a file using pickle.
         """
-        with open(filepath, 'wb') as f:
+        with open(filepath, "wb") as f:
             pickle.dump(self, f)
 
     def preliminary_matching_estimate(self) -> None:

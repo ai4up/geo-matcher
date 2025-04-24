@@ -16,7 +16,7 @@ def relative_overlap(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> Series:
     geoms1 = gdf1.geometry
     geoms2 = gdf2.geometry
 
-    idx1, idx2 = gdf2.sindex.query(geoms1, predicate='intersects')
+    idx1, idx2 = gdf2.sindex.query(geoms1, predicate="intersects")
 
     intersection = geoms1.iloc[idx1].intersection(geoms2.iloc[idx2], align=False)
     intersection_area = intersection.area.groupby(level=0).sum()
