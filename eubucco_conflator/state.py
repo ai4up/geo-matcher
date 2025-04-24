@@ -1,4 +1,5 @@
 from collections import Counter
+from datetime import datetime
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Union
 
@@ -115,6 +116,7 @@ class State:
             "id_new": id_new,
             "match": match,
             "username": username,
+            "time": datetime.now().isoformat(timespec='milliseconds')
         })
         cls._store_progress()
 
@@ -131,6 +133,7 @@ class State:
             raise ValueError("Match label must be one of: 'yes', 'no', 'unsure'.")
 
         results = df[["neighborhood", "id_existing", "id_new", "match", "username"]]
+        results["time"] = datetime.now().isoformat(timespec='milliseconds')
         cls.results.extend(results.to_dict(orient="records"))
         cls._store_progress()
 
