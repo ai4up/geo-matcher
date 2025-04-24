@@ -94,7 +94,7 @@
 
         <p>Use the buttons below to label the <strong>highlighted building pair</strong> as either a <strong>'Match'</strong>, <strong>'No Match'</strong>, or <strong>'Unsure'</strong>.</p>
 
-        <form id="username-form" onsubmit="return handleFormSubmit(event)" style="text-align: center; margin-top: 20px;">
+        <form id="username-form" onsubmit="return handleFormSubmit(event)" style="text-align: center; margin-top: 30px;">
             <input type="text" id="username" name="username" placeholder="Enter your username" required
                 style="padding: 14px 20px; font-size: 16px; border-radius: 10px; border: 1px solid #ccc; margin-right: 14px;">
 
@@ -105,10 +105,18 @@
             </button>
         </form>
 
-        <div style="text-align: center; margin-top: 10px;">
+        <div style="text-align: center; margin-top: 15px;">
+            <label style="font-size: 14px; margin-right: 20px;">
+                <input type="radio" name="label_mode" value="all">
+                Label everything
+            </label>
+            <label style="font-size: 14px; margin-right: 20px;">
+                <input type="radio" name="label_mode" value="unlabeled" checked>
+                Label only unlabeled building pairs
+            </label>
             <label style="font-size: 14px;">
-                <input type="checkbox" id="cv-toggle" style="margin-right: 6px;">
-                Redundantly label buildings to cross-validate previous annotations.
+                <input type="radio" name="label_mode" value="cross-validate">
+                Cross-validate previous annotations
             </label>
         </div>
     </div>
@@ -125,7 +133,7 @@
 
             const usernameInput = document.getElementById('username');
             const username = usernameInput.value.trim();
-            const cv = document.getElementById('cv-toggle').checked;
+            const labelMode = document.querySelector('input[name="label_mode"]:checked').value;
 
 
             if (!username) { // Prevent submitting white spaces
@@ -134,8 +142,8 @@
             }
 
             const formData = new URLSearchParams({
-                username,
-                cross_validate: cv ? 'true' : 'false'
+                username: username,
+                labelmode: labelMode
             });
 
             const response = await fetch('/set-username', {

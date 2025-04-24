@@ -142,15 +142,24 @@ class State:
         return id_existing in cls.pairs["id_existing"].values and id_new in cls.pairs["id_new"].values
 
     @classmethod
-    def current_pair(cls, cross_validate: bool = False) -> Optional[tuple[str, str]]:
+    def current_pair(cls, label_mode: str, user: str = None) -> Optional[tuple[str, str]]:
         """
-        Return the next candidate pair to be labeled, or None if all are labeled.
+        Return the next candidate pair to be labeled based on the selected labeling mode.
 
-        If cross_validate is True, a pair is returned that has been labeled once or
-        ambiguously by multiple users to allow cross-checking of the labels.
+        Args:
+            label_mode: Determines the labeling strategy. One of:
+                - 'all': Return only pairs that have not yet been labeled by the current user.
+                - 'unlabeled': Return only pairs that have not been labeled by any user.
+                - 'cross-validate': Return pairs that have either been labeled only once or received conflicting labels, for cross-validation.
+            user: Optional. The current user's identifier.
+
+        Returns:
+            The next (id_existing, id_new) pair to be labeled, or (None, None) if no suitable pair is found.
         """
         try:
-            if cross_validate:
+            if label_mode == "all":
+                remaining = cls._unlabeled_candidate_pairs(user)
+            elif label_mode == "cross-validate":
                 remaining = cls._non_consensus_candidate_pairs()
             else:
                 remaining = cls._unlabeled_candidate_pairs()
@@ -161,15 +170,24 @@ class State:
             return None, None
 
     @classmethod
-    def next_pair(cls, cross_validate: bool = False) -> Optional[tuple[str, str]]:
+    def next_pair(cls, label_mode: str, user: str = None) -> Optional[tuple[str, str]]:
         """
-        Return the next but one candidate pair to be labeled, or None if all are labeled.
+        Return the next but one candidate pair to be labeled based on the selected labeling mode.
 
-        If cross_validate is True, a pair is returned that has been labeled once or
-        ambiguously by multiple users to allow cross-checking of the labels.
+        Args:
+            label_mode: Determines the labeling strategy. One of:
+                - 'all': Return only pairs that have not yet been labeled by the current user.
+                - 'unlabeled': Return only pairs that have not been labeled by any user.
+                - 'cross-validate': Return pairs that have either been labeled only once or received conflicting labels, for cross-validation.
+            user: Optional. The current user's identifier
+
+        Returns:
+            The next but one (id_existing, id_new) pair to be labeled, or (None, None) if no suitable pair is found.
         """
         try:
-            if cross_validate:
+            if label_mode == "all":
+                remaining = cls._unlabeled_candidate_pairs(user)
+            elif label_mode == "cross-validate":
                 remaining = cls._non_consensus_candidate_pairs()
             else:
                 remaining = cls._unlabeled_candidate_pairs()
@@ -187,35 +205,58 @@ class State:
         return cls.pairs["id_new"].map(cls.data_b["neighborhood"]).unique()
 
     @classmethod
-    def current_neighborhood(cls, cross_validate: bool = False) -> Optional[str]:
+    def current_neighborhood(cls, label_mode: str, user: str = None) -> Optional[str]:
         """
-        Return the next neighborhood to be labeled, or None if all are labeled.
+        Return the next neighborhood to be labeled based on the selected labeling mode.
 
-        If cross_validate is True, a neighborhood is returned that has been labeled
-        only once to allow cross-checking of the labels.
+        Args:
+            label_mode: Determines the labeling strategy. One of:
+                - 'all': Return a neighborhood that has not yet been labeled by the current user.
+                - 'unlabeled': Return a neighborhood that has not been labeled by any user.
+                - 'cross-validate': Return a neighborhood that has been labeled only once, to allow cross-validation.
+            user: Optional. The current user's identifier.
+
+        Returns:
+            The ID of the next neighborhood to be labeled, or None if no suitable neighborhood is found.
         """
         try:
-            if cross_validate:
+            if label_mode == "all":
+                return cls._unlabeled_neighborhoods(user)[0]
+
+            elif label_mode == "cross-validate":
                 return cls._neighborhoods_labeled_once()[0]
 
-            return cls._unlabeled_neighborhoods()[0]
+            else:
+                return cls._unlabeled_neighborhoods()[0]
+
 
         except IndexError:
             return None
 
     @classmethod
-    def next_neighborhood(cls, cross_validate: bool = False) -> Optional[str]:
+    def next_neighborhood(cls, label_mode: str, user: str = None) -> Optional[str]:
         """
-        Return the next but one neighborhood to be labeled, or None if all are labeled.
+        Return the next but one neighborhood to be labeled based on the selected labeling mode.
 
-        If cross_validate is True, a neighborhood is returned that has been labeled
-        only once to allow cross-checking of the labels.
+        Args:
+            label_mode: Determines the labeling strategy. One of:
+                - 'all': Return a neighborhood that has not yet been labeled by the current user.
+                - 'unlabeled': Return a neighborhood that has not been labeled by any user.
+                - 'cross-validate': Return a neighborhood that has been labeled only once, to allow cross-validation.
+            user: Optional. The current user's identifier.
+
+        Returns:
+            The ID of the next but one neighborhood to be labeled, or None if no suitable neighborhood is found.
         """
         try:
-            if cross_validate:
+            if label_mode == "all":
+                return cls._unlabeled_neighborhoods(user)[1]
+
+            elif label_mode == "cross-validate":
                 return cls._neighborhoods_labeled_once()[1]
 
-            return cls._unlabeled_neighborhoods()[1]
+            else:
+                return cls._unlabeled_neighborhoods()[1]
 
         except IndexError:
             return None
@@ -247,8 +288,8 @@ class State:
         return pd.DataFrame(cls.results).drop_duplicates(subset=["id_existing", "id_new", "username"], keep="last")
 
     @classmethod
-    def _unlabeled_neighborhoods(cls) -> Index:
-        labeled_nbh = set(result["neighborhood"] for result in cls.results)
+    def _unlabeled_neighborhoods(cls, user: str = None) -> Index:
+        labeled_nbh = set(result["neighborhood"] for result in cls.results if user is None or result["username"] == user)
         all_nbh = set(cls.neighborhoods())
         unlabeled = list(all_nbh - labeled_nbh)
 
@@ -262,8 +303,8 @@ class State:
         return labeled_once
 
     @classmethod
-    def _unlabeled_candidate_pairs(cls) -> DataFrame:
-        labeled_pairs = set((result["id_existing"], result["id_new"]) for result in cls.results)
+    def _unlabeled_candidate_pairs(cls, user: str = None) -> DataFrame:
+        labeled_pairs = set((result["id_existing"], result["id_new"]) for result in cls.results if user is None or result["username"] == user)
         all_pairs = cls.pairs[["id_existing", "id_new"]].apply(tuple, axis=1)
         unlabeled = cls.pairs[~all_pairs.isin(labeled_pairs)]
 
