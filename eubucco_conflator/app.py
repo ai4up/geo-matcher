@@ -169,8 +169,8 @@ def store_label() -> Response:
     id_new = data.get("id_new")
     match = data.get("match")
 
-    next_pair = S.get_next_pair(mode, username)
     S.add_result(id_existing, id_new, match, username)
+    next_pair = S.get_current_pair(mode, username)
 
     return jsonify({"status": "ok", "next_existing_id": next_pair[0] or "", "next_new_id": next_pair[1] or ""}), 200
 
@@ -202,8 +202,8 @@ def store_neighborhood() -> Response:
     results["neighborhood"] = id
     results["match"] = results["match"].replace({True: "yes", False: "no"})
 
-    next_id = S.get_next_neighborhood(mode, username)
     S.add_bulk_results(results)
+    next_id = S.get_current_neighborhood(mode, username)
 
     return jsonify({"status": "ok", "next_id": next_id or ""}), 200
 
