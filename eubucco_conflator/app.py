@@ -8,15 +8,12 @@ from typing import Dict, Optional, List
 
 from flask import Blueprint, Flask, Response, jsonify, current_app, render_template, request, send_file, session
 from flask_executor import Executor
-from geopandas import GeoDataFrame
 from pandas import DataFrame
-from shapely.geometry import Point, LineString
-import geopandas as gpd
 import pandas as pd
 import waitress
 
 from eubucco_conflator.state import State as S
-from eubucco_conflator import spatial, map
+from eubucco_conflator import map
 
 bp = Blueprint('matching', __name__)
 executor = Executor()
