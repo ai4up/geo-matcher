@@ -282,7 +282,8 @@ class State:
 
     @classmethod
     def _ambiguously_labeled_candidate_pairs(cls) -> Index:
-        label_counts = cls._unique_results().groupby(["id_existing", "id_new"])["match"].value_counts().unstack()
+        label_counts = cls._unique_results().groupby(["id_existing", "id_new"])[
+            "match"].value_counts().unstack().reindex(columns=["yes", "no"], fill_value=0)
         ambiguous_pairs = label_counts[label_counts["yes"] == label_counts["no"]].index
 
         return ambiguous_pairs
