@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 from geopandas import GeoDataFrame
+from pandas import DataFrame
 import folium
 import geopandas as gpd
 
@@ -174,7 +175,8 @@ def _add_matching_layer(m: folium.Map, candidate_pairs: GeoDataFrame) -> None:
             matches.set_index("id_new")["geometry_new"]
         ).reset_index(names=["id_existing", "id_new"])
 
-    _add_matching_edges(matching_edges, m)
+    _inject_candidate_pairs(m, candidate_pairs[["id_existing", "id_new", "match"]])
+    _add_matching_edges(m, matching_edges)
 
 
 def _disable_leaflet_click_outline(m: folium.Map) -> None:
@@ -187,19 +189,33 @@ def _disable_leaflet_click_outline(m: folium.Map) -> None:
     """))
 
 
-def _add_matching_edges(edges: GeoDataFrame, m: folium.Map) -> None:
+def _inject_candidate_pairs(m: folium.Map, candidate_pairs: DataFrame) -> None:
+    m.get_root().html.add_child(folium.Element(f"""
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {{
+        window.pairs = {candidate_pairs.to_json(orient='records')};
+    }});
+    </script>
+    """
+    ))
+
+
+def _add_matching_edges(m: folium.Map, edges: GeoDataFrame) -> None:
     _inject_mouseover_effects(m)
     m.get_root().html.add_child(folium.Element(f"""
     <script>
     document.addEventListener("DOMContentLoaded", function () {{
         window.removedMatches = [];
         window.addedMatches = [];
+
         let selected = {{ existing: null, new: null }};
         let highlightedLayer = null;
 
         const map = window.{m.get_name()};
-
         const initialMatches = {edges.to_json(to_wgs84=True)};
+        const initialMatchKeys = new Set(
+            initialMatches.features.map(f => `${{f.properties.id_existing}}--${{f.properties.id_new}}`)
+        );
         const matchLayer = L.geoJSON(initialMatches, {{
             style: function(feature) {{
                 return {{ color: 'green', weight: 3 }};
@@ -217,10 +233,6 @@ def _add_matching_edges(edges: GeoDataFrame, m: folium.Map) -> None:
                 applyLineHoverEffects(layer);
             }}
         }}).addTo(map);
-
-        const initialMatchKeys = new Set(
-            initialMatches.features.map(f => `${{f.properties.id_existing}}--${{f.properties.id_new}}`)
-        );
 
         function matchExists(from_id, to_id) {{
             const key = `${{from_id}}--${{to_id}}`;

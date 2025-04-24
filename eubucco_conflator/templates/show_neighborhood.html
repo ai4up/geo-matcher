@@ -78,13 +78,11 @@
             const iframe = document.querySelector("iframe");
             const iframeWindow = iframe.contentWindow;
 
-            const removed = iframeWindow.removedMatches || [];
-            const added = iframeWindow.addedMatches || [];
-
             const payload = {
                 id: id,
-                added: added.map(m => ({ id_existing: m.id_existing, id_new: m.id_new })),
-                removed: removed.map(m => ({ id_existing: m.id_existing, id_new: m.id_new }))
+                pairs: iframeWindow.pairs || [],
+                added: iframeWindow.addedMatches?.map(({ id_existing, id_new }) => ({ id_existing, id_new })) || [],  // extract only ids, not Leaflet layers
+                removed: iframeWindow.removedMatches || []
             };
 
             fetch('/store-neighborhood', {

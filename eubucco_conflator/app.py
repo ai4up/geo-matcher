@@ -186,13 +186,15 @@ def store_neighborhood() -> Response:
 
     username = session.get("username")
     mode = session.get("label_mode")
+
     id = data.get("id")
+    pairs = data.get("pairs")
     added = data.get("added", [])
     removed = data.get("removed", [])
 
     current_app.logger.info(f"Adding {len(added)} matches, removing {len(removed)} in neighborhood {id}.")
 
-    results = S.get_candidate_pairs(id)
+    results = DataFrame(pairs, columns=["id_existing", "id_new", "match"])
     results = _update_removed_matches(results, removed)
     results = _update_added_matches(results, added)
 
