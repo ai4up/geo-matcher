@@ -142,7 +142,7 @@ class State:
         return id_existing in cls.pairs["id_existing"].values and id_new in cls.pairs["id_new"].values
 
     @classmethod
-    def current_pair(cls, label_mode: str, user: str = None) -> Optional[tuple[str, str]]:
+    def get_current_pair(cls, label_mode: str, user: str = None) -> Optional[tuple[str, str]]:
         """
         Return the next candidate pair to be labeled based on the selected labeling mode.
 
@@ -157,20 +157,13 @@ class State:
             The next (id_existing, id_new) pair to be labeled, or (None, None) if no suitable pair is found.
         """
         try:
-            if label_mode == "all":
-                remaining = cls._unlabeled_candidate_pairs(user)
-            elif label_mode == "cross-validate":
-                remaining = cls._non_consensus_candidate_pairs()
-            else:
-                remaining = cls._unlabeled_candidate_pairs()
-
-            return tuple(remaining[["id_existing", "id_new"]].values[0])
+            return cls._next_pairs(label_mode, user)[0]
 
         except IndexError:
             return None, None
 
     @classmethod
-    def next_pair(cls, label_mode: str, user: str = None) -> Optional[tuple[str, str]]:
+    def get_next_pair(cls, label_mode: str, user: str = None) -> Optional[tuple[str, str]]:
         """
         Return the next but one candidate pair to be labeled based on the selected labeling mode.
 
@@ -185,27 +178,20 @@ class State:
             The next but one (id_existing, id_new) pair to be labeled, or (None, None) if no suitable pair is found.
         """
         try:
-            if label_mode == "all":
-                remaining = cls._unlabeled_candidate_pairs(user)
-            elif label_mode == "cross-validate":
-                remaining = cls._non_consensus_candidate_pairs()
-            else:
-                remaining = cls._unlabeled_candidate_pairs()
-
-            return tuple(remaining[["id_existing", "id_new"]].values[1])
+            return cls._next_pairs(label_mode, user)[1]
 
         except IndexError:
             return None, None
 
     @classmethod
-    def neighborhoods(cls) -> np.array:
+    def get_neighborhoods(cls) -> np.array:
         """
         Return the unique list of neighborhoods in the dataset.
         """
         return cls.pairs["id_new"].map(cls.data_b["neighborhood"]).unique()
 
     @classmethod
-    def current_neighborhood(cls, label_mode: str, user: str = None) -> Optional[str]:
+    def get_current_neighborhood(cls, label_mode: str, user: str = None) -> Optional[str]:
         """
         Return the next neighborhood to be labeled based on the selected labeling mode.
 
@@ -220,21 +206,13 @@ class State:
             The ID of the next neighborhood to be labeled, or None if no suitable neighborhood is found.
         """
         try:
-            if label_mode == "all":
-                return cls._unlabeled_neighborhoods(user)[0]
-
-            elif label_mode == "cross-validate":
-                return cls._neighborhoods_labeled_once()[0]
-
-            else:
-                return cls._unlabeled_neighborhoods()[0]
-
+            return cls._next_neighborhoods(label_mode, user)[0]
 
         except IndexError:
             return None
 
     @classmethod
-    def next_neighborhood(cls, label_mode: str, user: str = None) -> Optional[str]:
+    def get_next_neighborhood(cls, label_mode: str, user: str = None) -> Optional[str]:
         """
         Return the next but one neighborhood to be labeled based on the selected labeling mode.
 
@@ -249,14 +227,7 @@ class State:
             The ID of the next but one neighborhood to be labeled, or None if no suitable neighborhood is found.
         """
         try:
-            if label_mode == "all":
-                return cls._unlabeled_neighborhoods(user)[1]
-
-            elif label_mode == "cross-validate":
-                return cls._neighborhoods_labeled_once()[1]
-
-            else:
-                return cls._unlabeled_neighborhoods()[1]
+            return cls._next_neighborhoods(label_mode, user)[1]
 
         except IndexError:
             return None
@@ -288,9 +259,31 @@ class State:
         return pd.DataFrame(cls.results).drop_duplicates(subset=["id_existing", "id_new", "username"], keep="last")
 
     @classmethod
+    def _next_pairs(cls, label_mode: str, user: str = None) -> List[Optional[tuple[str, str]]]:
+        if label_mode == "all":
+            remaining = cls._unlabeled_candidate_pairs(user)
+        elif label_mode == "cross-validate":
+            remaining = cls._non_consensus_candidate_pairs()
+        else:
+            remaining = cls._unlabeled_candidate_pairs()
+
+        return list(zip(remaining["id_existing"], remaining["id_new"]))
+
+    @classmethod
+    def _next_neighborhoods(cls, label_mode: str, user: str = None) -> List[Optional[str]]:
+        if label_mode == "all":
+            return cls._unlabeled_neighborhoods(user)
+
+        elif label_mode == "cross-validate":
+            return cls._neighborhoods_labeled_once()
+
+        else:
+            return cls._unlabeled_neighborhoods()
+
+    @classmethod
     def _unlabeled_neighborhoods(cls, user: str = None) -> Index:
         labeled_nbh = set(result["neighborhood"] for result in cls.results if user is None or result["username"] == user)
-        all_nbh = set(cls.neighborhoods())
+        all_nbh = set(cls.get_neighborhoods())
         unlabeled = list(all_nbh - labeled_nbh)
 
         return unlabeled
