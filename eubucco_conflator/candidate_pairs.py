@@ -51,6 +51,12 @@ class CandidatePairs:
         if not isinstance(dataset_a, GeoDataFrame):
             raise TypeError("Dataset A must be a GeoDataFrame.")
 
+        if not dataset_a.index.is_unique:
+            raise ValueError("Dataset A must have a unique index.")
+
+        if not dataset_b.index.is_unique:
+            raise ValueError("Dataset B must have a unique index.")
+
         if not isinstance(dataset_b, GeoDataFrame):
             raise TypeError("Dataset B must be a GeoDataFrame.")
 
