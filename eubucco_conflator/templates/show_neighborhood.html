@@ -133,6 +133,16 @@
             })
             .catch(err => console.error("Submission error:", err));
         }
+
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
+                const submitButton = document.querySelector("#buttons button.btn-submit");
+                if (submitButton) {
+                    e.preventDefault(); // Prevent default form behavior if any
+                    submitButton.click();
+                }
+            }
+        });
     </script>
 </body>
 </html>
