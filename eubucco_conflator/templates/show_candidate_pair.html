@@ -166,9 +166,11 @@
 
     <div id="legend">
         <h4>Keyboard Shortcuts</h4>
-        <li>Arrow up (&#8593;): No Match</li>
-        <li>Arrow down (&#8595;): Match</li>
-        <li>Arrow right (&#8594;): Unsure</li>
+        <li>Arrow up (&#8593;): Back</li>
+        <li>Arrow down (&#8595;): Unsure</li>
+        <li>Arrow right (&#8594;): Match</li>
+        <li>Arrow left (&#8592;): No Match</li>
+        <li>?: Show/Hide Legend</li>
         <button onclick="toggleLegend()">Close</button>
     </div>
 
@@ -177,16 +179,16 @@
     <script type="text/javascript">
         document.addEventListener('keydown', function(event) {
             if (event.key === "ArrowUp") {
-                displayText('nomatch');
-                labelPair('{{ id_existing }}', '{{ id_new }}', 'no');
+                window.history.back();
             } else if (event.key === "ArrowDown") {
-                displayText('match');
-                labelPair('{{ id_existing }}', '{{ id_new }}', 'yes');
-            } else if (event.key === "ArrowRight") {
                 displayText('unsure');
                 labelPair('{{ id_existing }}', '{{ id_new }}', 'unsure');
+            } else if (event.key === "ArrowRight") {
+                displayText('match');
+                labelPair('{{ id_existing }}', '{{ id_new }}', 'yes');
             } else if (event.key === "ArrowLeft") {
-                window.history.back();
+                displayText('nomatch');
+                labelPair('{{ id_existing }}', '{{ id_new }}', 'no');
             } else if (event.key === "?") {
                 toggleLegend();
             }
