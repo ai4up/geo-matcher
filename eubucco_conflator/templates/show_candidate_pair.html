@@ -114,6 +114,32 @@
             align-self: center;
             opacity: 0.8;
         }
+
+        #label-feedback {
+            position: fixed;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 34px;
+            font-weight: bold;
+            font-family: Arial, sans-serif;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+        }
+
+        #label-feedback.match {
+            color: #4CAF50;
+        }
+
+        #label-feedback.nomatch {
+            color: #ff4d4d;
+        }
+
+        #label-feedback.unsure {
+            color: #f0ad4e;
+        }
     </style>
 </head>
 <body>
@@ -146,14 +172,19 @@
         <button onclick="toggleLegend()">Close</button>
     </div>
 
+    <div id="label-feedback"></div>
+
     <script type="text/javascript">
         document.addEventListener('keydown', function(event) {
             if (event.key === "ArrowUp") {
-                labelPair('{{ id_existing }}', '{{ id_new }}', 'no')
+                displayText('nomatch');
+                labelPair('{{ id_existing }}', '{{ id_new }}', 'no');
             } else if (event.key === "ArrowDown") {
-                labelPair('{{ id_existing }}', '{{ id_new }}', 'yes')
+                displayText('match');
+                labelPair('{{ id_existing }}', '{{ id_new }}', 'yes');
             } else if (event.key === "ArrowRight") {
-                labelPair('{{ id_existing }}', '{{ id_new }}', 'unsure')
+                displayText('unsure');
+                labelPair('{{ id_existing }}', '{{ id_new }}', 'unsure');
             } else if (event.key === "ArrowLeft") {
                 window.history.back();
             } else if (event.key === "?") {
@@ -184,6 +215,19 @@
             } else {
                 legend.style.display = 'block';
             }
+        }
+
+        function displayText(label) {
+            const feedback = document.getElementById('label-feedback');
+            feedback.className = label; // 'match', 'nomatch', 'unsure'
+            feedback.textContent = label === 'match' ? 'Match' :
+                                   label === 'nomatch' ? 'No Match' : 'Unsure';
+
+            feedback.style.opacity = '1';
+
+            setTimeout(() => {
+                feedback.style.opacity = '0';
+            }, 300);  // Quickly fades out
         }
     </script>
 </body>
