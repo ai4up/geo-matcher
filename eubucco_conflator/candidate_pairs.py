@@ -39,6 +39,17 @@ class CandidatePairs:
         with open(filepath, "wb") as f:
             pickle.dump(self, f)
 
+    def pairs_to_gdf(self) -> GeoDataFrame:
+        """
+        Create a GeoDataFrame of potential matching pairs.
+        """
+        gdf = GeoDataFrame(self.pairs)
+        gdf["geometry_existing"] = gdf["id_existing"].map(self.dataset_a.geometry)
+        gdf["geometry_new"] = gdf["id_new"].map(self.dataset_b.geometry)
+
+        return gdf
+
+
     def preliminary_matching_estimate(self) -> None:
         """
         Estimate the matching between buildings in dataset_a and dataset_b.
