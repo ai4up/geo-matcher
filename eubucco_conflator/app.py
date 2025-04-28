@@ -18,7 +18,7 @@ from eubucco_conflator import map
 bp = Blueprint("matching", __name__)
 executor = Executor()
 
-def create_app(data_path: str, results_path: str) -> Flask:
+def create_app(data_path: str, results_path: str, annotation_redundancy: int) -> Flask:
     """
     Create and configure the Flask app.
     """
@@ -31,7 +31,7 @@ def create_app(data_path: str, results_path: str) -> Flask:
 
     _ensure_empty_dir(app.maps_dir)
 
-    S.init(data_path, results_path)
+    S.init(data_path, results_path, annotation_redundancy)
 
     return app
 
@@ -155,7 +155,7 @@ def show_neighborhood(id: Optional[str] = None) -> Response:
         S.store_results()
         return f"All buildings labeled! Results stored in {S.results_path}", 200
 
-    if id not in S.get_neighborhoods():
+    if id not in S.get_all_neighborhoods():
         return "Neighborhood not found", 404
 
     fp = current_app.maps_dir / f"neighborhood_{id}.html"

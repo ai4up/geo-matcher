@@ -13,7 +13,14 @@ def cli() -> None:
 @cli.command()
 @click.argument("path", default=DATASET_FILE, type=click.Path(exists=True))
 @click.argument("results_path", default=RESULTS_FILE, type=click.Path())
-def label(path: str, results_path: str) -> None:
+@click.option(
+    "--annotation-redundancy",
+    "-r",
+    default=0,
+    type=int,
+    help="Number of redundant annotations per building pair."
+)
+def label(path: str, results_path: str, annotation_redundancy: int) -> None:
     """
     Start the labeling of building pairs.
 
@@ -21,7 +28,7 @@ def label(path: str, results_path: str) -> None:
     RESULTS_PATH to where the results will be stored.
     """
     click.echo("Starting browser app...")
-    app.start_locally(path, results_path)
+    app.start_locally(path, results_path, annotation_redundancy)
 
 
 @cli.command()

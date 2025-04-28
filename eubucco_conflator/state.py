@@ -7,7 +7,6 @@ from geopandas import GeoDataFrame
 from pandas import DataFrame, Series, Index
 from shapely.geometry import Point
 from sklearn import metrics
-import numpy as np
 import pandas as pd
 
 from eubucco_conflator.candidate_pairs import CandidatePairs
@@ -27,11 +26,12 @@ class State:
     results: List[Dict[str, any]] = []
 
     @classmethod
-    def init(cls, data_path: str, results_path: str, logger: Callable[[str], None] = print) -> None:
+    def init(cls, data_path: str, results_path: str, annotation_redundancy: int, logger: Callable[[str], None] = print) -> None:
         """
         Initialize the labeling state for a given candidate pair dataset, taking into account previously labeled pairs.
         """
         cls.logger = logger
+        cls.annotation_redundancy = annotation_redundancy
         cls.results_path = Path(results_path)
         cls.data = CandidatePairs.load(data_path)
         cls.data.preliminary_matching_estimate()
@@ -117,7 +117,7 @@ class State:
             "id_new": id_new,
             "match": match,
             "username": username,
-            "time": datetime.now().isoformat(timespec='milliseconds')
+            "time": datetime.now().isoformat(timespec="milliseconds")
         })
         cls._store_progress()
 
@@ -134,7 +134,7 @@ class State:
             raise ValueError("Match label must be one of: 'yes', 'no', 'unsure'.")
 
         results = df[["neighborhood", "id_existing", "id_new", "match", "username"]]
-        results["time"] = datetime.now().isoformat(timespec='milliseconds')
+        results["time"] = datetime.now().isoformat(timespec="milliseconds")
         cls.results.extend(results.to_dict(orient="records"))
         cls._store_progress()
 
@@ -153,7 +153,7 @@ class State:
         Args:
             label_mode: Determines the labeling strategy. One of:
                 - 'all': Return only pairs that have not yet been labeled by the current user.
-                - 'unlabeled': Return only pairs that have not been labeled by any user.
+                - 'unlabeled': Return only pairs that have not been at all or not enough times.
                 - 'cross-validate': Return pairs that have either been labeled only once or received conflicting labels, for cross-validation.
             user: Optional. The current user's identifier.
 
@@ -174,7 +174,7 @@ class State:
         Args:
             label_mode: Determines the labeling strategy. One of:
                 - 'all': Return only pairs that have not yet been labeled by the current user.
-                - 'unlabeled': Return only pairs that have not been labeled by any user.
+                - 'unlabeled': Return only pairs that have not been at all or not enough times.
                 - 'cross-validate': Return pairs that have either been labeled only once or received conflicting labels, for cross-validation.
             user: Optional. The current user's identifier
 
@@ -188,11 +188,11 @@ class State:
             return None, None
 
     @classmethod
-    def get_neighborhoods(cls) -> np.array:
+    def get_all_neighborhoods(cls) -> Index:
         """
         Return the unique list of neighborhoods in the dataset.
         """
-        return cls.pairs["id_new"].map(cls.data_b["neighborhood"]).unique()
+        return Index(cls.pairs["id_new"].map(cls.data_b["neighborhood"]).unique())
 
     @classmethod
     def get_next_neighborhood(cls, label_mode: str, user: str = None) -> Optional[str]:
@@ -202,7 +202,7 @@ class State:
         Args:
             label_mode: Determines the labeling strategy. One of:
                 - 'all': Return a neighborhood that has not yet been labeled by the current user.
-                - 'unlabeled': Return a neighborhood that has not been labeled by any user.
+                - 'unlabeled': Return a neighborhood that has not been labeled at all or not enough times.
                 - 'cross-validate': Return a neighborhood that has been labeled only once, to allow cross-validation.
             user: Optional. The current user's identifier.
 
@@ -223,7 +223,7 @@ class State:
         Args:
             label_mode: Determines the labeling strategy. One of:
                 - 'all': Return a neighborhood that has not yet been labeled by the current user.
-                - 'unlabeled': Return a neighborhood that has not been labeled by any user.
+                - 'unlabeled': Return a neighborhood that has not been labeled at all or not enough times.
                 - 'cross-validate': Return a neighborhood that has been labeled only once, to allow cross-validation.
             user: Optional. The current user's identifier.
 
@@ -242,11 +242,8 @@ class State:
         Return a dictionary with the number of labeled pairs per user and their inter-annotator agreement score (Cohen's kappa).
         """
         results = cls._unique_results()
-        if results.empty:
-            return {}
-
         user_counts = results["username"].value_counts(ascending=False).to_frame()[:5]
-        user_counts['kappa'] = cls._inter_annotator_agreement()
+        user_counts["kappa"] = cls._inter_annotator_agreement()
 
         return user_counts.reset_index().to_dict(orient="records")
 
@@ -262,7 +259,7 @@ class State:
 
     @classmethod
     def _store_progress(cls) -> None:
-        pd.DataFrame(cls.results).to_pickle(_PROGRESS_FILEPATH)
+        cls._unique_results().to_pickle(_PROGRESS_FILEPATH)
 
     @staticmethod
     def _load_progress() -> List[Dict[str, any]]:
@@ -274,72 +271,98 @@ class State:
 
     @classmethod
     def _unique_results(cls) -> DataFrame:
+        if len(cls.results) == 0:
+            return pd.DataFrame(columns=["neighborhood", "id_existing", "id_new", "match", "username", "time"])
+
         return pd.DataFrame(cls.results).drop_duplicates(subset=["id_existing", "id_new", "username"], keep="last")
 
     @classmethod
     def _next_pairs(cls, label_mode: str, user: str = None) -> List[Optional[tuple[str, str]]]:
         if label_mode == "all":
-            remaining = cls._unlabeled_candidate_pairs(user)
+            remaining = cls._all_pairs()
+        elif label_mode == "unlabeled":
+            remaining = cls._insufficiently_labeled_pairs().union(cls._unlabeled_pairs())
         elif label_mode == "cross-validate":
-            remaining = cls._non_consensus_candidate_pairs()
+            remaining = cls._insufficiently_labeled_pairs().union(cls._ambiguously_labeled_pairs())
         else:
-            remaining = cls._unlabeled_candidate_pairs()
+            raise ValueError(f"Labeling mode '{label_mode}' is not supported.")
 
-        return list(zip(remaining["id_existing"], remaining["id_new"]))
+        remaining = remaining.drop(cls._labeled_pairs(user), errors="ignore")
+
+        return remaining.to_list()
 
     @classmethod
     def _next_neighborhoods(cls, label_mode: str, user: str = None) -> List[Optional[str]]:
         if label_mode == "all":
-            return cls._unlabeled_neighborhoods(user)
-
+            remaining = cls.get_all_neighborhoods()
+        elif label_mode == "unlabeled":
+            remaining = cls._insufficiently_labeled_neighborhoods().union(cls._unlabeled_neighborhoods())
         elif label_mode == "cross-validate":
-            return cls._neighborhoods_labeled_once()
-
+            remaining = cls._insufficiently_labeled_neighborhoods()
         else:
-            return cls._unlabeled_neighborhoods()
+            raise ValueError(f"Labeling mode '{label_mode}' is not supported.")
+
+        remaining = remaining.drop(cls._labeled_neighborhoods(user), errors="ignore")
+
+        return remaining
 
     @classmethod
-    def _unlabeled_neighborhoods(cls, user: str = None) -> Index:
-        labeled_nbh = set(result["neighborhood"] for result in cls.results if user is None or result["username"] == user)
-        all_nbh = set(cls.get_neighborhoods())
-        unlabeled = list(all_nbh - labeled_nbh)
+    def _unlabeled_pairs(cls) -> Index:
+        labeled_pairs = set((result["id_existing"], result["id_new"]) for result in cls.results)
+        all_pairs = cls._all_pairs()
+        unlabeled = all_pairs.drop(labeled_pairs, errors="ignore")
 
         return unlabeled
 
     @classmethod
-    def _neighborhoods_labeled_once(cls) -> Index:
-        labeling_count = pd.DataFrame(cls.results).groupby("neighborhood")["username"].nunique()
-        labeled_once =  labeling_count[labeling_count == 1].index
-
-        return labeled_once
-
-    @classmethod
-    def _unlabeled_candidate_pairs(cls, user: str = None) -> DataFrame:
-        labeled_pairs = set((result["id_existing"], result["id_new"]) for result in cls.results if user is None or result["username"] == user)
-        all_pairs = cls.pairs[["id_existing", "id_new"]].apply(tuple, axis=1)
-        unlabeled = cls.pairs[~all_pairs.isin(labeled_pairs)]
+    def _unlabeled_neighborhoods(cls) -> Index:
+        labeled_nbh = set(result["neighborhood"] for result in cls.results)
+        all_nbh = set(cls.get_all_neighborhoods())
+        unlabeled = Index(all_nbh - labeled_nbh)
 
         return unlabeled
 
     @classmethod
-    def _non_consensus_candidate_pairs(cls) -> DataFrame:
-        return cls._candidate_pairs_labeled_once().union(cls._ambiguously_labeled_candidate_pairs()).to_frame()
+    def _insufficiently_labeled_pairs(cls) -> Index:
+        labeling_count = cls._unique_results().groupby(["id_existing", "id_new"])["username"].nunique()
+        insufficiently_labeled = labeling_count[labeling_count < cls.annotation_redundancy + 1].index
+
+        return insufficiently_labeled
 
     @classmethod
-    def _candidate_pairs_labeled_once(cls) -> Index:
-        labeling_count = pd.DataFrame(cls.results).groupby(["id_existing", "id_new"])["username"].nunique()
-        labeled_once = labeling_count[labeling_count == 1].index
+    def _insufficiently_labeled_neighborhoods(cls) -> Index:
+        labeling_count = cls._unique_results().groupby("neighborhood")["username"].nunique()
+        insufficiently_labeled = labeling_count[labeling_count < cls.annotation_redundancy + 1].index
 
-        return labeled_once
+        return insufficiently_labeled
 
     @classmethod
-    def _ambiguously_labeled_candidate_pairs(cls) -> Index:
+    def _ambiguously_labeled_pairs(cls) -> Index:
         label_counts = cls._unique_results().groupby(["id_existing", "id_new"])[
             "match"].value_counts().unstack().reindex(columns=["yes", "no"], fill_value=0)
         ambiguous_pairs = label_counts[label_counts["yes"] == label_counts["no"]].index
 
         return ambiguous_pairs
 
+    @classmethod
+    def _all_pairs(cls) -> Index:
+        return pd.MultiIndex.from_frame(cls.pairs[["id_existing", "id_new"]])
+
+    @classmethod
+    def _labeled_pairs(cls, user: str) -> Index:
+        results = cls._unique_results()
+        user_results = results[results["username"] == user]
+        user_pairs = pd.MultiIndex.from_frame(user_results[["id_existing", "id_new"]])
+
+        return user_pairs
+
+    @classmethod
+    def _labeled_neighborhoods(cls, user: str) -> Index:
+        results = cls._unique_results()
+        user_results = results[results["username"] == user]
+        user_neighborhoods = pd.Index(user_results["neighborhood"].unique())
+
+        return user_neighborhoods
 
     @classmethod
     def _inter_annotator_agreement(cls) -> Dict[str, float]:
@@ -349,12 +372,8 @@ class State:
         Returns:
             A dictionary mapping username to Cohen's Kappa score.
         """
-        results = cls._unique_results()
-        if results.empty:
-            return {}
-
         # Only consider pairs labeled by more than one user
-        multi_labeled = results.groupby(["id_existing", "id_new"]).filter(lambda g: g["username"].nunique() > 1)
+        multi_labeled = cls._unique_results().groupby(["id_existing", "id_new"]).filter(lambda g: g["username"].nunique() > 1)
 
         kappas = {}
         for user in multi_labeled["username"].unique():
@@ -364,6 +383,6 @@ class State:
             consensus = other_df.groupby(["id_existing", "id_new"])["match"].agg(lambda x: x.mode().iloc[0]).rename("consensus")
             merged = user_df.merge(consensus, on=["id_existing", "id_new"], how="inner")
 
-            kappas[user] = metrics.cohen_kappa_score(merged["match"].values, merged["consensus"].values)
+            kappas[user] = metrics.cohen_kappa_score(merged["match"].values, merged["consensus"].values, labels=["yes", "no", "unsure"])
 
         return kappas

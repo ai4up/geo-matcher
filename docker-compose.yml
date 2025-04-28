@@ -11,6 +11,7 @@ services:
       - SECRET_KEY=${SECRET_KEY}
       - DATA_PATH=/app/data/candidate-pairs.pickle
       - RESULTS_PATH=/app/data/results.csv
+      - ANNOTATION_REDUNDANCY=0
 
   nginx:
     image: nginx:alpine
