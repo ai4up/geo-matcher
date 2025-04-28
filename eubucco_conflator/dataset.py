@@ -18,9 +18,11 @@ logger = logging.getLogger(__name__)
 log = logger.info
 
 def create_candidate_pairs_dataset(
-    gdf_path1: str,
-    gdf_path2: str,
-    id_col: str,
+    gdf1: GeoDataFrame = None,
+    gdf2: GeoDataFrame = None,
+    gdf_path1: str = None,
+    gdf_path2: str = None,
+    id_col: str = None,
     overlap_range: Tuple[float, float] = None,
     similarity_range: Tuple[float, float] = None,
     max_distance: float = None,
@@ -34,8 +36,12 @@ def create_candidate_pairs_dataset(
     Pairs are determined based on spatial proximity, topological overlap, and shape similarity.
     """
     cols = ["geometry", id_col] if id_col else ["geometry"]
-    gdf1 = gpd.read_parquet(gdf_path1, columns=cols).to_crs(3035)
-    gdf2 = gpd.read_parquet(gdf_path2, columns=cols).to_crs(3035)
+
+    if gdf1 is None:
+        gdf1 = gpd.read_parquet(gdf_path1, columns=cols).to_crs(3035)
+
+    if gdf2 is None:
+        gdf2 = gpd.read_parquet(gdf_path2, columns=cols).to_crs(3035)
 
     gdf1, gdf2 = _ensure_unique_index(gdf1, gdf2, id_col)
 
