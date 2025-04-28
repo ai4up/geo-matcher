@@ -86,6 +86,52 @@
             align-self: center;
             opacity: 0.8;
         }
+
+        #scoreboard {
+            position: fixed;
+            bottom: 25px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border: 1px solid #ccc;
+            padding: 10px 14px;
+            width: 150px;
+            max-height: 250px;
+            overflow-y: auto;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            z-index: 1000;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        }
+
+        #scoreboard h5 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            text-align: center;
+            color: #333;
+        }
+
+        #scoreboard-entries {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .score-entry {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 2px;
+        }
+
+        .score-user {
+            font-weight: 500;
+            color: #444;
+        }
+
+        .score-count {
+            font-weight: bold;
+            color: #4caf50;
+        }
     </style>
 </head>
 <body>
@@ -106,6 +152,18 @@
 
     <div id="buttons">
         <button class="btn btn-submit" onclick="sendLabeledMatches('{{ id }}')">Submit</button>
+    </div>
+
+    <div id="scoreboard">
+        <h5>Scoreboard</h5>
+        <div id="scoreboard-entries">
+            {% for user, count in user_counts.items() %}
+                <div class="score-entry">
+                    <span class="score-user">{{ user }}</span>
+                    <span class="score-count">{{ count }}</span>
+                </div>
+            {% endfor %}
+        </div>
     </div>
 
     <script type="text/javascript">

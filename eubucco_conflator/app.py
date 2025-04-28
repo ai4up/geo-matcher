@@ -131,7 +131,11 @@ def show_candidate_pair(id_existing: str = None, id_new: str = None) -> Response
         executor.submit(map.create_candidate_pair_html, *subsequent_pair, next_fp)
 
     return render_template(
-        "show_candidate_pair.html", id_existing=id_existing, id_new=id_new, map_file=fp.name
+        "show_candidate_pair.html",
+        id_existing=id_existing,
+        id_new=id_new,
+        map_file=fp.name,
+        user_counts=S.get_top_labelers(),
     ), 200
 
 
@@ -162,7 +166,12 @@ def show_neighborhood(id: Optional[str] = None) -> Response:
         next_fp = current_app.maps_dir / f"neighborhood_{subsequent_id}.html"
         executor.submit(map.create_neighborhood_html, subsequent_id, next_fp)
 
-    return render_template("show_neighborhood.html", id=id, map_file=fp.name), 200
+    return render_template(
+        "show_neighborhood.html",
+        id=id,
+        map_file=fp.name,
+        user_counts=S.get_top_labelers(),
+    ), 200
 
 
 @bp.route("/store-label", methods=["POST"])

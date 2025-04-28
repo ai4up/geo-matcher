@@ -236,6 +236,18 @@ class State:
             return None
 
     @classmethod
+    def get_top_labelers(cls) -> Dict[str, int]:
+        """
+        Return a dictionary with the number of labeled pairs per user.
+        """
+        results = cls._unique_results()
+        if results.empty:
+            return {}
+
+        user_counts = results["username"].value_counts(ascending=False)
+        return user_counts[:5].to_dict()
+
+    @classmethod
     def store_results(cls) -> None:
         """
         Save all labeled candidate pairs to disk as a CSV file.
