@@ -203,6 +203,7 @@
 
         #scoreboard {
             position: fixed;
+            overflow: visible;
             bottom: 25px;
             right: 20px;
             background-color: rgba(255, 255, 255, 0.8);
@@ -210,18 +211,10 @@
             padding: 10px 14px;
             width: 150px;
             max-height: 250px;
-            overflow-y: auto;
             font-family: Arial, sans-serif;
             font-size: 12px;
             z-index: 1000;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-        }
-
-        #scoreboard h5 {
-            margin: 0 0 8px 0;
-            font-size: 14px;
-            text-align: center;
-            color: #333;
         }
 
         #scoreboard-entries {
@@ -230,21 +223,90 @@
             gap: 3px;
         }
 
+        #scoreboard-header {
+            font-weight: bold;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 4px;
+            margin-bottom: 6px;
+        }
+
         .score-entry {
             display: flex;
-            justify-content: space-between;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 2px;
+            align-items: center;
         }
 
         .score-user {
-            font-weight: 500;
-            color: #444;
+            flex: 1.2;
+            color: #333;
+            font-size: 12px;
+            text-align: left;
         }
 
         .score-count {
+            flex: 0.6;
+            font-size: 12px;
+            text-align: right;
+            padding-right: 9px;
+            color: #333;
+        }
+
+        .score-kappa {
+            flex: 0.6;
+            font-size: 12px;
+            text-align: right;
+            color: #333;
+        }
+
+        .kappa-value {
             font-weight: bold;
-            color: #4caf50;
+        }
+
+        .kappa-excellent {
+            color: #4caf50; /* green */
+        }
+
+        .kappa-high {
+            color: #8bc34a; /* light green */
+        }
+
+        .kappa-medium {
+            color: #ff9800; /* orange */
+        }
+
+        .kappa-low {
+            color: #f44336; /* red */
+        }
+
+        .tooltip-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: help;
+            height: 100%;
+        }
+
+        .custom-tooltip {
+            visibility: hidden;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 3px 8px;
+            position: absolute;
+            z-index: 1001;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            font-size: 11px;
+            white-space: nowrap;
+            transition: opacity 0.2s;
+        }
+
+        .tooltip-container:hover .custom-tooltip {
+            visibility: visible;
+            opacity: 1;
         }
     </style>
 </head>
@@ -283,12 +345,32 @@
     </div>
 
     <div id="scoreboard">
-        <h5>Scoreboard</h5>
+        <div id="scoreboard-header" class="score-entry">
+            <div class="score-user">User</div>
+            <div class="score-count">Count</div>
+            <div class="score-kappa tooltip-container">
+                <span>κ</span>
+                <span class="custom-tooltip" role="tooltip">Inter-Annotator Agreement<br>(Cohen's Kappa)</span>
+            </div>
+        </div>
+
         <div id="scoreboard-entries">
-            {% for user, count in user_counts.items() %}
+            {% for entry in user_stats %}
                 <div class="score-entry">
-                    <span class="score-user">{{ user }}</span>
-                    <span class="score-count">{{ count }}</span>
+                    <div class="score-user">{{ entry.username }}</div>
+                    <div class="score-count">{{ entry.count }}</div>
+                    <div class="score-kappa">
+                        {% if entry.kappa == entry.kappa %}
+                            <span class="tooltip-container">
+                                <span class="kappa-value {{ entry.kappa_class }}" data-kappa="{{ entry.kappa }}">
+                                    {{ '%.2f'|format(entry.kappa) }}
+                                </span>
+                                <span class="custom-tooltip" role="tooltip">Inter-Annotator Agreement<br>(Cohen's Kappa)</span>
+                            </span>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
                 </div>
             {% endfor %}
         </div>
@@ -312,6 +394,23 @@
             } else if (event.key === "?") {
                 toggleLegend();
             }
+        });
+
+        document.addEventListener("DOMContentLoaded", function() {
+            document.querySelectorAll('.kappa-value').forEach(el => {
+                const kappa = parseFloat(el.dataset.kappa);
+                if (!isNaN(kappa)) {
+                    if (kappa >= 0.8) {
+                        el.classList.add('kappa-excellent');
+                    } else if (kappa >= 0.6) {
+                        el.classList.add('kappa-high');
+                    } else if (kappa >= 0.4) {
+                        el.classList.add('kappa-medium');
+                    } else {
+                        el.classList.add('kappa-low');
+                    }
+                }
+            });
         });
 
         function labelPair(id_existing, id_new, match) {

@@ -135,7 +135,7 @@ def show_candidate_pair(id_existing: str = None, id_new: str = None) -> Response
         id_existing=id_existing,
         id_new=id_new,
         map_file=fp.name,
-        user_counts=S.get_top_labelers(),
+        user_stats=S.get_top_labelers(),
     ), 200
 
 
@@ -170,7 +170,7 @@ def show_neighborhood(id: Optional[str] = None) -> Response:
         "show_neighborhood.html",
         id=id,
         map_file=fp.name,
-        user_counts=S.get_top_labelers(),
+        user_stats=S.get_top_labelers(),
     ), 200
 
 

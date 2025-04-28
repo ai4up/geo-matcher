@@ -6,6 +6,7 @@ from typing import Callable, Dict, List, Optional, Union
 from geopandas import GeoDataFrame
 from pandas import DataFrame, Series, Index
 from shapely.geometry import Point
+from sklearn import metrics
 import numpy as np
 import pandas as pd
 
@@ -236,16 +237,18 @@ class State:
             return None
 
     @classmethod
-    def get_top_labelers(cls) -> Dict[str, int]:
+    def get_top_labelers(cls) -> List[Dict[str, any]]:
         """
-        Return a dictionary with the number of labeled pairs per user.
+        Return a dictionary with the number of labeled pairs per user and their inter-annotator agreement score (Cohen's kappa).
         """
         results = cls._unique_results()
         if results.empty:
             return {}
 
-        user_counts = results["username"].value_counts(ascending=False)
-        return user_counts[:5].to_dict()
+        user_counts = results["username"].value_counts(ascending=False).to_frame()[:5]
+        user_counts['kappa'] = cls._inter_annotator_agreement()
+
+        return user_counts.reset_index().to_dict(orient="records")
 
     @classmethod
     def store_results(cls) -> None:
@@ -336,3 +339,31 @@ class State:
         ambiguous_pairs = label_counts[label_counts["yes"] == label_counts["no"]].index
 
         return ambiguous_pairs
+
+
+    @classmethod
+    def _inter_annotator_agreement(cls) -> Dict[str, float]:
+        """
+        Calculate Cohen's Kappa score for each user compared to the consensus of all other users.
+
+        Returns:
+            A dictionary mapping username to Cohen's Kappa score.
+        """
+        results = cls._unique_results()
+        if results.empty:
+            return {}
+
+        # Only consider pairs labeled by more than one user
+        multi_labeled = results.groupby(["id_existing", "id_new"]).filter(lambda g: g["username"].nunique() > 1)
+
+        kappas = {}
+        for user in multi_labeled["username"].unique():
+            user_df = multi_labeled[multi_labeled["username"] == user]
+            other_df = multi_labeled[multi_labeled["username"] != user]
+
+            consensus = other_df.groupby(["id_existing", "id_new"])["match"].agg(lambda x: x.mode().iloc[0]).rename("consensus")
+            merged = user_df.merge(consensus, on=["id_existing", "id_new"], how="inner")
+
+            kappas[user] = metrics.cohen_kappa_score(merged["match"].values, merged["consensus"].values)
+
+        return kappas
