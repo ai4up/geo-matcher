@@ -117,7 +117,7 @@ def show_candidate_pair(id_existing: str = None, id_new: str = None) -> Response
         return f"All buildings labeled! Results stored in {S.results_path}", 200
 
     if not S.valid_pair(id_existing, id_new):
-        return "Candidate pairs not found", 404
+        return f"Candidate pair ({id_existing}, {id_new}) not found", 404
 
     name = _unq_name(id_existing, id_new)
     fp = current_app.maps_dir / f"candidate_{name}.html"
