@@ -8,8 +8,8 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 
-from eubucco_conflator.candidate_pairs import CandidatePairs
-from eubucco_conflator import spatial
+from geo_matcher.candidate_pairs import CandidatePairs
+from geo_matcher import spatial
 
 warnings.simplefilter(action="ignore", category=pd.errors.SettingWithCopyWarning)
 warnings.simplefilter(action="ignore", category=FutureWarning)

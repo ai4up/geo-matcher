@@ -1,6 +1,6 @@
 import click
 
-from eubucco_conflator import app, dataset
+from geo_matcher import app, dataset
 
 DATASET_FILE = "candidate-pairs.pickle"
 RESULTS_FILE = "results.csv"

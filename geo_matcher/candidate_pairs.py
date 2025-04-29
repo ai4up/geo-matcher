@@ -4,7 +4,7 @@ from geopandas import GeoDataFrame
 from pandas import DataFrame
 import pandas as pd
 
-from eubucco_conflator import spatial
+from geo_matcher import spatial
 
 
 class CandidatePairs:

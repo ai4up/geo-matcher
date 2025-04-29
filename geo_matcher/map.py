@@ -6,9 +6,9 @@ from pandas import DataFrame
 import folium
 import geopandas as gpd
 
-from eubucco_conflator.state import State as S
-from eubucco_conflator import spatial
-from eubucco_conflator.candidate_pairs import CandidatePairs
+from geo_matcher.state import State as S
+from geo_matcher import spatial
+from geo_matcher.candidate_pairs import CandidatePairs
 
 
 def create_tutorial_html(filepath: str) -> None:

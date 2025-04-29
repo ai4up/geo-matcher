@@ -12,8 +12,8 @@ from pandas import DataFrame
 import pandas as pd
 import waitress
 
-from eubucco_conflator.state import State as S
-from eubucco_conflator import map
+from geo_matcher.state import State as S
+from geo_matcher import map
 
 bp = Blueprint("matching", __name__)
 executor = Executor()

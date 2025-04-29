@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "eubucco-conflator"
+name = "geo-matcher"
 version = "0.1.0"
 description = "Tool for matching and labeling building pairs across building footprint datasets."
 authors = ["Florian Nachtigall <nachtigall.florian@gmail.com>"]
 readme = "README.md"
-packages = [{include = "eubucco_conflator"}]
+packages = [{include = "geo_matcher"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -27,4 +27,4 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-conflator = "eubucco_conflator.cli:cli"
+conflator = "geo_matcher.cli:cli"

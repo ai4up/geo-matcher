@@ -59,5 +59,5 @@ pre-commit install
 Build from source:
 ```bash
 poetry build
-pip install dist/eubucco_conflator-*.whl
+pip install dist/geo_matcher-*.whl
 ```

@@ -9,8 +9,8 @@ from shapely.geometry import Point
 from sklearn import metrics
 import pandas as pd
 
-from eubucco_conflator.candidate_pairs import CandidatePairs
-from eubucco_conflator import spatial
+from geo_matcher.candidate_pairs import CandidatePairs
+from geo_matcher import spatial
 
 _PROGRESS_FILEPATH = Path(".progress", "labeling-progress.pickle")
 

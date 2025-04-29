@@ -1,7 +1,7 @@
 import os
 import sys
 
-from eubucco_conflator.app import create_app
+from geo_matcher.app import create_app
 
 try:
     data_path = os.environ["DATA_PATH"]

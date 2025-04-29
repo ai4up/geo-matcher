@@ -22,4 +22,4 @@ RUN poetry config virtualenvs.create false \
 COPY . .
 
 # Run app with Waitress
-CMD ["waitress-serve", "--host=0.0.0.0", "--port=5000", "eubucco_conflator.wsgi:app"]
+CMD ["waitress-serve", "--host=0.0.0.0", "--port=5000", "geo_matcher.wsgi:app"]
