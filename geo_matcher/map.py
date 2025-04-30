@@ -77,6 +77,7 @@ def create_candidate_pair_html(id_existing: str, id_new: str, filepath: Path) ->
 
     _create_existing_buildings_layer(existing_buildings, id_existing).add_to(m)
     _create_new_buildings_layer(new_buildings, id_new).add_to(m)
+    _bring_candidate_pair_to_front(m, [id_existing, id_new])
     _disable_leaflet_click_outline(m)
     _add_legend(m, candidates_highlighted=True)
 
@@ -220,6 +221,24 @@ def _inject_candidate_pairs(m: folium.Map, candidate_pairs: DataFrame) -> None:
     <script>
     document.addEventListener("DOMContentLoaded", function () {{
         window.pairs = {candidate_pairs.to_json(orient='records')};
+    }});
+    </script>
+    """
+    ))
+
+
+def _bring_candidate_pair_to_front(m: folium.Map, highlight_ids: list[str]) -> None:
+    m.get_root().html.add_child(folium.Element(f"""
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {{
+        const map = window.{m.get_name()};
+        var idsToBringFront = {str(highlight_ids).replace("'", '"')};
+        map.eachLayer(function(layer) {{
+            if (layer.feature && layer.feature.properties && idsToBringFront.includes(layer.feature.properties.index)) {{
+                console.log("Bringing layer to front:", layer.feature.properties.index);
+                layer.bringToFront();
+            }}
+        }});
     }});
     </script>
     """
