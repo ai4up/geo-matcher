@@ -12,8 +12,6 @@ import pandas as pd
 from geo_matcher.candidate_pairs import CandidatePairs
 from geo_matcher import spatial
 
-_PROGRESS_FILEPATH = Path(".progress", "labeling-progress.pickle")
-
 
 class State:
     """
@@ -36,7 +34,7 @@ class State:
         cls.results_path = Path(results_path)
         cls.data = CandidatePairs.load(data_path)
         cls.data.preliminary_matching_estimate()
-        cls.results = cls._load_progress()
+        cls.results = cls._load_results()
 
         # Add pointers to improve readability
         cls.data_a = cls.data.dataset_a
@@ -120,7 +118,7 @@ class State:
             "username": username,
             "time": datetime.now().isoformat(timespec="milliseconds")
         })
-        cls._store_progress()
+        cls.store_results()
 
         if len(cls.results) % 10 == 0:
             frequency = dict(Counter([e["match"] for e in cls.results]))
@@ -137,7 +135,7 @@ class State:
         results = df[["neighborhood", "id_existing", "id_new", "match", "username"]]
         results["time"] = datetime.now().isoformat(timespec="milliseconds")
         cls.results.extend(results.to_dict(orient="records"))
-        cls._store_progress()
+        cls.store_results()
 
     @classmethod
     def valid_pair(cls, id_existing: str, id_new: str) -> Series:
@@ -259,15 +257,11 @@ class State:
         )
 
     @classmethod
-    def _store_progress(cls) -> None:
-        cls._unique_results().to_pickle(_PROGRESS_FILEPATH)
+    def _load_results(cls) -> List[Dict[str, any]]:
+        if cls.results_path.exists():
+            return pd.read_csv(cls.results_path).to_dict("records")
 
-    @staticmethod
-    def _load_progress() -> List[Dict[str, any]]:
-        if _PROGRESS_FILEPATH.exists():
-            return pd.read_pickle(_PROGRESS_FILEPATH).to_dict("records")
-
-        _PROGRESS_FILEPATH.parent.mkdir(parents=True, exist_ok=True)
+        cls.results_path.parent.mkdir(parents=True, exist_ok=True)
         return []
 
     @classmethod
