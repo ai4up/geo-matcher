@@ -118,7 +118,7 @@ def _identify_candidate_pairs(
     gdf1: GeoDataFrame, gdf2: GeoDataFrame, max_distance: float
 ) -> DataFrame:
     """
-    Determine the best match for each building in gdf1 and gdf2 by identifying overlaps
+    Determine the best match for each building in gdf1 and gdf2 by identifying the largest overlap
     or, if none, the nearest building in the other GeoDataFrame.
     """
     # Determine pairs of overlapping buildings
@@ -152,7 +152,19 @@ def _determine_overlapping_candidate_pairs(
     overlap = spatial.symmetrical_pairwise_relative_overlap(gdf1.loc[idx1], gdf2.loc[idx2])
     mask = overlap > tolerance
 
-    return idx1[mask], idx2[mask]
+    pairs = pd.DataFrame({
+        "idx1": idx1[mask],
+        "idx2": idx2[mask],
+        "overlap": overlap[mask]
+    })
+
+    # For n:m relationships, keep only pair with the largest overlap
+    max_idx1 = pairs.sort_values("overlap", ascending=False).drop_duplicates(subset=["idx1"])
+    # Ensure symmetry, meaning that for each building in both gdf1 and gdf2 the pair with the respective largest overlap is kept
+    max_idx2 = pairs.sort_values("overlap", ascending=False).drop_duplicates(subset=["idx2"])
+    max_pairs = pd.concat([max_idx1, max_idx2])[["idx1", "idx2"]].drop_duplicates()
+
+    return pd.Index(max_pairs["idx1"]), pd.Index(max_pairs["idx2"])
 
 
 def _filter_candidate_pairs_by_overlap(
