@@ -18,8 +18,8 @@ COPY pyproject.toml poetry.lock ./
 RUN poetry config virtualenvs.create false \
  && poetry install --no-interaction --no-ansi --no-root
 
-# Copy the rest of the code
-COPY . .
+# Copy package source code
+COPY geo_matcher geo_matcher
 
 # Run app with Waitress
 CMD ["waitress-serve", "--host=0.0.0.0", "--port=5000", "geo_matcher.wsgi:app"]
