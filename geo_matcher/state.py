@@ -2,6 +2,7 @@ from collections import Counter
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Union
+import random
 
 from geopandas import GeoDataFrame
 from pandas import DataFrame, Series, Index
@@ -287,9 +288,12 @@ class State:
         else:
             raise ValueError(f"Labeling mode '{label_mode}' is not supported.")
 
-        remaining = remaining.drop(cls._labeled_pairs(user), errors="ignore")
+        remaining = remaining.drop(cls._labeled_pairs(user), errors="ignore").to_list()
 
-        return remaining.to_list()
+        random.Random(42).shuffle(remaining)
+
+        return remaining
+
 
     @classmethod
     def _next_neighborhoods(cls, label_mode: str, user: str = None) -> List[Optional[str]]:
