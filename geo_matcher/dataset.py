@@ -50,6 +50,9 @@ def create_candidate_pairs_dataset(
 
     pairs = _identify_candidate_pairs(gdf1, gdf2, max_distance)
 
+    if max_distance != 0:
+        _verify_exhaustive_pairs(gdf1, gdf2, pairs)
+
     if overlap_range:
         pairs = _filter_candidate_pairs_by_overlap(pairs, gdf1, gdf2, overlap_range)
 
@@ -97,6 +100,25 @@ def _ensure_unique_index(
     return gdf1, gdf2
 
 
+def _verify_exhaustive_pairs(
+    gdf1: GeoDataFrame, gdf2: GeoDataFrame, pairs: DataFrame
+) -> None:
+    """
+    Raise an error if the candidate pairs do not cover all buildings in gdf1 and gdf2.
+    """
+    if len(gdf1) != len(pairs["id_existing"].unique()):
+        raise ValueError(
+            "Candidate pairs do not cover all buildings in gdf1. "
+            f"Expected {len(gdf1)}, but got {pairs['id_existing'].nunique()}."
+        )
+
+    if len(gdf2) != len(pairs["id_new"].unique()):
+        raise ValueError(
+            "Candidate pairs do not cover all buildings in gdf2. "
+            f"Expected {len(gdf2)}, but got {pairs['id_new'].nunique()}."
+        )
+
+
 def _drop_buildings_elsewhere(
     gdf1: GeoDataFrame, gdf2: GeoDataFrame, pairs: DataFrame
 ) -> Tuple[GeoDataFrame, GeoDataFrame]:
@@ -128,12 +150,13 @@ def _identify_candidate_pairs(
     gdf1_non_intersect = gdf1.drop(idx1)
     gdf2_non_intersect = gdf2.drop(idx2)
 
-    log(f"For {len(gdf1_non_intersect) / len(gdf1) * 100:.1f}% and {len(gdf2_non_intersect) / len(gdf2) * 100:.1f}% non-overlapping buildings in gdf1 and gdf2, respectively, find the nearest building in the other GeoDataFrame.")
-    idx1_nearest_a, idx2_nearest_a = spatial.nearest_neighbor(gdf1_non_intersect, gdf2, max_distance)
-    idx2_nearest_b, idx1_nearest_b = spatial.nearest_neighbor(gdf2_non_intersect, gdf1, max_distance)
+    if max_distance != 0:
+        log(f"For {len(gdf1_non_intersect) / len(gdf1) * 100:.1f}% and {len(gdf2_non_intersect) / len(gdf2) * 100:.1f}% non-overlapping buildings in gdf1 and gdf2, respectively, find the nearest building in the other GeoDataFrame.")
+        idx1_nearest_a, idx2_nearest_a = spatial.nearest_neighbor(gdf1_non_intersect, gdf2, max_distance)
+        idx2_nearest_b, idx1_nearest_b = spatial.nearest_neighbor(gdf2_non_intersect, gdf1, max_distance)
 
-    idx1 = np.concatenate([idx1, idx1_nearest_a, idx1_nearest_b])
-    idx2 = np.concatenate([idx2, idx2_nearest_a, idx2_nearest_b])
+        idx1 = np.concatenate([idx1, idx1_nearest_a, idx1_nearest_b])
+        idx2 = np.concatenate([idx2, idx2_nearest_a, idx2_nearest_b])
 
     pairs = DataFrame({"id_existing": idx1, "id_new": idx2})
 
