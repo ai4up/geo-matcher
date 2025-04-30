@@ -2,7 +2,6 @@ from collections import Counter
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Union
-import random
 
 from geopandas import GeoDataFrame
 from pandas import DataFrame, Series, Index
@@ -27,11 +26,12 @@ class State:
     results: List[Dict[str, any]] = []
 
     @classmethod
-    def init(cls, data_path: str, results_path: str, annotation_redundancy: int, logger: Callable[[str], None] = print) -> None:
+    def init(cls, data_path: str, results_path: str, annotation_redundancy: int, logger: Callable[[str], None] = print, random_state: int = 42) -> None:
         """
         Initialize the labeling state for a given candidate pair dataset, taking into account previously labeled pairs.
         """
         cls.logger = logger
+        cls.random_state = random_state
         cls.annotation_redundancy = annotation_redundancy
         cls.results_path = Path(results_path)
         cls.data = CandidatePairs.load(data_path)
@@ -282,18 +282,15 @@ class State:
         if label_mode == "all":
             remaining = cls._all_pairs()
         elif label_mode == "unlabeled":
-            remaining = cls._insufficiently_labeled_pairs().union(cls._unlabeled_pairs())
+            remaining = cls._insufficiently_labeled_pairs().union(cls._unlabeled_pairs(), sort=False)
         elif label_mode == "cross-validate":
-            remaining = cls._insufficiently_labeled_pairs().union(cls._ambiguously_labeled_pairs())
+            remaining = cls._insufficiently_labeled_pairs().union(cls._ambiguously_labeled_pairs(), sort=False)
         else:
             raise ValueError(f"Labeling mode '{label_mode}' is not supported.")
 
         remaining = remaining.drop(cls._labeled_pairs(user), errors="ignore").to_list()
 
-        random.Random(42).shuffle(remaining)
-
         return remaining
-
 
     @classmethod
     def _next_neighborhoods(cls, label_mode: str, user: str = None) -> List[Optional[str]]:
@@ -350,7 +347,7 @@ class State:
 
     @classmethod
     def _all_pairs(cls) -> Index:
-        return pd.MultiIndex.from_frame(cls.pairs[["id_existing", "id_new"]])
+        return cls._shuffled(pd.MultiIndex.from_frame(cls.pairs[["id_existing", "id_new"]]))
 
     @classmethod
     def _labeled_pairs(cls, user: str) -> Index:
@@ -390,3 +387,7 @@ class State:
             kappas[user] = metrics.cohen_kappa_score(merged["match"].values, merged["consensus"].values, labels=["yes", "no", "unsure"])
 
         return kappas
+
+    @classmethod
+    def _shuffled(cls, index: Index) -> Index:
+        return index.to_series().sample(frac=1, random_state=cls.random_state).index
