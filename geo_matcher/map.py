@@ -148,9 +148,9 @@ def _add_baselayer_marker() -> folium.Marker:
 def _create_existing_buildings_layer(gdf: GeoDataFrame, highlight_id: Optional[str] = None) -> folium.FeatureGroup:
     def style_function(feature):
         if highlight_id and feature["properties"].get("index") == highlight_id:
-            return {"color": "steelblue", "fillOpacity": 0.5, "fillColor": "skyblue", "weight": 5}
+            return {"color": "steelblue", "fillOpacity": 0.4, "fillColor": "skyblue", "weight": 6}
         else:
-            return {"color": "skyblue", "fillOpacity": 0.5}
+            return {"color": "skyblue", "fillOpacity": 0.4, "weight": 2}
 
     def highlight_function(_):
             return {"fillOpacity": 0.8}
@@ -172,9 +172,9 @@ def _create_existing_buildings_layer(gdf: GeoDataFrame, highlight_id: Optional[s
 def _create_new_buildings_layer(gdf: GeoDataFrame, highlight_id: Optional[str] = None) -> folium.FeatureGroup:
     def style_function(feature):
         if highlight_id and feature["properties"].get("index") == highlight_id:
-            return {"color": "orangered", "fillOpacity": 0.2, "fillColor": "coral", "weight": 5}
+            return {"color": "orangered", "fillOpacity": 0.2, "fillColor": "coral", "weight": 4}
         else:
-            return {"color": "coral", "fillOpacity": 0.2}
+            return {"color": "coral", "fillOpacity": 0.2, "weight": 2}
 
     def highlight_function(_):
             return {"fillOpacity": 0.5}
