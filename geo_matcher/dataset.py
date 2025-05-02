@@ -48,7 +48,12 @@ def create_candidate_pairs_dataset(
     gdf1["neighborhood"] = spatial.h3_index(gdf1, h3_res)
     gdf2["neighborhood"] = spatial.h3_index(gdf2, h3_res)
 
-    pairs = _identify_candidate_pairs(gdf1, gdf2, max_distance)
+    if n_neighborhoods:
+        neighborhoods = _sample_neighborhoods(gdf2, n_neighborhoods)
+        pairs = _identify_candidate_pairs_in_neighborhoods(gdf1, gdf2, neighborhoods, max_distance)
+        gdf1, gdf2 = _remove_non_candidates(pairs, gdf1, gdf2)
+    else:
+        pairs = _identify_candidate_pairs(gdf1, gdf2, max_distance)
 
     if max_distance != 0:
         _verify_exhaustive_pairs(gdf1, gdf2, pairs)
@@ -62,13 +67,9 @@ def create_candidate_pairs_dataset(
     if max_overlap_others:
         pairs = _filter_candidate_pairs_by_overlap_of_others(pairs, gdf1, gdf2, max_overlap_others)
 
-    if n_neighborhoods:
-        pairs = _sample_neighborhoods(pairs, gdf2, n_neighborhoods)
-
     if n:
         pairs = _sample_candidate_pairs(pairs, n)
-
-    gdf1, gdf2 = _drop_buildings_elsewhere(gdf1, gdf2, pairs)
+        gdf1, gdf2 = _drop_buildings_elsewhere(gdf1, gdf2, pairs)
 
     return CandidatePairs(
         dataset_a=gdf1,
@@ -123,7 +124,7 @@ def _drop_buildings_elsewhere(
     gdf1: GeoDataFrame, gdf2: GeoDataFrame, pairs: DataFrame
 ) -> Tuple[GeoDataFrame, GeoDataFrame]:
     """
-    To reduce dataset size, remove buildings in different neighborhoods than candidate pairs.
+    To reduce dataset size, remove buildings away from the candidate pairs.
     """
     nbh1 = pairs["id_existing"].map(gdf1["neighborhood"])
     nbh2 = pairs["id_new"].map(gdf2["neighborhood"])
@@ -166,9 +167,32 @@ def _identify_candidate_pairs(
     return pairs
 
 
+def _identify_candidate_pairs_in_neighborhoods(
+    gdf1: GeoDataFrame, gdf2: GeoDataFrame, neighborhoods: np.ndarray, max_distance: float
+) -> DataFrame:
+    """
+    Identify candidate pairs for a set of neighborhoods.
+
+    The new building is required to be in the neighborhood, while the existing building
+    can also be in a nearby neighborhood.
+    """
+    nearby_neighborhoods = spatial.h3_disk(neighborhoods, k=1)
+    gdf1_w_neighbors = gdf1[gdf1["neighborhood"].isin(nearby_neighborhoods)]
+    gdf2_w_neighbors = gdf2[gdf2["neighborhood"].isin(nearby_neighborhoods)]
+
+    pairs = _identify_candidate_pairs(gdf1_w_neighbors, gdf2_w_neighbors, max_distance)
+    pairs = _filter_candidate_pairs_by_neighborhood(pairs, gdf2, neighborhoods)
+
+    return pairs
+
+
 def _determine_overlapping_candidate_pairs(
     gdf1: GeoDataFrame, gdf2: GeoDataFrame, tolerance: float = 0.01
 ) -> Tuple[pd.Index, pd.Index]:
+    """
+    Identify candidate pairs of overlapping buildings footprints,
+    retaining only the most overlapping pair for each building.
+    """
     idx1, idx2 = spatial.overlapping(gdf1, gdf2)
 
     # Filter slightly overlapping buildings
@@ -192,7 +216,7 @@ def _determine_overlapping_candidate_pairs(
 
 def _filter_candidate_pairs_by_overlap(
         pairs: DataFrame, gdf1: GeoDataFrame, gdf2: GeoDataFrame, overlap_range: Tuple[float, float]
-    ) -> DataFrame:
+) -> DataFrame:
     """
     Filter candidate pairs based on their degree of overlap, i.e. their Two-Way Area Overlap (TWAO).
     """
@@ -207,7 +231,7 @@ def _filter_candidate_pairs_by_overlap(
 
 def _filter_candidate_pairs_by_shape_similarity(
         candidate_pairs: DataFrame, gdf1: GeoDataFrame, gdf2: GeoDataFrame, similarity_range: Tuple[float, float]
-    ) -> DataFrame:
+) -> DataFrame:
     """
     Filter candidate pairs based on their shape similarity.
     """
@@ -258,25 +282,50 @@ def _sample_candidate_pairs(
     if n > len(pairs):
         log(f"Sampling size n ({n}) is larger than the number of candidate pairs ({len(pairs)}). Reducing n to {len(pairs)}.")
         n = len(pairs)
-    return pairs.sample(n=n, random_state=42).reset_index(drop=True)
+
+    sample = pairs.sample(n=n, random_state=42).reset_index(drop=True)
+
+    return sample
 
 
 def _sample_neighborhoods(
-    pairs: DataFrame, gdf: GeoDataFrame, n: int
-) -> DataFrame:
+    gdf: GeoDataFrame, n: int
+) -> np.ndarray:
     """
-    Sample candidate pairs from n neighborhoods, with selection weighted by the number of buildings per neighborhood.
+    Sample n neighborhoods, with selection weighted by the number of buildings per neighborhood.
     """
-    neighborhoods = pairs["id_new"].map(gdf["neighborhood"])
-    probs = neighborhoods.value_counts(normalize=True)
+    probs = gdf["neighborhood"].value_counts(normalize=True)
     if n > len(probs):
         log(f"Sampling size n ({n}) is larger than the number of neighborhoods ({len(probs)}). Reducing n to {len(probs)}.")
         n = len(probs)
 
-    samples = probs.sample(n=n, weights=probs, random_state=42)
-    mask = neighborhoods.isin(samples.index)
+    nbh = probs.sample(n=n, weights=probs, random_state=42).index.values
 
-    return pairs[mask]
+    return nbh
+
+
+def _remove_non_candidates(
+    pairs: DataFrame, gdf1: GeoDataFrame, gdf2: GeoDataFrame
+) -> Tuple[GeoDataFrame, GeoDataFrame]:
+    """
+    Remove buildings that are not candidate pairs.
+    """
+    gdf1 = gdf1.loc[pairs["id_existing"].unique()]
+    gdf2 = gdf2.loc[pairs["id_new"].unique()]
+
+    return gdf1, gdf2
+
+
+def _filter_candidate_pairs_by_neighborhood(
+    pairs: DataFrame, gdf: GeoDataFrame, neighborhoods: np.ndarray
+) -> DataFrame:
+    """
+    Drop candidate pairs where the new building is not in a set of neighborhoods.
+    """
+    pair_nbh = pairs["id_new"].map(gdf["neighborhood"])
+    pairs = pairs[pair_nbh.isin(neighborhoods)]
+
+    return pairs
 
 
 def _indices_overlap(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> bool:
