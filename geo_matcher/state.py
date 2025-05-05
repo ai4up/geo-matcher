@@ -240,7 +240,7 @@ class State:
         """
         Return a dictionary with the number of labeled pairs per user and their inter-annotator agreement score (Cohen's kappa).
         """
-        results = cls._unique_results()
+        results = cls._unique_results(include_unsure=True)
         user_counts = results["username"].value_counts(ascending=False).to_frame()[:5]
         user_counts["kappa"] = cls._inter_annotator_agreement()
 
@@ -251,7 +251,7 @@ class State:
         """
         Save all labeled candidate pairs to disk as a CSV file.
         """
-        cls._unique_results().to_csv(cls.results_path, index=False)
+        cls._unique_results(include_unsure=True).to_csv(cls.results_path, index=False)
         cls.logger(
             f"Labeled building pairs stored in {cls.results_path}."
         )
@@ -265,11 +265,15 @@ class State:
         return []
 
     @classmethod
-    def _unique_results(cls) -> DataFrame:
+    def _unique_results(cls, include_unsure: bool = False) -> DataFrame:
         if len(cls.results) == 0:
             return pd.DataFrame(columns=["neighborhood", "id_existing", "id_new", "match", "username", "time"])
 
-        return pd.DataFrame(cls.results).drop_duplicates(subset=["id_existing", "id_new", "username"], keep="last")
+        results = pd.DataFrame(cls.results).drop_duplicates(subset=["id_existing", "id_new", "username"], keep="last")
+        if not include_unsure:
+            results = results[results["match"] != "unsure"]
+
+        return results
 
     @classmethod
     def _next_pairs(cls, label_mode: str, user: str = None) -> List[Optional[tuple[str, str]]]:
@@ -303,7 +307,7 @@ class State:
 
     @classmethod
     def _unlabeled_pairs(cls) -> Index:
-        labeled_pairs = set((result["id_existing"], result["id_new"]) for result in cls.results)
+        labeled_pairs = set((result["id_existing"], result["id_new"]) for result in cls.results if result["match"] != "unsure")
         all_pairs = cls._all_pairs()
         unlabeled = all_pairs.drop(labeled_pairs, errors="ignore")
 
@@ -311,7 +315,7 @@ class State:
 
     @classmethod
     def _unlabeled_neighborhoods(cls) -> Index:
-        labeled_nbh = set(result["neighborhood"] for result in cls.results)
+        labeled_nbh = set(result["neighborhood"] for result in cls.results if result["match"] != "unsure")
         all_nbh = set(cls.get_all_neighborhoods())
         unlabeled = Index(all_nbh - labeled_nbh)
 
@@ -345,7 +349,7 @@ class State:
 
     @classmethod
     def _labeled_pairs(cls, user: str) -> Index:
-        results = cls._unique_results()
+        results = cls._unique_results(include_unsure=True)
         user_results = results[results["username"] == user]
         user_pairs = pd.MultiIndex.from_frame(user_results[["id_existing", "id_new"]])
 
@@ -353,7 +357,7 @@ class State:
 
     @classmethod
     def _labeled_neighborhoods(cls, user: str) -> Index:
-        results = cls._unique_results()
+        results = cls._unique_results(include_unsure=True)
         user_results = results[results["username"] == user]
         user_neighborhoods = pd.Index(user_results["neighborhood"].unique())
 
@@ -378,7 +382,7 @@ class State:
             consensus = other_df.groupby(["id_existing", "id_new"])["match"].agg(lambda x: x.mode().iloc[0]).rename("consensus")
             merged = user_df.merge(consensus, on=["id_existing", "id_new"], how="inner")
 
-            kappas[user] = metrics.cohen_kappa_score(merged["match"].values, merged["consensus"].values, labels=["yes", "no", "unsure"])
+            kappas[user] = metrics.cohen_kappa_score(merged["match"].values, merged["consensus"].values, labels=["yes", "no"])
 
         return kappas
 
