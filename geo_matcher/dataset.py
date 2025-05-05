@@ -151,7 +151,7 @@ def _identify_candidate_pairs(
     gdf1_non_intersect = gdf1.drop(idx1)
     gdf2_non_intersect = gdf2.drop(idx2)
 
-    if max_distance != 0:
+    if max_distance != 0 and len(gdf1) > 0 and len(gdf2) > 0:
         log(f"For {len(gdf1_non_intersect) / len(gdf1) * 100:.1f}% and {len(gdf2_non_intersect) / len(gdf2) * 100:.1f}% non-overlapping buildings in gdf1 and gdf2, respectively, find the nearest building in the other GeoDataFrame.")
         idx1_nearest_a, idx2_nearest_a = spatial.nearest_neighbor(gdf1_non_intersect, gdf2, max_distance)
         idx2_nearest_b, idx1_nearest_b = spatial.nearest_neighbor(gdf2_non_intersect, gdf1, max_distance)
