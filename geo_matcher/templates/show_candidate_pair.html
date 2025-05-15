@@ -380,6 +380,7 @@
 
     <script type="text/javascript">
         document.addEventListener('keydown', function(event) {
+            event.preventDefault();
             if (event.key === "ArrowUp") {
                 window.history.back();
             } else if (event.key === "ArrowDown") {
