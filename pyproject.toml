@@ -27,4 +27,4 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-conflator = "geo_matcher.cli:cli"
+gmatch = "geo_matcher.cli:cli"

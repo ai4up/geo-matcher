@@ -11,25 +11,25 @@ pip install git+https://github.com/ai4up/eubucco-conflation@main
 ## Usage
 Step 1: Create a dataset of potential building pairs from two datasets:
 ```bash
-conflator create-labeling-dataset dataset1.parquet dataset2.parquet
+gmatch create-labeling-dataset dataset1.parquet dataset2.parquet
 ```
 
 Step 2: Start browser-based labeling of building pairs:
 ```bash
-conflator label
+gmatch label
 ```
 
 ## Demo
 Create a dataset of potential matches of [government buildings](https://eubucco.com/data/) and [Microsoft buildings](https://github.com/microsoft/GlobalMLBuildingFootprints) for a small region in France that require manual labeling  using the [demo data](data/) in the repository. Include only buildings which overlap slightly (0-10%).
 ```bash
-conflator create-labeling-dataset \
+gmatch create-labeling-dataset \
     --min-intersection=0.1 \ # Minimum relative overlap for new buildings to be included in labeling dataset [0,1)
     --max-intersection=0.2 \ # Maximum relative overlap for new buildings to be included in labeling dataset (0,1]
     data/demo-gov.parquet data/demo-microsoft.parquet
 ```
 The resulting dataset is locally stored as `candidate-pairs.pickle`. To initiate the browser-based labeling, run:
 ```bash
-conflator label
+gmatch label
 ```
 ![Example of Building Footprint Matching Tool](example.png)
 
