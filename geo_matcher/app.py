@@ -231,9 +231,10 @@ def download_results() -> Response:
     """
     Download the results of the labeling process as a CSV file.
     """
-    S.store_results()
+    path = S.results_path.with_name("labeled-pairs.csv").absolute()
+    S.store_aggregated_results(path)
 
-    return send_file(S.results_path.absolute(), as_attachment=True)
+    return send_file(path, as_attachment=True)
 
 
 def _update_added_matches(candidate_pairs: DataFrame, added: List[Dict]) -> DataFrame:

@@ -258,6 +258,28 @@ class State:
         )
 
     @classmethod
+    def store_aggregated_results(cls, path: str) -> None:
+        """
+        Summarize sufficiently labeled pairs with majority vote and label count, then write to CSV.
+        """
+        results = cls._unique_results(include_unsure=True)
+        unlabeled = cls._next_pairs("unlabeled")
+        labeled_mask = ~results[["id_existing", "id_new"]].apply(tuple, axis=1).isin(unlabeled)
+
+        label_counts = (
+            results[labeled_mask]
+            .groupby(["id_existing", "id_new"])["match"]
+            .value_counts()
+            .unstack()
+            .reindex(columns=["yes", "no", "unsure"], fill_value=0)
+        )
+
+        label_counts["match"] = label_counts[["yes", "no", "unsure"]].idxmax(axis=1)
+        label_counts = label_counts.rename(columns={"yes": "count_match", "no": "count_no_match", "unsure": "count_unsure"})
+
+        label_counts.reset_index().to_csv(path, index=False)
+
+    @classmethod
     def _load_results(cls) -> List[Dict[str, any]]:
         if cls.results_path.exists():
             return pd.read_csv(cls.results_path).to_dict("records")
@@ -345,7 +367,7 @@ class State:
             .unstack()
             .reindex(columns=["yes", "no"], fill_value=0)
         )
-        
+
         # Select pairs where the difference in votes is below an ambiguity threshold
         ambiguous_mask = (label_counts["yes"] - label_counts["no"]).abs() < cls.consensus_margin
         ambiguous_pairs = label_counts[ambiguous_mask].index
