@@ -18,7 +18,7 @@ from geo_matcher import map
 bp = Blueprint("matching", __name__)
 executor = Executor()
 
-def create_app(data_path: str, results_path: str, annotation_redundancy: int) -> Flask:
+def create_app(data_path: str, results_path: str, annotation_redundancy: int, consensus_margin: int) -> Flask:
     """
     Create and configure the Flask app.
     """
@@ -31,7 +31,7 @@ def create_app(data_path: str, results_path: str, annotation_redundancy: int) ->
 
     _ensure_empty_dir(app.maps_dir)
 
-    S.init(data_path, results_path, annotation_redundancy)
+    S.init(data_path, results_path, annotation_redundancy, consensus_margin)
 
     return app
 

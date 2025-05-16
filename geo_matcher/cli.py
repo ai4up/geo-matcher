@@ -20,7 +20,14 @@ def cli() -> None:
     type=int,
     help="Number of redundant annotations per building pair."
 )
-def label(path: str, results_path: str, annotation_redundancy: int) -> None:
+@click.option(
+    "--consensus-margin",
+    "-m",
+    default=1,
+    type=int,
+    help="Minimum difference between match and no-match labels required to resolve a pair."
+)
+def label(path: str, results_path: str, annotation_redundancy: int, consensus_margin: int) -> None:
     """
     Start the labeling of building pairs.
 
@@ -28,7 +35,7 @@ def label(path: str, results_path: str, annotation_redundancy: int) -> None:
     RESULTS_PATH to where the results will be stored.
     """
     click.echo("Starting browser app...")
-    app.start_locally(path, results_path, annotation_redundancy)
+    app.start_locally(path, results_path, annotation_redundancy, consensus_margin)
 
 
 @cli.command()

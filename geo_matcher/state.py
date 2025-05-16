@@ -24,13 +24,14 @@ class State:
     results: List[Dict[str, any]] = []
 
     @classmethod
-    def init(cls, data_path: str, results_path: str, annotation_redundancy: int, logger: Callable[[str], None] = print, random_state: int = 42) -> None:
+    def init(cls, data_path: str, results_path: str, annotation_redundancy: int, consensus_margin: int, logger: Callable[[str], None] = print, random_state: int = 42) -> None:
         """
         Initialize the labeling state for a given candidate pair dataset, taking into account previously labeled pairs.
         """
         cls.logger = logger
         cls.random_state = random_state
         cls.annotation_redundancy = annotation_redundancy
+        cls.consensus_margin = consensus_margin
         cls.results_path = Path(results_path)
         cls.data = CandidatePairs.load(data_path)
         cls.data.preliminary_matching_estimate()
@@ -337,9 +338,17 @@ class State:
 
     @classmethod
     def _ambiguously_labeled_pairs(cls) -> Index:
-        label_counts = cls._unique_results().groupby(["id_existing", "id_new"])[
-            "match"].value_counts().unstack().reindex(columns=["yes", "no"], fill_value=0)
-        ambiguous_pairs = label_counts[label_counts["yes"] == label_counts["no"]].index
+        label_counts = (
+            cls._unique_results()
+            .groupby(["id_existing", "id_new"])["match"]
+            .value_counts()
+            .unstack()
+            .reindex(columns=["yes", "no"], fill_value=0)
+        )
+        
+        # Select pairs where the difference in votes is below an ambiguity threshold
+        ambiguous_mask = (label_counts["yes"] - label_counts["no"]).abs() < cls.consensus_margin
+        ambiguous_pairs = label_counts[ambiguous_mask].index
 
         return ambiguous_pairs
 

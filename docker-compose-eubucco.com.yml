@@ -13,6 +13,7 @@ services:
       - DATA_PATH=/app/data/candidate-pairs.pickle
       - RESULTS_PATH=/app/data/results-eubucco.csv
       - ANNOTATION_REDUNDANCY=1
+      - CONSENSUS_MARGIN=2
     networks:
       - proxy
     labels:
