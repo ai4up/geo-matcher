@@ -281,7 +281,7 @@ class State:
         if label_mode == "all":
             remaining = cls._all_pairs()
         elif label_mode == "unlabeled":
-            remaining = cls._insufficiently_labeled_pairs().union(cls._unlabeled_pairs(), sort=False)
+            remaining = cls._ambiguously_labeled_pairs().union(cls._insufficiently_labeled_pairs(), sort=False).union(cls._unlabeled_pairs(), sort=False)
         elif label_mode == "cross-validate":
             remaining = cls._ambiguously_labeled_pairs().union(cls._insufficiently_labeled_pairs(), sort=False)
         else:
