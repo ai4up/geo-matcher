@@ -148,7 +148,7 @@ def _add_baselayer_marker() -> folium.Marker:
 def _create_existing_buildings_layer(gdf: GeoDataFrame, highlight_id: Optional[str] = None) -> folium.FeatureGroup:
     def style_function(feature):
         if highlight_id and feature["properties"].get("index") == highlight_id:
-            return {"color": "steelblue", "fillOpacity": 0.4, "fillColor": "skyblue", "weight": 6}
+            return {"color": "steelblue", "fillOpacity": 0.4, "fillColor": "skyblue", "weight": 4}
         else:
             return {"color": "skyblue", "fillOpacity": 0.4, "weight": 2}
 
@@ -172,7 +172,7 @@ def _create_existing_buildings_layer(gdf: GeoDataFrame, highlight_id: Optional[s
 def _create_new_buildings_layer(gdf: GeoDataFrame, highlight_id: Optional[str] = None) -> folium.FeatureGroup:
     def style_function(feature):
         if highlight_id and feature["properties"].get("index") == highlight_id:
-            return {"color": "orangered", "fillOpacity": 0.2, "fillColor": "coral", "weight": 4}
+            return {"color": "orangered", "fillOpacity": 0.2, "fillColor": "coral", "weight": 4, "dashArray": "5, 8"}
         else:
             return {"color": "coral", "fillOpacity": 0.2, "weight": 2}
 
@@ -412,7 +412,7 @@ def _add_legend(m: folium.Map, candidates_highlighted=False) -> None:
     <div>
         <span style="display: inline-block; width: 26px; height: 18px; position: relative; vertical-align: middle;">
             <i style="background: rgba(255, 127, 80, 0.2); width: 18px; height: 18px; display: inline-block;
-                border: 3px solid orangered; position: absolute; top: 0; left: 0; z-index: 2;"></i>
+                border: 3px dotted orangered; position: absolute; top: 0; left: 0; z-index: 2;"></i>
             <i style="background: rgba(135, 206, 235, 0.5); width: 18px; height: 18px; display: inline-block;\
                 border: 3px solid steelblue; position: absolute; top: 0; left: 6px; z-index: 1;"></i>
         </span>
