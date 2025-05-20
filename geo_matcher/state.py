@@ -270,7 +270,7 @@ class State:
             results[labeled_mask]
             .groupby(["id_existing", "id_new"])["match"]
             .value_counts()
-            .unstack()
+            .unstack(fill_value=0)
             .reindex(columns=["yes", "no", "unsure"], fill_value=0)
         )
 
@@ -364,7 +364,7 @@ class State:
             cls._unique_results()
             .groupby(["id_existing", "id_new"])["match"]
             .value_counts()
-            .unstack()
+            .unstack(fill_value=0)
             .reindex(columns=["yes", "no"], fill_value=0)
         )
 
