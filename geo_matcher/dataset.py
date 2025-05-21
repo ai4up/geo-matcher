@@ -55,7 +55,7 @@ def create_candidate_pairs_dataset(
     else:
         pairs = _identify_candidate_pairs(gdf1, gdf2, max_distance)
 
-    if max_distance != 0:
+    if max_distance is None:
         _verify_exhaustive_pairs(gdf1, gdf2, pairs)
 
     if overlap_range:
