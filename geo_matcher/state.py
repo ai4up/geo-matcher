@@ -402,6 +402,9 @@ class State:
         Returns:
             A dictionary mapping username to Cohen's Kappa score.
         """
+        def majority_vote(x):
+            return x.mode().iloc[0] if len(x.mode()) == 1 else None
+
         # Only consider pairs labeled by more than one user
         multi_labeled = cls._unique_results().groupby(["id_existing", "id_new"]).filter(lambda g: g["username"].nunique() > 1)
 
@@ -410,10 +413,14 @@ class State:
             user_df = multi_labeled[multi_labeled["username"] == user]
             other_df = multi_labeled[multi_labeled["username"] != user]
 
-            consensus = other_df.groupby(["id_existing", "id_new"])["match"].agg(lambda x: x.mode().iloc[0]).rename("consensus")
+            consensus = other_df.groupby(["id_existing", "id_new"])["match"].agg(
+                majority_vote).dropna().rename("consensus")
             merged = user_df.merge(consensus, on=["id_existing", "id_new"], how="inner")
 
-            kappas[user] = metrics.cohen_kappa_score(merged["match"].values, merged["consensus"].values, labels=["yes", "no"])
+            if merged.empty:
+                kappas[user] = float("nan")
+            else:
+                kappas[user] = metrics.cohen_kappa_score(merged["match"].values, merged["consensus"].values, labels=["yes", "no"])
 
         return kappas
 
