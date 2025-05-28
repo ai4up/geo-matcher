@@ -114,7 +114,7 @@ def show_candidate_pair(id_existing: str = None, id_new: str = None) -> Response
 
     if id_existing is None:
         S.store_results()
-        return f"All buildings labeled! Results stored in {S.results_path}", 200
+        return render_template("success.html")
 
     if not S.valid_pair(id_existing, id_new):
         return f"Candidate pair ({id_existing}, {id_new}) not found", 404
@@ -153,7 +153,7 @@ def show_neighborhood(id: Optional[str] = None) -> Response:
 
     if id is None:
         S.store_results()
-        return f"All buildings labeled! Results stored in {S.results_path}", 200
+        return render_template("success.html")
 
     if id not in S.get_all_neighborhoods():
         return "Neighborhood not found", 404

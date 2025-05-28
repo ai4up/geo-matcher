@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Labeling Complete</title>
+    <style>
+    body {
+        background: #f5f9f7;
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+
+    .success-box {
+        background: white;
+        border-radius: 12px;
+        padding: 40px 50px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+        text-align: center;
+        max-width: 520px;
+    }
+
+    .success-box h1 {
+        color: #4CAF50;
+        font-size: 28px;
+        margin-bottom: 16px;
+    }
+
+    .success-box p {
+        font-size: 16px;
+        color: #444;
+        margin-bottom: 28px;
+    }
+
+    .button-group {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .success-button {
+        display: inline-block;
+        padding: 12px 24px;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: bold;
+        transition: background-color 0.2s ease;
+    }
+
+    .success-button-primary {
+        background-color: #4CAF50;
+        color: white;
+    }
+
+    .success-button-primary:hover {
+        background-color: #43a047;
+    }
+
+    .success-button-secondary {
+        background-color: #eeeeee;
+        color: #333;
+        border: 1px solid #bbb;
+    }
+
+    .success-button-secondary:hover {
+        background-color: #dddddd;
+    }
+    </style>
+</head>
+<body>
+    <div class="success-box">
+        <h1>🎉 All Buildings Labeled!</h1>
+        <p>Thank you for labeling all currently pending building pairs.<br>
+        Your annotations have been stored successfully.</p>
+
+        <div class="button-group">
+            <a href="/" class="success-button success-button-secondary">Back to Start</a>
+            <a href="/download-results" class="success-button success-button-primary">Download Results</a>
+        </div>
+    </div>
+</body>
+</html>
