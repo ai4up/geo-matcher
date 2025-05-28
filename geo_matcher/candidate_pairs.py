@@ -1,3 +1,4 @@
+import logging
 import pickle
 
 from geopandas import GeoDataFrame
@@ -5,6 +6,8 @@ from pandas import DataFrame
 import pandas as pd
 
 from geo_matcher import spatial
+
+logger = logging.getLogger(__name__)
 
 
 class CandidatePairs:
@@ -49,11 +52,14 @@ class CandidatePairs:
 
         return gdf
 
-
     def preliminary_matching_estimate(self) -> None:
         """
         Estimate the matching between buildings in dataset_a and dataset_b.
         """
+        if "match" in self.pairs.columns:
+            logger.info("Matching has already been performed.")
+            return
+
         existing_geom = self.dataset_a.loc[self.pairs["id_existing"]]
         new_geom = self.dataset_b.loc[self.pairs["id_new"]]
         self.pairs["match"] = spatial.corresponding(existing_geom, new_geom)
@@ -87,7 +93,7 @@ class CandidatePairs:
             raise ValueError("Dataset B must contain a 'neighborhood' column.")
 
         if not isinstance(pairs, pd.DataFrame):
-            raise TypeError("pairs must be a DataFrame.")
+            raise TypeError("Candidate pairs must be a DataFrame.")
 
         required_cols = {"id_existing", "id_new"}
         if not required_cols.issubset(pairs.columns):
