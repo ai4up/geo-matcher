@@ -1,4 +1,3 @@
-import atexit
 import os
 import re
 import shutil
@@ -46,7 +45,6 @@ def start_locally(*args, **kwargs) -> None:
     Start the Flask app locally in the browser. Ensures that results are persisted on exit.
     """
     app = create_app(*args, **kwargs)
-    atexit.register(app.state_handler.store_all)
     webbrowser.open("http://127.0.0.1:5001/")
     waitress.serve(app, host="127.0.0.1", port=5001)
 

@@ -41,7 +41,3 @@ class StateHandler:
             self.register(dataset)
 
         return self._states[dataset]
-
-    def store_all(self):
-        for state in self._states.values():
-            state.store_results()
