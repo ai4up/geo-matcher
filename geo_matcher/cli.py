@@ -12,7 +12,6 @@ def cli() -> None:
 
 @cli.command()
 @click.argument("path", default=DATASET_FILE, type=click.Path(exists=True))
-@click.argument("results_dir", default=RESULTS_FILE, type=click.Path())
 @click.option(
     "--annotation-redundancy",
     "-r",
@@ -27,15 +26,14 @@ def cli() -> None:
     type=int,
     help="Minimum difference between match and no-match labels required to resolve a pair."
 )
-def label(path: str, results_dir: str, annotation_redundancy: int, consensus_margin: int) -> None:
+def label(path: str, annotation_redundancy: int, consensus_margin: int) -> None:
     """
     Start the labeling of building pairs.
 
     PATH to the dataset of building pairs.
-    RESULTS_DIR where the labels will be stored.
     """
     click.echo("Starting browser app...")
-    app.start_locally(path, results_dir, annotation_redundancy, consensus_margin)
+    app.start_locally(path, annotation_redundancy, consensus_margin)
 
 
 @cli.command()

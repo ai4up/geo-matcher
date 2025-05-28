@@ -23,7 +23,7 @@ class MissingDataset(Exception):
     """Raised when no dataset is selected in the session."""
     pass
 
-def create_app(data_path: str, results_dir: str, annotation_redundancy: int, consensus_margin: int) -> Flask:
+def create_app(data_path: str, annotation_redundancy: int, consensus_margin: int) -> Flask:
     """
     Create and configure the Flask app.
     """
@@ -36,7 +36,7 @@ def create_app(data_path: str, results_dir: str, annotation_redundancy: int, con
     app.register_blueprint(bp)
     executor.init_app(app)
 
-    app.state_handler = StateHandler(data_path, results_dir, annotation_redundancy, consensus_margin)
+    app.state_handler = StateHandler(data_path, annotation_redundancy, consensus_margin)
 
     return app
 

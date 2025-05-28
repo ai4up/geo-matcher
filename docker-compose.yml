@@ -10,7 +10,6 @@ services:
     environment:
       - SECRET_KEY=${SECRET_KEY}
       - DATA_PATH=/app/data/candidate-pairs.pickle
-      - RESULTS_DIR=/app/data
       - ANNOTATION_REDUNDANCY=0
       - CONSENSUS_MARGIN=1
 
