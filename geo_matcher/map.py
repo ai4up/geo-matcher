@@ -6,7 +6,7 @@ from pandas import DataFrame
 import folium
 import geopandas as gpd
 
-from geo_matcher.state import State as S
+from geo_matcher.state import State
 from geo_matcher import spatial
 from geo_matcher.candidate_pairs import CandidatePairs
 
@@ -59,18 +59,18 @@ def create_neighborhood_tutorial_html(filepath: str) -> None:
     m.save(filepath)
 
 
-def create_candidate_pair_html(id_existing: str, id_new: str, filepath: Path) -> None:
+def create_candidate_pair_html(state: State, id_existing: str, id_new: str, filepath: Path) -> None:
     """
     Create a Folium HTML map with a candidate pair.
     """
     if filepath.is_file():
         return
 
-    candidate_pair = S.get_candidate_pair(id_existing, id_new)
+    candidate_pair = state.get_candidate_pair(id_existing, id_new)
 
     c = candidate_pair["geometry_new"].centroid
-    existing_buildings = S.get_existing_buildings_at(c)
-    new_buildings = S.get_new_building_at(c)
+    existing_buildings = state.get_existing_buildings_at(c)
+    new_buildings = state.get_new_building_at(c)
 
     lat, lon = spatial.to_lat_lon(c.x, c.y, existing_buildings.crs)
     m = _initialize_map(lat, lon, 20)
@@ -86,16 +86,16 @@ def create_candidate_pair_html(id_existing: str, id_new: str, filepath: Path) ->
     m.save(filepath)
 
 
-def create_neighborhood_html(id: str, filepath: Path) -> None:
+def create_neighborhood_html(state: State, id: str, filepath: Path) -> None:
     """
     Create a Folium HTML map with all candidate pairs in a neighborhood.
     """
     if filepath.is_file():
         return
 
-    candidate_pairs = S.get_candidate_pairs(id)
-    existing_buildings = S.get_existing_buildings(id)
-    new_buildings = S.get_new_buildings(id)
+    candidate_pairs = state.get_candidate_pairs(id)
+    existing_buildings = state.get_existing_buildings(id)
+    new_buildings = state.get_new_buildings(id)
 
     new_buildings = new_buildings.loc[candidate_pairs["id_new"].unique()]
     existing_buildings = existing_buildings.loc[candidate_pairs["id_existing"].unique()]

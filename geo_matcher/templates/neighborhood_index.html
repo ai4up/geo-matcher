@@ -79,6 +79,52 @@
             border: 1px solid #bde5c8;
             color: #2e7d32;
         }
+
+        .form-row {
+            max-width: 500px;
+            margin: 0 auto;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .input-field,
+        .select-field {
+            flex: 1 1 220px;
+            min-width: 150px;
+            max-width: 250px;
+            padding: 14px 20px;
+            font-size: 15px;
+            border-radius: 10px;
+            border: 1px solid #ccc;
+        }
+
+        .radio-group {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .radio-group label {
+            margin-right: 20px;
+        }
+
+        .submit-button {
+            margin-top: 15px;
+            padding: 14px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .submit-button:hover {
+            background-color: #45a049;
+        }
     </style>
 </head>
 <body>
@@ -103,30 +149,29 @@
         <p>Once you've reviewed the neighborhood and are confident in your changes, click the <strong>Submit</strong> button to save your labels and continue.</p>
 
         <form id="username-form" onsubmit="return handleFormSubmit(event)" style="text-align: center; margin-top: 30px;">
-            <input type="text" id="username" name="username" placeholder="Enter your username" required
-                style="padding: 14px 20px; font-size: 16px; border-radius: 10px; border: 1px solid #ccc; margin-right: 14px;">
+            <div class="form-row">
+                <input type="text" id="username" name="username" placeholder="Enter your username" required class="input-field">
 
-            <button type="submit"
-                style="padding: 14px 20px; font-size: 16px; background-color: #4CAF50; color: white;
-                    border: none; border-radius: 10px; cursor: pointer;">
-                Get Started!
-            </button>
+                {% if datasets|length == 1 %}
+                    <input type="hidden" id="dataset" name="dataset" value="{{ datasets[0] }}">
+                {% else %}
+                    <select id="dataset" name="dataset" required class="select-field">
+                        <option value="" disabled selected>Select dataset</option>
+                        {% for ds in datasets %}
+                            <option value="{{ ds }}">{{ ds }}</option>
+                        {% endfor %}
+                    </select>
+                {% endif %}
+            </div>
+
+            <div class="radio-group">
+                <label><input type="radio" name="label_mode" value="all"> Label everything</label>
+                <label><input type="radio" name="label_mode" value="unlabeled" checked> Label only unlabeled building pairs</label>
+                <label><input type="radio" name="label_mode" value="cross-validate"> Cross-validate previous annotations</label>
+            </div>
+
+            <button type="submit" class="submit-button">Get Started!</button>
         </form>
-
-        <div style="text-align: center; margin-top: 15px;">
-            <label style="font-size: 14px; margin-right: 20px;">
-                <input type="radio" name="label_mode" value="all">
-                Label everything
-            </label>
-            <label style="font-size: 14px; margin-right: 20px;">
-                <input type="radio" name="label_mode" value="unlabeled" checked>
-                Label only unlabeled neighborhoods
-            </label>
-            <label style="font-size: 14px;">
-                <input type="radio" name="label_mode" value="cross-validate">
-                Cross-validate previous annotations
-            </label>
-        </div>
     </div>
 
     <div id="buttons">
@@ -137,22 +182,22 @@
         async function handleFormSubmit(event) {
             event.preventDefault(); // Stop normal form submit
 
-            const usernameInput = document.getElementById('username');
-            const username = usernameInput.value.trim();
+            const username = document.getElementById('username').value.trim();
             const labelMode = document.querySelector('input[name="label_mode"]:checked').value;
+            const dataset = document.getElementById('dataset')?.value;
 
-
-            if (!username) { // Prevent submitting white spaces
-                alert('Please enter your username.');
+            if (!username || !dataset) {
+                alert('Please enter username and select a dataset.');
                 return false;
             }
 
             const formData = new URLSearchParams({
                 username: username,
-                labelmode: labelMode
+                labelmode: labelMode,
+                dataset: dataset
             });
 
-            const response = await fetch('/set-username', {
+            const response = await fetch('/start-session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: formData
