@@ -356,14 +356,22 @@ def _add_matching_edges(m: folium.Map, edges: GeoDataFrame) -> None:
 
                             line.on("click", function () {{
                                 map.removeLayer(line);
-                                window.addedMatches = window.addedMatches.filter(match => match.layer !== line);
-                                console.log("Removed added match:", from.id, "→", to.id);
+                                if (window.addedMatches.some(m => m.id_existing === from.id && m.id_new === to.id)) {{
+                                    window.addedMatches = window.addedMatches.filter(match => match.layer !== line);
+                                    console.log("Removed added match:", from.id, "→", to.id);
+                                }} else {{
+                                    window.removedMatches.push({{
+                                        id_existing: from.id,
+                                        id_new: to.id
+                                    }});
+                                    console.log("Removed re-added match:", from.id, "→", to.id);
+                                }}
                             }});
 
                             if (window.removedMatches.some(m => m.id_existing === from.id && m.id_new === to.id)) {{
-                            window.removedMatches = window.removedMatches.filter(
-                                m => !(m.id_existing === from.id && m.id_new === to.id)
-                            );
+                                window.removedMatches = window.removedMatches.filter(
+                                    m => !(m.id_existing === from.id && m.id_new === to.id)
+                                );
                             console.log("Re-added removed match:", from.id, "→", to.id);
                             }} else {{
                                 window.addedMatches.push({{
