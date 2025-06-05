@@ -116,9 +116,17 @@ def create_neighborhood_html(state: State, id: str, filepath: Path) -> None:
 
 def _initialize_map(lat: float, lon: float, zoom_level: int) -> folium.Map:
     m = folium.Map(location=[lat, lon], zoom_start=zoom_level, tiles=None)
-    folium.TileLayer("CartoDB.Positron", name="CartoDB Positron", show=True).add_to(m)
-    folium.TileLayer("OpenStreetMap", name="OpenStreetMap", show=False).add_to(m)
-    folium.TileLayer(
+    folium.TileLayer("CartoDB.Positron", name="CartoDB Positron", show=True).add_to(m)  # Highest resolution
+    folium.TileLayer("OpenStreetMap", name="OpenStreetMap", show=False).add_to(m)  # Familiar map style
+    folium.TileLayer(  # Satellite imagery
+        tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        attr='Esri',
+        name='Esri Satellite',
+        max_native_zoom=18,
+        max_zoom=19,
+        show=False,
+    ).add_to(m)
+    folium.TileLayer(  # Base map without buildings
         "Esri.WorldTopoMap",
         name="Esri WorldTopoMap",
         show=False,
