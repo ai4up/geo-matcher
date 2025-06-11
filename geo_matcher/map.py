@@ -1,8 +1,8 @@
+import json
 from pathlib import Path
-from typing import Optional
+from typing import Any, Callable, Optional
 
 from geopandas import GeoDataFrame
-from pandas import DataFrame
 import folium
 import geopandas as gpd
 
@@ -10,6 +10,28 @@ from geo_matcher.state import State
 from geo_matcher import spatial
 from geo_matcher.candidate_pairs import CandidatePairs
 
+BUILDING_LAYER_COLORS = {
+    "map": {
+        "new": {
+            "default": {"color": "coral", "fillOpacity": 0.2, "fillColor": "coral", "weight": 2, "dashArray": None},
+            "highlight": {"color": "orangered", "fillOpacity": 0.4, "fillColor": "coral", "weight": 4, "dashArray": "5, 8"},
+        },
+        "existing": {
+            "default": {"color": "steelblue", "fillOpacity": 0.4, "fillColor": "skyblue", "weight": 2},
+            "highlight": {"color": "steelblue", "fillOpacity": 0.6, "fillColor": "skyblue", "weight": 4},
+        },
+    },
+    "satellite": {
+        "new": {
+            "default": {"color": "coral", "fillOpacity": 0, "weight": 3, "dashArray": None},
+            "highlight": {"color": "red", "fillOpacity": 0, "weight": 6, "dashArray": "5, 8"},
+        },
+        "existing": {
+            "default": {"color": "skyblue", "fillOpacity": 0, "weight": 3},
+            "highlight": {"color": "skyblue", "fillOpacity": 0, "weight": 5},
+        },
+    },
+}
 
 def create_tutorial_html(filepath: str) -> None:
     """
@@ -26,10 +48,10 @@ def create_tutorial_html(filepath: str) -> None:
 
     # Initialize map and add demo buildings
     m = _initialize_map(lat, lon, 20)
-    _create_existing_buildings_layer(existing_buildings, "A_candidate").add_to(m)
-    _create_new_buildings_layer(new_buildings, "B_candidate").add_to(m)
-    _add_tutorial_marker(lat, lon).add_to(m)
-    _add_baselayer_marker().add_to(m)
+    _add_stylized_buildings_layer(m, existing_buildings, "Existing Buildings", "existing", "A_candidate")
+    _add_stylized_buildings_layer(m, new_buildings, "New Buildings", "new", "B_candidate")
+    _add_tutorial_marker(m, lat, lon)
+    _add_baselayer_marker(m)
 
     m.save(filepath)
 
@@ -48,8 +70,8 @@ def create_neighborhood_tutorial_html(filepath: str) -> None:
 
     # Initialize map and add demo buildings
     m = _initialize_map(44.8031, 3.42505, 20)
-    _create_existing_buildings_layer(data.dataset_a).add_to(m)
-    _create_new_buildings_layer(data.dataset_b).add_to(m)
+    _add_stylized_buildings_layer(m, data.dataset_a, "Existing Buildings", "existing")
+    _add_stylized_buildings_layer(m, data.dataset_b, "New Buildings", "new")
     _add_matching_layer(m, pairs)
     _disable_leaflet_click_outline(m)
     _add_legend(m)
@@ -75,11 +97,13 @@ def create_candidate_pair_html(state: State, id_existing: str, id_new: str, file
     lat, lon = spatial.to_lat_lon(c.x, c.y, existing_buildings.crs)
     m = _initialize_map(lat, lon, 20)
 
-    _create_existing_buildings_layer(existing_buildings, id_existing).add_to(m)
-    _create_new_buildings_layer(new_buildings, id_new).add_to(m)
+    _add_stylized_buildings_layer(m, existing_buildings, "Existing Buildings", "existing", id_existing)
+    _add_stylized_buildings_layer(m, new_buildings, "New Buildings", "new", id_new)
+
     _bring_candidate_pair_to_front(m, [id_existing, id_new])
     _disable_leaflet_click_outline(m)
     _add_legend(m, candidates_highlighted=True)
+    _add_satellite_imagery_toogle(m)
 
     folium.LayerControl(collapsed=True).add_to(m)
 
@@ -103,11 +127,13 @@ def create_neighborhood_html(state: State, id: str, filepath: Path) -> None:
     lat, lon = spatial.center_lat_lon(candidate_pairs["geometry_new"])
     m = _initialize_map(lat, lon, 19)
 
-    _create_existing_buildings_layer(existing_buildings).add_to(m)
-    _create_new_buildings_layer(new_buildings).add_to(m)
+    _add_stylized_buildings_layer(m, existing_buildings, "Existing Buildings", "existing")
+    _add_stylized_buildings_layer(m, new_buildings, "New Buildings", "new")
+
     _add_matching_layer(m, candidate_pairs)
     _disable_leaflet_click_outline(m)
     _add_legend(m)
+    _add_satellite_imagery_toogle(m)
 
     folium.LayerControl(collapsed=True).add_to(m)
 
@@ -116,89 +142,108 @@ def create_neighborhood_html(state: State, id: str, filepath: Path) -> None:
 
 def _initialize_map(lat: float, lon: float, zoom_level: int) -> folium.Map:
     m = folium.Map(location=[lat, lon], zoom_start=zoom_level, tiles=None)
-    folium.TileLayer("CartoDB.Positron", name="CartoDB Positron", show=True).add_to(m)  # Highest resolution
-    folium.TileLayer("OpenStreetMap", name="OpenStreetMap", show=False).add_to(m)  # Familiar map style
-    folium.TileLayer(  # Satellite imagery
+
+    # Highest resolution
+    carto = folium.TileLayer(
+        "CartoDB.Positron",
+        name="CartoDB Positron",
+        show=True,
+    )
+    # Familiar map style
+    osm = folium.TileLayer(
+        "OpenStreetMap",
+        name="OpenStreetMap",
+        show=False,
+    )
+    # Satellite imagery
+    esri = folium.TileLayer(
         tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         attr='Esri',
         name='Esri Satellite',
         max_native_zoom=18,
-        max_zoom=19,
+        max_zoom=20,
         show=False,
-    ).add_to(m)
-    folium.TileLayer(  # Base map without buildings
+    )
+    # Base map without buildings
+    esri_topo = folium.TileLayer(
         "Esri.WorldTopoMap",
         name="Esri WorldTopoMap",
         show=False,
         max_native_zoom=18,
         max_zoom=19,
-    ).add_to(m)
+    )
+
+    carto.add_to(m)
+    osm.add_to(m)
+    esri.add_to(m)
+    esri_topo.add_to(m)
+
+    _inject_var(m, 'cartoPositron', carto.get_name())
+    _inject_var(m, 'osm', osm.get_name())
+    _inject_var(m, 'esriSatellite', esri.get_name())
+    _inject_var(m, 'esriTopo', esri.get_name())
 
     return m
 
 
-def _add_tutorial_marker(lat: float, lon: float) -> folium.Marker:
-    return folium.Marker(
+def _add_tutorial_marker(m: folium.Map, lat: float, lon: float) -> None:
+    folium.Marker(
         location=[lat, lon],
         tooltip="Building pair to be labeled as 'Match' / 'No Match' / 'Unsure'.",
         icon=folium.Icon(color="lightred", icon="info-sign"),
-    )
+    ).add_to(m)
 
 
-def _add_baselayer_marker() -> folium.Marker:
-    return folium.Marker(
+def _add_baselayer_marker(m: folium.Map) -> None:
+    folium.Marker(
         location=[44.80484, 3.34594],
         tooltip="Building from the baselayer. Can be ignored. Choose 'Esri WorldTopoMap' for a baselayer without buildings (lower resolution).",
         icon=folium.Icon(color="lightgray", icon="info-sign"),
-    )
+    ).add_to(m)
 
 
-def _create_existing_buildings_layer(gdf: GeoDataFrame, highlight_id: Optional[str] = None) -> folium.FeatureGroup:
+def _add_stylized_buildings_layer(
+    m: folium.Map,
+    gdf: GeoDataFrame,
+    layer_name: str,
+    layer_ref: str,
+    highlight_id: Optional[str] = None,
+) -> None:
     def style_function(feature):
-        if highlight_id and feature["properties"].get("index") == highlight_id:
-            return {"color": "steelblue", "fillOpacity": 0.6, "fillColor": "skyblue", "weight": 4}
-        else:
-            return {"color": "steelblue", "fillOpacity": 0.4, "fillColor": "skyblue", "weight": 2}
+        is_highlight = highlight_id is not None and feature["properties"].get("index") == highlight_id
+        color_scheme = BUILDING_LAYER_COLORS["map"][layer_ref]
+        return color_scheme["highlight"] if is_highlight else color_scheme["default"]
+
+    gdf["type"] = layer_ref
+    buildings_geojson = _create_building_layer(gdf, style_function)
+
+    feature_group = folium.FeatureGroup(name=layer_name)
+    buildings_geojson.add_to(feature_group)
+    feature_group.add_to(m)
+
+    _inject_var(m, layer_ref, buildings_geojson.get_name())
+
+    if highlight_id:
+        _inject_var(m, layer_ref + "Highlighted", json.dumps(highlight_id))
 
 
+def _create_building_layer(
+    gdf: GeoDataFrame,
+    style_function: Callable[[dict], dict],
+) -> folium.GeoJson:
     def highlight_function(_):
-            return {"fillOpacity": 0.8}
+        return {"fillOpacity": 0.8}
 
-    gdf["type"] = "existing"
-    existing_buildings = folium.FeatureGroup(name="Existing Buildings")
     if not gdf.empty:
         tooltip = folium.GeoJsonTooltip(fields=["index"], aliases=["Building ID"])
-        folium.GeoJson(
+        features = folium.GeoJson(
             gdf.reset_index(),
             tooltip=tooltip,
             style_function=style_function,
-            highlight_function=highlight_function if highlight_id else None,
-        ).add_to(existing_buildings)
+            highlight_function=highlight_function,
+        )
 
-    return existing_buildings
-
-
-def _create_new_buildings_layer(gdf: GeoDataFrame, highlight_id: Optional[str] = None) -> folium.FeatureGroup:
-    def style_function(feature):
-        if highlight_id and feature["properties"].get("index") == highlight_id:
-            return {"color": "orangered", "fillOpacity": 0.4, "fillColor": "coral", "weight": 4, "dashArray": "5, 8"}
-        else:
-            return {"color": "coral", "fillOpacity": 0.2, "weight": 2}
-
-    def highlight_function(_):
-            return {"fillOpacity": 0.5}
-
-    gdf["type"] = "new"
-    new_buildings = folium.FeatureGroup(name="New Buildings")
-    tooltip = folium.GeoJsonTooltip(fields=["index"], aliases=["Building ID"])
-    folium.GeoJson(
-        gdf.reset_index(),
-        tooltip=tooltip,
-        style_function=style_function,
-        highlight_function=highlight_function if highlight_id else None,
-    ).add_to(new_buildings)
-
-    return new_buildings
+    return features
 
 
 def _add_matching_layer(m: folium.Map, candidate_pairs: GeoDataFrame) -> None:
@@ -211,7 +256,7 @@ def _add_matching_layer(m: folium.Map, candidate_pairs: GeoDataFrame) -> None:
             matches.set_index("id_new")["geometry_new"]
         ).reset_index(names=["id_existing", "id_new"])
 
-    _inject_candidate_pairs(m, candidate_pairs[["id_existing", "id_new", "match"]])
+    _inject_var(m, "pairs", candidate_pairs[["id_existing", "id_new", "match"]].to_json(orient='records'))
     _add_matching_edges(m, matching_edges)
 
 
@@ -225,11 +270,11 @@ def _disable_leaflet_click_outline(m: folium.Map) -> None:
     """))
 
 
-def _inject_candidate_pairs(m: folium.Map, candidate_pairs: DataFrame) -> None:
+def _inject_var(m: folium.Map, name: str, data: Any) -> None:
     m.get_root().html.add_child(folium.Element(f"""
     <script>
     document.addEventListener("DOMContentLoaded", function () {{
-        window.pairs = {candidate_pairs.to_json(orient='records')};
+        window.{name} = {data};
     }});
     </script>
     """
@@ -422,6 +467,71 @@ def _inject_mouseover_effects(m: folium.Map) -> None:
     </script>
     """
     ))
+
+
+def _add_satellite_imagery_toogle(m: folium.Map) -> None:
+    m.get_root().html.add_child(folium.Element(f"""
+    <style>
+    .custom-toggle-button {{
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 9999;
+        background: white;
+        padding: 6px 10px;
+        border: 1px solid #ccc;
+        cursor: pointer;
+        font-size: 14px;
+        border-radius: 4px;
+    }}
+    .leaflet-control-layers {{
+        top: 40px !important;
+        right: 10px !important;
+    }}
+    </style>
+    <div class="custom-toggle-button" id="layerToggleButton">Switch to Satellite</div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {{
+        const map = window.{m.get_name()};
+        const styleMap = {json.dumps(BUILDING_LAYER_COLORS)};
+        let satelliteMode = false;
+
+        function applyStyle(layerGroup, styleGroup, layerType) {{
+            if (!layerGroup) return;
+            const highlightedId = window[layerType + "Highlighted"];
+
+            layerGroup.eachLayer(layer => {{
+                if (!layer.feature || !layer.feature.properties) return;
+                const id = layer.feature.properties.index;
+                const isHighlight = id === highlightedId;
+                const style = isHighlight ? styleGroup[layerType]["highlight"] : styleGroup[layerType]["default"];
+                layer.setStyle(style);
+            }});
+        }}
+
+        document.getElementById("layerToggleButton").addEventListener("click", function () {{
+            const mode = satelliteMode ? "map" : "satellite";
+            const esriSatellite = window.esriSatellite;
+            const cartoPositron = window.cartoPositron;
+
+            applyStyle(window.existing, styleMap[mode], "existing");
+            applyStyle(window.new, styleMap[mode], "new");
+
+            if (!satelliteMode) {{
+                if (cartoPositron && map.hasLayer(cartoPositron)) map.removeLayer(cartoPositron);
+                if (esriSatellite && !map.hasLayer(esriSatellite)) map.addLayer(esriSatellite);
+                this.innerText = "Switch to Map";
+            }} else {{
+                if (esriSatellite && map.hasLayer(esriSatellite)) map.removeLayer(esriSatellite);
+                if (cartoPositron && !map.hasLayer(cartoPositron)) map.addLayer(cartoPositron);
+                this.innerText = "Switch to Satellite";
+            }}
+
+            satelliteMode = !satelliteMode;
+        }});
+    }});
+    </script>
+    """))
 
 
 def _add_legend(m: folium.Map, candidates_highlighted=False) -> None:
