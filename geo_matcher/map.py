@@ -353,6 +353,9 @@ def _add_matching_edges(m: folium.Map, edges: GeoDataFrame) -> None:
                 const centroid = L.geoJSON(layer.feature).getBounds().getCenter();
 
                 if (type === "existing" || type === "new") {{
+                    layer.off("mouseover");
+                    layer.off("mouseout");
+
                     layer.on("click", function () {{
                         const alreadySelected = selected[type]?.id === id;
 
