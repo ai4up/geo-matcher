@@ -1,61 +1,19 @@
-{% extends "base.html" %}
+{% extends "base_labeling.html" %}
 
 {% block title %}Label Neighborhood{% endblock %}
 
 {% block body %}
-<div id="nav-bar">
-    <a href="/batch" class="nav-link">Home</a>
-    <a href="/download-results" class="nav-link">Download Results</a>
-
-    <span class="nav-divider"></span>
-
-    <a href="/show-pair" class="nav-link">Pair-wise Labeling</a>
-    <a href="/show-neighborhood" class="nav-link active">Neighborhood-wise Labeling</a>
-</div>
-
-
-<div id="map">
-    <iframe src="{{ url_for('static', filename='maps/' + map_file | string) }}" width="100%" height="100%"></iframe>
-</div>
+{{ super() }}
 
 <div id="buttons">
     <button class="btn btn-submit" onclick="sendLabeledMatches('{{ id }}')">Submit</button>
 </div>
 
-<div id="scoreboard">
-    <div id="scoreboard-header" class="score-entry">
-        <div class="score-user">User</div>
-        <div class="score-count">Count</div>
-        <div class="score-kappa tooltip-container">
-            <span>κ</span>
-            <span class="custom-tooltip" role="tooltip">Inter-Annotator Agreement<br>(Cohen's Kappa)</span>
-        </div>
-    </div>
-
-    <div id="scoreboard-entries">
-        {% for entry in user_stats %}
-            <div class="score-entry">
-                <div class="score-user">{{ entry.username }}</div>
-                <div class="score-count">{{ entry.count }}</div>
-                <div class="score-kappa">
-                    {% if entry.kappa == entry.kappa %}
-                        <span class="tooltip-container">
-                            <span class="kappa-value {{ entry.kappa_class }}" data-kappa="{{ entry.kappa }}">
-                                {{ '%.2f'|format(entry.kappa) }}
-                            </span>
-                            <span class="custom-tooltip" role="tooltip">Inter-Annotator Agreement<br>(Cohen's Kappa)</span>
-                        </span>
-                    {% else %}
-                        —
-                    {% endif %}
-                </div>
-            </div>
-        {% endfor %}
-    </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
+{{ super() }}
+
 <script type="text/javascript">
     function sendLabeledMatches(id) {
         const iframe = document.querySelector("iframe");
@@ -90,23 +48,6 @@
                 submitButton.click();
             }
         }
-    });
-
-    document.addEventListener("DOMContentLoaded", function() {
-        document.querySelectorAll('.kappa-value').forEach(el => {
-            const kappa = parseFloat(el.dataset.kappa);
-            if (!isNaN(kappa)) {
-                if (kappa >= 0.8) {
-                    el.classList.add('kappa-excellent');
-                } else if (kappa >= 0.6) {
-                    el.classList.add('kappa-high');
-                } else if (kappa >= 0.4) {
-                    el.classList.add('kappa-medium');
-                } else {
-                    el.classList.add('kappa-low');
-                }
-            }
-        });
     });
 </script>
 {% endblock %}

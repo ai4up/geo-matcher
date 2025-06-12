@@ -72,7 +72,7 @@ def home_pairwise() -> Response:
     fp = current_app.maps_dir / "candidate_demo.html"
     datasets = current_app.state_handler.datasets
     map.create_tutorial_html(fp)
-    return render_template("index.html", datasets=datasets), 200
+    return render_template("index.html", map_file=fp.name, datasets=datasets), 200
 
 
 @bp.route("/batch")
@@ -83,7 +83,7 @@ def home_batch() -> Response:
     fp = current_app.maps_dir / "neighborhood_demo.html"
     datasets = current_app.state_handler.datasets
     map.create_neighborhood_tutorial_html(fp)
-    return render_template("neighborhood_index.html", datasets=datasets), 200
+    return render_template("neighborhood_index.html", map_file=fp.name, datasets=datasets), 200
 
 
 @bp.route("/start-session", methods=["POST"])

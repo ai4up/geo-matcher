@@ -10,6 +10,10 @@
     {% block head %}{% endblock %}
 </head>
 <body>
+    <div id="map">
+        <iframe src="{{ url_for('static', filename='maps/' + map_file | string ) }}" width="100%" height="100%"></iframe>
+    </div>
+
     {% block body %}{% endblock %}
 
     {% block scripts %}{% endblock %}
