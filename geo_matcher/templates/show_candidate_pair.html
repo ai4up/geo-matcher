@@ -1,456 +1,457 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Label Candidate Pair</title>
-    <style>
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-        }
+{% extends "base.html" %}
 
-        #map {
-            width: 100%;
-            height: 100%;
-        }
+{% block title %}Label Candidate Pair{% endblock %}
 
-        #buttons {
-            position: absolute;
-            bottom: 10%;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 15px;
-            border-radius: 10px;
-            display: flex;
-            gap: 15px;
-        }
-        #legend {
-            display: none;
-            position: fixed;
-            top: 10%;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(255, 255, 255, 0.95);
-            border: 1px solid #ccc;
-            padding: 12px 16px;
-            border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-            z-index: 1000;
-            font-size: 13px;
-            font-family: Arial, sans-serif;
-            width: max-content;
-        }
+{% block head %}
+<style>
+    html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
 
-        #legend h4 {
-            font-size: 14px;
-            margin: 0 0 8px 0;
-            text-align: center;
-        }
+    #map {
+        width: 100%;
+        height: 100%;
+    }
 
-        #legend ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
+    #buttons {
+        position: absolute;
+        bottom: 10%;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 15px;
+        border-radius: 10px;
+        display: flex;
+        gap: 15px;
+    }
+    #legend {
+        display: none;
+        position: fixed;
+        top: 10%;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(255, 255, 255, 0.95);
+        border: 1px solid #ccc;
+        padding: 12px 16px;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        z-index: 1000;
+        font-size: 13px;
+        font-family: Arial, sans-serif;
+        width: max-content;
+    }
 
-        #legend li {
-            margin: 4px 0;
-            display: flex;
-            align-items: center;
-        }
+    #legend h4 {
+        font-size: 14px;
+        margin: 0 0 8px 0;
+        text-align: center;
+    }
 
-        #legend kbd {
-            font-family: monospace;
-            background: #eee;
-            border: 1px solid #bbb;
-            border-radius: 4px;
-            padding: 2px 6px;
-            font-size: 12px;
-            margin-right: 6px;
-            min-width: 32px;
-            text-align: center;
-            color: #333;
-        }
+    #legend ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
 
-        .legend-divider {
-            height: 1px;
-            background-color: #ddd;
-            margin: 10px 0;
-        }
+    #legend li {
+        margin: 4px 0;
+        display: flex;
+        align-items: center;
+    }
 
-        #legend button {
-            display: block;
-            margin: 0 auto;
-            padding: 5px 12px;
-            font-size: 12px;
-            border: none;
-            border-radius: 6px;
-            background-color: #ddd;
-            color: #333;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
+    #legend kbd {
+        font-family: monospace;
+        background: #eee;
+        border: 1px solid #bbb;
+        border-radius: 4px;
+        padding: 2px 6px;
+        font-size: 12px;
+        margin-right: 6px;
+        min-width: 32px;
+        text-align: center;
+        color: #333;
+    }
 
-        #legend button:hover {
-            background-color: #ccc;
-        }
+    .legend-divider {
+        height: 1px;
+        background-color: #ddd;
+        margin: 10px 0;
+    }
 
-        #legend button {
-            display: block;
-            margin: 0 auto;
-            padding: 6px 12px;
-            font-size: 13px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            background-color: #f5f5f5;
-            cursor: pointer;
-        }
+    #legend button {
+        display: block;
+        margin: 0 auto;
+        padding: 5px 12px;
+        font-size: 12px;
+        border: none;
+        border-radius: 6px;
+        background-color: #ddd;
+        color: #333;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
 
-        #legend button:hover {
-            background-color: #eaeaea;
-        }
+    #legend button:hover {
+        background-color: #ccc;
+    }
 
-        .btn {
-            font-size: 20px;
-            padding: 15px 25px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
+    #legend button {
+        display: block;
+        margin: 0 auto;
+        padding: 6px 12px;
+        font-size: 13px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        background-color: #f5f5f5;
+        cursor: pointer;
+    }
 
-        .btn-match { background: #4caf50; color: white; }
-        .btn-no-match { background: #ff4d4d; color: white; }
-        .btn-unsure { background: #f0ad4e; color: white; }
+    #legend button:hover {
+        background-color: #eaeaea;
+    }
 
-        .btn:hover {
-            opacity: 0.8;
-        }
+    .btn {
+        font-size: 20px;
+        padding: 15px 25px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+    }
 
-        #nav-bar {
-            position: fixed;
-            top: 12px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(255, 255, 255, 0.95);
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            padding: 8px 14px;
-            z-index: 1001;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: flex;
-            gap: 10px;
-            font-family: Arial, sans-serif;
-        }
+    .btn-match { background: #4caf50; color: white; }
+    .btn-no-match { background: #ff4d4d; color: white; }
+    .btn-unsure { background: #f0ad4e; color: white; }
 
-        .nav-link {
-            color: #444;
-            text-decoration: none;
-            font-size: 14px;
-            padding: 6px 12px;
-            border-radius: 6px;
-            transition: background-color 0.2s ease;
-        }
+    .btn:hover {
+        opacity: 0.8;
+    }
 
-        .nav-link:hover {
-            background-color: #eee;
-        }
+    #nav-bar {
+        position: fixed;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(255, 255, 255, 0.95);
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 8px 14px;
+        z-index: 1001;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        display: flex;
+        gap: 10px;
+        font-family: Arial, sans-serif;
+    }
 
-        .nav-link.active {
-            background-color: #eef8f0;
-            border: 1px solid #bde5c8;
-            color: #2e7d32;
-        }
+    .nav-link {
+        color: #444;
+        text-decoration: none;
+        font-size: 14px;
+        padding: 6px 12px;
+        border-radius: 6px;
+        transition: background-color 0.2s ease;
+    }
 
-        .nav-divider {
-            width: 1px;
-            height: 24px;
-            background-color: #ccc;
-            margin: 0 6px;
-            align-self: center;
-            opacity: 0.8;
-        }
+    .nav-link:hover {
+        background-color: #eee;
+    }
 
-        #label-feedback {
-            position: fixed;
-            top: 45%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 34px;
-            font-weight: bold;
-            font-family: Arial, sans-serif;
-            z-index: 2000;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-            pointer-events: none;
-        }
+    .nav-link.active {
+        background-color: #eef8f0;
+        border: 1px solid #bde5c8;
+        color: #2e7d32;
+    }
 
-        #label-feedback.match {
-            color: #4CAF50;
-        }
+    .nav-divider {
+        width: 1px;
+        height: 24px;
+        background-color: #ccc;
+        margin: 0 6px;
+        align-self: center;
+        opacity: 0.8;
+    }
 
-        #label-feedback.nomatch {
-            color: #ff4d4d;
-        }
+    #label-feedback {
+        position: fixed;
+        top: 45%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 34px;
+        font-weight: bold;
+        font-family: Arial, sans-serif;
+        z-index: 2000;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        pointer-events: none;
+    }
 
-        #label-feedback.unsure {
-            color: #f0ad4e;
-        }
+    #label-feedback.match {
+        color: #4CAF50;
+    }
 
-        #scoreboard {
-            position: fixed;
-            overflow: visible;
-            bottom: 25px;
-            right: 20px;
-            background-color: rgba(255, 255, 255, 0.8);
-            border: 1px solid #ccc;
-            padding: 10px 14px;
-            width: 150px;
-            max-height: 250px;
-            font-family: Arial, sans-serif;
-            font-size: 12px;
-            z-index: 1000;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-        }
+    #label-feedback.nomatch {
+        color: #ff4d4d;
+    }
 
-        #scoreboard-entries {
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
-        }
+    #label-feedback.unsure {
+        color: #f0ad4e;
+    }
 
-        #scoreboard-header {
-            font-weight: bold;
-            border-bottom: 1px solid #ccc;
-            padding-bottom: 4px;
-            margin-bottom: 6px;
-        }
+    #scoreboard {
+        position: fixed;
+        overflow: visible;
+        bottom: 25px;
+        right: 20px;
+        background-color: rgba(255, 255, 255, 0.8);
+        border: 1px solid #ccc;
+        padding: 10px 14px;
+        width: 150px;
+        max-height: 250px;
+        font-family: Arial, sans-serif;
+        font-size: 12px;
+        z-index: 1000;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
 
-        .score-entry {
-            display: flex;
-            align-items: center;
-        }
+    #scoreboard-entries {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
 
-        .score-user {
-            flex: 1.2;
-            color: #333;
-            font-size: 12px;
-            text-align: left;
-        }
+    #scoreboard-header {
+        font-weight: bold;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 4px;
+        margin-bottom: 6px;
+    }
 
-        .score-count {
-            flex: 0.6;
-            font-size: 12px;
-            text-align: right;
-            padding-right: 9px;
-            color: #333;
-        }
+    .score-entry {
+        display: flex;
+        align-items: center;
+    }
 
-        .score-kappa {
-            flex: 0.6;
-            font-size: 12px;
-            text-align: right;
-            color: #333;
-        }
+    .score-user {
+        flex: 1.2;
+        color: #333;
+        font-size: 12px;
+        text-align: left;
+    }
 
-        .kappa-value {
-            font-weight: bold;
-        }
+    .score-count {
+        flex: 0.6;
+        font-size: 12px;
+        text-align: right;
+        padding-right: 9px;
+        color: #333;
+    }
 
-        .kappa-excellent {
-            color: #4caf50; /* green */
-        }
+    .score-kappa {
+        flex: 0.6;
+        font-size: 12px;
+        text-align: right;
+        color: #333;
+    }
 
-        .kappa-high {
-            color: #8bc34a; /* light green */
-        }
+    .kappa-value {
+        font-weight: bold;
+    }
 
-        .kappa-medium {
-            color: #ff9800; /* orange */
-        }
+    .kappa-excellent {
+        color: #4caf50; /* green */
+    }
 
-        .kappa-low {
-            color: #f44336; /* red */
-        }
+    .kappa-high {
+        color: #8bc34a; /* light green */
+    }
 
-        .tooltip-container {
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: help;
-            height: 100%;
-        }
+    .kappa-medium {
+        color: #ff9800; /* orange */
+    }
 
-        .custom-tooltip {
-            visibility: hidden;
-            background-color: #333;
-            color: #fff;
-            text-align: center;
-            border-radius: 6px;
-            padding: 3px 8px;
-            position: absolute;
-            z-index: 1001;
-            bottom: 125%;
-            left: 50%;
-            transform: translateX(-50%);
-            opacity: 0;
-            font-size: 11px;
-            white-space: nowrap;
-            transition: opacity 0.2s;
-        }
+    .kappa-low {
+        color: #f44336; /* red */
+    }
 
-        .tooltip-container:hover .custom-tooltip {
-            visibility: visible;
-            opacity: 1;
-        }
-    </style>
-</head>
-<body>
-    <div id="nav-bar">
-        <a href="/" class="nav-link">Home</a>
-        <a href="/download-results" class="nav-link">Download Results</a>
+    .tooltip-container {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: help;
+        height: 100%;
+    }
 
-        <span class="nav-divider"></span>
+    .custom-tooltip {
+        visibility: hidden;
+        background-color: #333;
+        color: #fff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 3px 8px;
+        position: absolute;
+        z-index: 1001;
+        bottom: 125%;
+        left: 50%;
+        transform: translateX(-50%);
+        opacity: 0;
+        font-size: 11px;
+        white-space: nowrap;
+        transition: opacity 0.2s;
+    }
 
-        <a href="/show-pair" class="nav-link active">Pair-wise Labeling</a>
-        <a href="/show-neighborhood" class="nav-link">Neighborhood-wise Labeling</a>
-    </div>
+    .tooltip-container:hover .custom-tooltip {
+        visibility: visible;
+        opacity: 1;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div id="nav-bar">
+    <a href="/" class="nav-link">Home</a>
+    <a href="/download-results" class="nav-link">Download Results</a>
+
+    <span class="nav-divider"></span>
+
+    <a href="/show-pair" class="nav-link active">Pair-wise Labeling</a>
+    <a href="/show-neighborhood" class="nav-link">Neighborhood-wise Labeling</a>
+</div>
 
 
-    <div id="map">
-        <iframe src="{{ url_for('static', filename='maps/' + map_file | string ) }}" width="100%" height="100%"></iframe>
-    </div>
+<div id="map">
+    <iframe src="{{ url_for('static', filename='maps/' + map_file | string ) }}" width="100%" height="100%"></iframe>
+</div>
 
-    <div id="buttons">
-        <button class="btn btn-match" onclick="labelPair('{{ id_existing }}', '{{ id_new }}', 'yes')">Match</button>
-        <button class="btn btn-no-match" onclick="labelPair('{{ id_existing }}', '{{ id_new }}', 'no')">No Match</button>
-        <button class="btn btn-unsure" onclick="labelPair('{{ id_existing }}', '{{ id_new }}', 'unsure')">Unsure</button>
-    </div>
+<div id="buttons">
+    <button class="btn btn-match" onclick="labelPair('{{ id_existing }}', '{{ id_new }}', 'yes')">Match</button>
+    <button class="btn btn-no-match" onclick="labelPair('{{ id_existing }}', '{{ id_new }}', 'no')">No Match</button>
+    <button class="btn btn-unsure" onclick="labelPair('{{ id_existing }}', '{{ id_new }}', 'unsure')">Unsure</button>
+</div>
 
-    <div id="legend">
-        <h4>Keyboard Shortcuts</h4>
-        <ul>
-            <li><kbd>&rarr;</kbd> Match</li>
-            <li><kbd>&larr;</kbd> No Match</li>
-            <li><kbd>&darr;</kbd> Unsure</li>
-            <li><kbd>&uarr;</kbd> Back</li>
-            <li><kbd>?</kbd> Toggle Legend</li>
-        </ul>
-        <button onclick="toggleLegend()">Close</button>
-    </div>
+<div id="legend">
+    <h4>Keyboard Shortcuts</h4>
+    <ul>
+        <li><kbd>&rarr;</kbd> Match</li>
+        <li><kbd>&larr;</kbd> No Match</li>
+        <li><kbd>&darr;</kbd> Unsure</li>
+        <li><kbd>&uarr;</kbd> Back</li>
+        <li><kbd>?</kbd> Toggle Legend</li>
+    </ul>
+    <button onclick="toggleLegend()">Close</button>
+</div>
 
-    <div id="scoreboard">
-        <div id="scoreboard-header" class="score-entry">
-            <div class="score-user">User</div>
-            <div class="score-count">Count</div>
-            <div class="score-kappa tooltip-container">
-                <span>κ</span>
-                <span class="custom-tooltip" role="tooltip">Inter-Annotator Agreement<br>(Cohen's Kappa)</span>
-            </div>
+<div id="scoreboard">
+    <div id="scoreboard-header" class="score-entry">
+        <div class="score-user">User</div>
+        <div class="score-count">Count</div>
+        <div class="score-kappa tooltip-container">
+            <span>κ</span>
+            <span class="custom-tooltip" role="tooltip">Inter-Annotator Agreement<br>(Cohen's Kappa)</span>
         </div>
+    </div>
 
-        <div id="scoreboard-entries">
-            {% for entry in user_stats %}
-                <div class="score-entry">
-                    <div class="score-user">{{ entry.username }}</div>
-                    <div class="score-count">{{ entry.count }}</div>
-                    <div class="score-kappa">
-                        {% if entry.kappa == entry.kappa %}
-                            <span class="tooltip-container">
-                                <span class="kappa-value {{ entry.kappa_class }}" data-kappa="{{ entry.kappa }}">
-                                    {{ '%.2f'|format(entry.kappa) }}
-                                </span>
-                                <span class="custom-tooltip" role="tooltip">Inter-Annotator Agreement<br>(Cohen's Kappa)</span>
+    <div id="scoreboard-entries">
+        {% for entry in user_stats %}
+            <div class="score-entry">
+                <div class="score-user">{{ entry.username }}</div>
+                <div class="score-count">{{ entry.count }}</div>
+                <div class="score-kappa">
+                    {% if entry.kappa == entry.kappa %}
+                        <span class="tooltip-container">
+                            <span class="kappa-value {{ entry.kappa_class }}" data-kappa="{{ entry.kappa }}">
+                                {{ '%.2f'|format(entry.kappa) }}
                             </span>
-                        {% else %}
-                            —
-                        {% endif %}
-                    </div>
+                            <span class="custom-tooltip" role="tooltip">Inter-Annotator Agreement<br>(Cohen's Kappa)</span>
+                        </span>
+                    {% else %}
+                        —
+                    {% endif %}
                 </div>
-            {% endfor %}
-        </div>
+            </div>
+        {% endfor %}
     </div>
+</div>
 
-    <div id="label-feedback"></div>
+<div id="label-feedback"></div>
+{% endblock %}
 
-    <script type="text/javascript">
-        document.addEventListener('keydown', function(event) {
-            event.preventDefault();
-            if (event.key === "ArrowUp") {
-                window.history.back();
-            } else if (event.key === "ArrowDown") {
-                displayText('unsure');
-                labelPair('{{ id_existing }}', '{{ id_new }}', 'unsure');
-            } else if (event.key === "ArrowRight") {
-                displayText('match');
-                labelPair('{{ id_existing }}', '{{ id_new }}', 'yes');
-            } else if (event.key === "ArrowLeft") {
-                displayText('nomatch');
-                labelPair('{{ id_existing }}', '{{ id_new }}', 'no');
-            } else if (event.key === "?") {
-                toggleLegend();
-            }
-        });
+{% block scripts %}
+<script type="text/javascript">
+    document.addEventListener('keydown', function(event) {
+        event.preventDefault();
+        if (event.key === "ArrowUp") {
+            window.history.back();
+        } else if (event.key === "ArrowDown") {
+            displayText('unsure');
+            labelPair('{{ id_existing }}', '{{ id_new }}', 'unsure');
+        } else if (event.key === "ArrowRight") {
+            displayText('match');
+            labelPair('{{ id_existing }}', '{{ id_new }}', 'yes');
+        } else if (event.key === "ArrowLeft") {
+            displayText('nomatch');
+            labelPair('{{ id_existing }}', '{{ id_new }}', 'no');
+        } else if (event.key === "?") {
+            toggleLegend();
+        }
+    });
 
-        document.addEventListener("DOMContentLoaded", function() {
-            document.querySelectorAll('.kappa-value').forEach(el => {
-                const kappa = parseFloat(el.dataset.kappa);
-                if (!isNaN(kappa)) {
-                    if (kappa >= 0.8) {
-                        el.classList.add('kappa-excellent');
-                    } else if (kappa >= 0.6) {
-                        el.classList.add('kappa-high');
-                    } else if (kappa >= 0.4) {
-                        el.classList.add('kappa-medium');
-                    } else {
-                        el.classList.add('kappa-low');
-                    }
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll('.kappa-value').forEach(el => {
+            const kappa = parseFloat(el.dataset.kappa);
+            if (!isNaN(kappa)) {
+                if (kappa >= 0.8) {
+                    el.classList.add('kappa-excellent');
+                } else if (kappa >= 0.6) {
+                    el.classList.add('kappa-high');
+                } else if (kappa >= 0.4) {
+                    el.classList.add('kappa-medium');
+                } else {
+                    el.classList.add('kappa-low');
                 }
-            });
-        });
-
-        function labelPair(id_existing, id_new, match) {
-            fetch('/store-label', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id_existing: id_existing,
-                    id_new: id_new,
-                    match: match
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                window.location.href = `/show-pair/${data.next_existing_id}/${data.next_new_id}`;
-            });
-        }
-
-        function toggleLegend() {
-            const legend = document.getElementById('legend');
-            if (legend.style.display === 'block') {
-                legend.style.display = 'none';
-            } else {
-                legend.style.display = 'block';
             }
+        });
+    });
+
+    function labelPair(id_existing, id_new, match) {
+        fetch('/store-label', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id_existing: id_existing,
+                id_new: id_new,
+                match: match
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            window.location.href = `/show-pair/${data.next_existing_id}/${data.next_new_id}`;
+        });
+    }
+
+    function toggleLegend() {
+        const legend = document.getElementById('legend');
+        if (legend.style.display === 'block') {
+            legend.style.display = 'none';
+        } else {
+            legend.style.display = 'block';
         }
+    }
 
-        function displayText(label) {
-            const feedback = document.getElementById('label-feedback');
-            feedback.className = label; // 'match', 'nomatch', 'unsure'
-            feedback.textContent = label === 'match' ? 'Match' :
-                                   label === 'nomatch' ? 'No Match' : 'Unsure';
+    function displayText(label) {
+        const feedback = document.getElementById('label-feedback');
+        feedback.className = label; // 'match', 'nomatch', 'unsure'
+        feedback.textContent = label === 'match' ? 'Match' :
+                                label === 'nomatch' ? 'No Match' : 'Unsure';
 
-            feedback.style.opacity = '1';
+        feedback.style.opacity = '1';
 
-            setTimeout(() => {
-                feedback.style.opacity = '0';
-            }, 300);  // Quickly fades out
-        }
-    </script>
-</body>
-</html>
+        setTimeout(() => {
+            feedback.style.opacity = '0';
+        }, 300);  // Quickly fades out
+    }
+</script>
+{% endblock %}

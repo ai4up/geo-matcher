@@ -1,234 +1,234 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Label Candidate Tutorial</title>
-    <style>
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-        }
+{% extends "base.html" %}
 
-        #map {
-            width: 100%;
-            height: 100%;
-        }
+{% block title %}Building Matching Tool{% endblock %}
 
-        #buttons {
-            position: absolute;
-            bottom: 10%;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 15px;
-            border-radius: 10px;
-            display: flex;
-            gap: 15px;
-        }
+{% block head %}
+<style>
+    html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
 
-        .btn {
-            font-size: 20px;
-            padding: 15px 25px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
+    #map {
+        width: 100%;
+        height: 100%;
+    }
 
-        .btn-match { background: #4caf50; color: white; }
-        .btn-no-match { background: #ff4d4d; color: white; }
-        .btn-unsure { background: #f0ad4e; color: white; }
+    #buttons {
+        position: absolute;
+        bottom: 10%;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 15px;
+        border-radius: 10px;
+        display: flex;
+        gap: 15px;
+    }
 
-        .btn:hover {
-            opacity: 0.8;
-        }
+    .btn {
+        font-size: 20px;
+        padding: 15px 25px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+    }
 
-        #tutorial {
-            position: absolute;
-            top: 5%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.9);
-            padding: 15px;
-            border-radius: 10px;
-            z-index: 1000;
-            width: 40%;
-            font-size: 15px;
-            font-family: Arial, sans-serif;
-        }
+    .btn-match { background: #4caf50; color: white; }
+    .btn-no-match { background: #ff4d4d; color: white; }
+    .btn-unsure { background: #f0ad4e; color: white; }
 
-        #tutorial p {
-            margin-bottom: 15px;
-        }
+    .btn:hover {
+        opacity: 0.8;
+    }
 
-        .nav-link {
-            color: #444;
-            text-decoration: none;
-            font-size: 14px;
-            padding: 6px 12px;
-            border-radius: 6px;
-            transition: background-color 0.2s ease;
-        }
+    #tutorial {
+        position: absolute;
+        top: 5%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255, 255, 255, 0.9);
+        padding: 15px;
+        border-radius: 10px;
+        z-index: 1000;
+        width: 40%;
+        font-size: 15px;
+        font-family: Arial, sans-serif;
+    }
 
-        .nav-link:hover {
-            background-color: #eee;
-        }
+    #tutorial p {
+        margin-bottom: 15px;
+    }
 
-        .nav-link.active {
-            background-color: #eef8f0;
-            border: 1px solid #bde5c8;
-            color: #2e7d32;
-        }
+    .nav-link {
+        color: #444;
+        text-decoration: none;
+        font-size: 14px;
+        padding: 6px 12px;
+        border-radius: 6px;
+        transition: background-color 0.2s ease;
+    }
 
-        .form-row {
-            max-width: 500px;
-            margin: 0 auto;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            align-items: center;
-            gap: 12px;
-        }
+    .nav-link:hover {
+        background-color: #eee;
+    }
 
-        .input-field,
-        .select-field {
-            flex: 1 1 220px;
-            min-width: 150px;
-            max-width: 250px;
-            padding: 14px 20px;
-            font-size: 15px;
-            border-radius: 10px;
-            border: 1px solid #ccc;
-        }
+    .nav-link.active {
+        background-color: #eef8f0;
+        border: 1px solid #bde5c8;
+        color: #2e7d32;
+    }
 
-        .radio-group {
-            text-align: center;
-            margin-top: 10px;
-            font-size: 14px;
-        }
+    .form-row {
+        max-width: 500px;
+        margin: 0 auto;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+    }
 
-        .radio-group label {
-            margin-right: 20px;
-        }
+    .input-field,
+    .select-field {
+        flex: 1 1 220px;
+        min-width: 150px;
+        max-width: 250px;
+        padding: 14px 20px;
+        font-size: 15px;
+        border-radius: 10px;
+        border: 1px solid #ccc;
+    }
 
-        .submit-button {
-            margin-top: 15px;
-            padding: 14px 20px;
-            font-size: 16px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-        }
+    .radio-group {
+        text-align: center;
+        margin-top: 10px;
+        font-size: 14px;
+    }
 
-        .submit-button:hover {
-            background-color: #45a049;
-        }
-    </style>
-</head>
-<body>
-    <div id="map">
-        <iframe src="{{ url_for('static', filename='maps/candidate_demo.html') }}" width="100%" height="100%"></iframe>
+    .radio-group label {
+        margin-right: 20px;
+    }
+
+    .submit-button {
+        margin-top: 15px;
+        padding: 14px 20px;
+        font-size: 16px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+    }
+
+    .submit-button:hover {
+        background-color: #45a049;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div id="map">
+    <iframe src="{{ url_for('static', filename='maps/candidate_demo.html') }}" width="100%" height="100%"></iframe>
+</div>
+
+<div id="tutorial">
+    <div id="labeling-tabs" style="text-align: center; margin-top: 10px; margin-bottom: 10px;">
+        <a href="/" class="nav-link active">Pair-wise Labeling</a>
+        <a href="/batch" class="nav-link">Neighborhood-wise Labeling</a>
     </div>
 
-    <div id="tutorial">
-        <div id="labeling-tabs" style="text-align: center; margin-top: 10px; margin-bottom: 10px;">
-            <a href="/" class="nav-link active">Pair-wise Labeling</a>
-            <a href="/batch" class="nav-link">Neighborhood-wise Labeling</a>
+    <h2 style="text-align: center;">Welcome to the Building Footprint Matching Tool!</h2>
+    <p>The tool iterates through pairs of buildings from two different datasets and asks you whether they match<br>(i.e. describe the same actual building).</p>
+
+    <div style="padding-left: 20px;">
+        <div style="margin-bottom: 6px;">
+            <span style="display: inline-block; width: 26px; height: 18px; position: relative; vertical-align: middle;">
+                <i style="background: rgba(255, 127, 80, 0.2); width: 18px; height: 18px; display: inline-block;
+                    border: 3px dashed orangered; position: absolute; bottom: 0; left: -6px; z-index: 2;"></i>
+                <i style="background: rgba(135, 206, 235, 0.5); width: 18px; height: 18px; display: inline-block;
+                    border: 3px solid steelblue; position: absolute; bottom: 0; left: 0; z-index: 1;"></i>
+            </span>
+            The building pair in question is highlighted with a thick boundary in red and blue.<br>
         </div>
 
-        <h2 style="text-align: center;">Welcome to the Building Footprint Matching Tool!</h2>
-        <p>The tool iterates through pairs of buildings from two different datasets and asks you whether they match<br>(i.e. describe the same actual building).</p>
+        <div style="margin-bottom: 6px;">
+            <i style="background: rgba(135, 206, 235, 0.5); width: 18px; height: 18px; vertical-align: middle; display: inline-block; border: 2px solid skyblue;"></i> For reference, the other existing buildings are displayed in light blue.<br>
+        </div>
+        <div>
+            <i style="background: rgba(255, 127, 80, 0.2); width: 18px; height: 18px; vertical-align: middle; display: inline-block; border: 2px solid coral;"></i> For reference, the other new buildings are displayed in light orange.
+        </div>
+    </div>
 
-        <div style="padding-left: 20px;">
-            <div style="margin-bottom: 6px;">
-                <span style="display: inline-block; width: 26px; height: 18px; position: relative; vertical-align: middle;">
-                    <i style="background: rgba(255, 127, 80, 0.2); width: 18px; height: 18px; display: inline-block;
-                        border: 3px dashed orangered; position: absolute; bottom: 0; left: -6px; z-index: 2;"></i>
-                    <i style="background: rgba(135, 206, 235, 0.5); width: 18px; height: 18px; display: inline-block;
-                        border: 3px solid steelblue; position: absolute; bottom: 0; left: 0; z-index: 1;"></i>
-                </span>
-                The building pair in question is highlighted with a thick boundary in red and blue.<br>
-            </div>
+    <p>Use the buttons below to label the <strong>highlighted building pair</strong> as either a <strong>'Match'</strong>, <strong>'No Match'</strong>, or <strong>'Unsure'</strong>.</p>
 
-            <div style="margin-bottom: 6px;">
-                <i style="background: rgba(135, 206, 235, 0.5); width: 18px; height: 18px; vertical-align: middle; display: inline-block; border: 2px solid skyblue;"></i> For reference, the other existing buildings are displayed in light blue.<br>
-            </div>
-            <div>
-                <i style="background: rgba(255, 127, 80, 0.2); width: 18px; height: 18px; vertical-align: middle; display: inline-block; border: 2px solid coral;"></i> For reference, the other new buildings are displayed in light orange.
-            </div>
+    <form id="username-form" onsubmit="return handleFormSubmit(event)" style="text-align: center; margin-top: 30px;">
+        <div class="form-row">
+            <input type="text" id="username" name="username" placeholder="Enter your username" required class="input-field">
+
+            {% if datasets|length == 1 %}
+                <input type="hidden" id="dataset" name="dataset" value="{{ datasets[0] }}">
+            {% else %}
+                <select id="dataset" name="dataset" required class="select-field">
+                    <option value="" disabled selected>Select dataset</option>
+                    {% for ds in datasets %}
+                        <option value="{{ ds }}">{{ ds }}</option>
+                    {% endfor %}
+                </select>
+            {% endif %}
         </div>
 
-        <p>Use the buttons below to label the <strong>highlighted building pair</strong> as either a <strong>'Match'</strong>, <strong>'No Match'</strong>, or <strong>'Unsure'</strong>.</p>
+        <div class="radio-group">
+            <label><input type="radio" name="label_mode" value="all"> Label everything</label>
+            <label><input type="radio" name="label_mode" value="unlabeled" checked> Label only unlabeled building pairs</label>
+            <label><input type="radio" name="label_mode" value="cross-validate"> Cross-validate previous annotations</label>
+        </div>
 
+        <button type="submit" class="submit-button">Get Started!</button>
+    </form>
+</div>
 
-        <form id="username-form" onsubmit="return handleFormSubmit(event)" style="text-align: center; margin-top: 30px;">
-            <div class="form-row">
-                <input type="text" id="username" name="username" placeholder="Enter your username" required class="input-field">
+<div id="buttons">
+    <button class="btn btn-match" onclick="alert('Demo only. No data will be saved.');">Match</button>
+    <button class="btn btn-no-match" onclick="alert('Demo only. No data will be saved.');">No Match</button>
+    <button class="btn btn-unsure" onclick="alert('Demo only. No data will be saved.');">Unsure</button>
+</div>
+{% endblock %}
 
-                {% if datasets|length == 1 %}
-                    <input type="hidden" id="dataset" name="dataset" value="{{ datasets[0] }}">
-                {% else %}
-                    <select id="dataset" name="dataset" required class="select-field">
-                        <option value="" disabled selected>Select dataset</option>
-                        {% for ds in datasets %}
-                            <option value="{{ ds }}">{{ ds }}</option>
-                        {% endfor %}
-                    </select>
-                {% endif %}
-            </div>
+{% block scripts %}
+<script>
+    async function handleFormSubmit(event) {
+        event.preventDefault(); // Stop normal form submit
 
-            <div class="radio-group">
-                <label><input type="radio" name="label_mode" value="all"> Label everything</label>
-                <label><input type="radio" name="label_mode" value="unlabeled" checked> Label only unlabeled building pairs</label>
-                <label><input type="radio" name="label_mode" value="cross-validate"> Cross-validate previous annotations</label>
-            </div>
+        const username = document.getElementById('username').value.trim();
+        const labelMode = document.querySelector('input[name="label_mode"]:checked').value;
+        const dataset = document.getElementById('dataset')?.value;
 
-            <button type="submit" class="submit-button">Get Started!</button>
-        </form>
-    </div>
-
-    <div id="buttons">
-        <button class="btn btn-match" onclick="alert('Demo only. No data will be saved.');">Match</button>
-        <button class="btn btn-no-match" onclick="alert('Demo only. No data will be saved.');">No Match</button>
-        <button class="btn btn-unsure" onclick="alert('Demo only. No data will be saved.');">Unsure</button>
-    </div>
-
-    <script>
-        async function handleFormSubmit(event) {
-            event.preventDefault(); // Stop normal form submit
-
-            const username = document.getElementById('username').value.trim();
-            const labelMode = document.querySelector('input[name="label_mode"]:checked').value;
-            const dataset = document.getElementById('dataset')?.value;
-
-            if (!username || !dataset) {
-                alert('Please enter username and select a dataset.');
-                return false;
-            }
-
-            const formData = new URLSearchParams({
-                username: username,
-                labelmode: labelMode,
-                dataset: dataset
-            });
-
-            const response = await fetch('/start-session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: formData
-            });
-
-            if (response.ok) {
-                window.location.href = '/show-pair';
-            } else {
-                alert('There was a problem saving your username.');
-                return false;
-            }
+        if (!username || !dataset) {
+            alert('Please enter username and select a dataset.');
+            return false;
         }
-    </script>
-</body>
-</html>
+
+        const formData = new URLSearchParams({
+            username: username,
+            labelmode: labelMode,
+            dataset: dataset
+        });
+
+        const response = await fetch('/start-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData
+        });
+
+        if (response.ok) {
+            window.location.href = '/show-pair';
+        } else {
+            alert('There was a problem saving your username.');
+            return false;
+        }
+    }
+</script>
+{% endblock %}

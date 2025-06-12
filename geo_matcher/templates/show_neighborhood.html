@@ -1,305 +1,306 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Label Neighborhood</title>
-    <style>
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-        }
+{% extends "base.html" %}
 
-        #map {
-            width: 100%;
-            height: 100%;
-        }
+{% block title %}Label Neighborhood{% endblock %}
 
-        #buttons {
-            position: absolute;
-            bottom: 10%;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 15px;
-            border-radius: 10px;
-            display: flex;
-            gap: 15px;
-        }
+{% block head %}
+<style>
+    html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
 
-        .btn {
-            font-size: 20px;
-            padding: 15px 25px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
+    #map {
+        width: 100%;
+        height: 100%;
+    }
 
-        .btn-submit { background: #4caf50; color: white; }
+    #buttons {
+        position: absolute;
+        bottom: 10%;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 15px;
+        border-radius: 10px;
+        display: flex;
+        gap: 15px;
+    }
 
-        .btn:hover {
-            opacity: 0.8;
-        }
+    .btn {
+        font-size: 20px;
+        padding: 15px 25px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+    }
 
-        #nav-bar {
-            position: fixed;
-            top: 12px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(255, 255, 255, 0.95);
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            padding: 8px 14px;
-            z-index: 1001;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: flex;
-            gap: 10px;
-            font-family: Arial, sans-serif;
-        }
+    .btn-submit { background: #4caf50; color: white; }
 
-        .nav-link {
-            color: #444;
-            text-decoration: none;
-            font-size: 14px;
-            padding: 6px 12px;
-            border-radius: 6px;
-            transition: background-color 0.2s ease;
-        }
+    .btn:hover {
+        opacity: 0.8;
+    }
 
-        .nav-link:hover {
-            background-color: #eee;
-        }
+    #nav-bar {
+        position: fixed;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(255, 255, 255, 0.95);
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 8px 14px;
+        z-index: 1001;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        display: flex;
+        gap: 10px;
+        font-family: Arial, sans-serif;
+    }
 
-        .nav-link.active {
-            background-color: #eef8f0;
-            border: 1px solid #bde5c8;
-            color: #2e7d32;
-        }
+    .nav-link {
+        color: #444;
+        text-decoration: none;
+        font-size: 14px;
+        padding: 6px 12px;
+        border-radius: 6px;
+        transition: background-color 0.2s ease;
+    }
 
-        .nav-divider {
-            width: 1px;
-            height: 24px;
-            background-color: #ccc;
-            margin: 0 6px;
-            align-self: center;
-            opacity: 0.8;
-        }
+    .nav-link:hover {
+        background-color: #eee;
+    }
 
-        #scoreboard {
-            position: fixed;
-            overflow: visible;
-            bottom: 25px;
-            right: 20px;
-            background-color: rgba(255, 255, 255, 0.8);
-            border: 1px solid #ccc;
-            padding: 10px 14px;
-            width: 150px;
-            max-height: 250px;
-            font-family: Arial, sans-serif;
-            font-size: 12px;
-            z-index: 1000;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-        }
+    .nav-link.active {
+        background-color: #eef8f0;
+        border: 1px solid #bde5c8;
+        color: #2e7d32;
+    }
 
-        #scoreboard-entries {
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
-        }
+    .nav-divider {
+        width: 1px;
+        height: 24px;
+        background-color: #ccc;
+        margin: 0 6px;
+        align-self: center;
+        opacity: 0.8;
+    }
 
-        #scoreboard-header {
-            font-weight: bold;
-            border-bottom: 1px solid #ccc;
-            padding-bottom: 4px;
-            margin-bottom: 6px;
-        }
+    #scoreboard {
+        position: fixed;
+        overflow: visible;
+        bottom: 25px;
+        right: 20px;
+        background-color: rgba(255, 255, 255, 0.8);
+        border: 1px solid #ccc;
+        padding: 10px 14px;
+        width: 150px;
+        max-height: 250px;
+        font-family: Arial, sans-serif;
+        font-size: 12px;
+        z-index: 1000;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
 
-        .score-entry {
-            display: flex;
-            align-items: center;
-        }
+    #scoreboard-entries {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
 
-        .score-user {
-            flex: 1.2;
-            color: #333;
-            font-size: 12px;
-            text-align: left;
-        }
+    #scoreboard-header {
+        font-weight: bold;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 4px;
+        margin-bottom: 6px;
+    }
 
-        .score-count {
-            flex: 0.6;
-            font-size: 12px;
-            text-align: right;
-            padding-right: 9px;
-            color: #333;
-        }
+    .score-entry {
+        display: flex;
+        align-items: center;
+    }
 
-        .score-kappa {
-            flex: 0.6;
-            font-size: 12px;
-            text-align: right;
-            color: #333;
-        }
+    .score-user {
+        flex: 1.2;
+        color: #333;
+        font-size: 12px;
+        text-align: left;
+    }
 
-        .kappa-value {
-            font-weight: bold;
-        }
+    .score-count {
+        flex: 0.6;
+        font-size: 12px;
+        text-align: right;
+        padding-right: 9px;
+        color: #333;
+    }
 
-        .kappa-excellent {
-            color: #4caf50; /* green */
-        }
+    .score-kappa {
+        flex: 0.6;
+        font-size: 12px;
+        text-align: right;
+        color: #333;
+    }
 
-        .kappa-high {
-            color: #8bc34a; /* light green */
-        }
+    .kappa-value {
+        font-weight: bold;
+    }
 
-        .kappa-medium {
-            color: #ff9800; /* orange */
-        }
+    .kappa-excellent {
+        color: #4caf50; /* green */
+    }
 
-        .kappa-low {
-            color: #f44336; /* red */
-        }
+    .kappa-high {
+        color: #8bc34a; /* light green */
+    }
 
-        .tooltip-container {
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: help;
-            height: 100%;
-        }
+    .kappa-medium {
+        color: #ff9800; /* orange */
+    }
 
-        .custom-tooltip {
-            visibility: hidden;
-            background-color: #333;
-            color: #fff;
-            text-align: center;
-            border-radius: 6px;
-            padding: 3px 8px;
-            position: absolute;
-            z-index: 1001;
-            bottom: 125%;
-            left: 50%;
-            transform: translateX(-50%);
-            opacity: 0;
-            font-size: 11px;
-            white-space: nowrap;
-            transition: opacity 0.2s;
-        }
+    .kappa-low {
+        color: #f44336; /* red */
+    }
 
-        .tooltip-container:hover .custom-tooltip {
-            visibility: visible;
-            opacity: 1;
-        }
-    </style>
-</head>
-<body>
-    <div id="nav-bar">
-        <a href="/batch" class="nav-link">Home</a>
-        <a href="/download-results" class="nav-link">Download Results</a>
+    .tooltip-container {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: help;
+        height: 100%;
+    }
 
-        <span class="nav-divider"></span>
+    .custom-tooltip {
+        visibility: hidden;
+        background-color: #333;
+        color: #fff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 3px 8px;
+        position: absolute;
+        z-index: 1001;
+        bottom: 125%;
+        left: 50%;
+        transform: translateX(-50%);
+        opacity: 0;
+        font-size: 11px;
+        white-space: nowrap;
+        transition: opacity 0.2s;
+    }
 
-        <a href="/show-pair" class="nav-link">Pair-wise Labeling</a>
-        <a href="/show-neighborhood" class="nav-link active">Neighborhood-wise Labeling</a>
-    </div>
+    .tooltip-container:hover .custom-tooltip {
+        visibility: visible;
+        opacity: 1;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div id="nav-bar">
+    <a href="/batch" class="nav-link">Home</a>
+    <a href="/download-results" class="nav-link">Download Results</a>
+
+    <span class="nav-divider"></span>
+
+    <a href="/show-pair" class="nav-link">Pair-wise Labeling</a>
+    <a href="/show-neighborhood" class="nav-link active">Neighborhood-wise Labeling</a>
+</div>
 
 
-    <div id="map">
-        <iframe src="{{ url_for('static', filename='maps/' + map_file | string) }}" width="100%" height="100%"></iframe>
-    </div>
+<div id="map">
+    <iframe src="{{ url_for('static', filename='maps/' + map_file | string) }}" width="100%" height="100%"></iframe>
+</div>
 
-    <div id="buttons">
-        <button class="btn btn-submit" onclick="sendLabeledMatches('{{ id }}')">Submit</button>
-    </div>
+<div id="buttons">
+    <button class="btn btn-submit" onclick="sendLabeledMatches('{{ id }}')">Submit</button>
+</div>
 
-    <div id="scoreboard">
-        <div id="scoreboard-header" class="score-entry">
-            <div class="score-user">User</div>
-            <div class="score-count">Count</div>
-            <div class="score-kappa tooltip-container">
-                <span>κ</span>
-                <span class="custom-tooltip" role="tooltip">Inter-Annotator Agreement<br>(Cohen's Kappa)</span>
-            </div>
+<div id="scoreboard">
+    <div id="scoreboard-header" class="score-entry">
+        <div class="score-user">User</div>
+        <div class="score-count">Count</div>
+        <div class="score-kappa tooltip-container">
+            <span>κ</span>
+            <span class="custom-tooltip" role="tooltip">Inter-Annotator Agreement<br>(Cohen's Kappa)</span>
         </div>
+    </div>
 
-        <div id="scoreboard-entries">
-            {% for entry in user_stats %}
-                <div class="score-entry">
-                    <div class="score-user">{{ entry.username }}</div>
-                    <div class="score-count">{{ entry.count }}</div>
-                    <div class="score-kappa">
-                        {% if entry.kappa == entry.kappa %}
-                            <span class="tooltip-container">
-                                <span class="kappa-value {{ entry.kappa_class }}" data-kappa="{{ entry.kappa }}">
-                                    {{ '%.2f'|format(entry.kappa) }}
-                                </span>
-                                <span class="custom-tooltip" role="tooltip">Inter-Annotator Agreement<br>(Cohen's Kappa)</span>
+    <div id="scoreboard-entries">
+        {% for entry in user_stats %}
+            <div class="score-entry">
+                <div class="score-user">{{ entry.username }}</div>
+                <div class="score-count">{{ entry.count }}</div>
+                <div class="score-kappa">
+                    {% if entry.kappa == entry.kappa %}
+                        <span class="tooltip-container">
+                            <span class="kappa-value {{ entry.kappa_class }}" data-kappa="{{ entry.kappa }}">
+                                {{ '%.2f'|format(entry.kappa) }}
                             </span>
-                        {% else %}
-                            —
-                        {% endif %}
-                    </div>
+                            <span class="custom-tooltip" role="tooltip">Inter-Annotator Agreement<br>(Cohen's Kappa)</span>
+                        </span>
+                    {% else %}
+                        —
+                    {% endif %}
                 </div>
-            {% endfor %}
-        </div>
+            </div>
+        {% endfor %}
     </div>
+</div>
+{% endblock %}
 
-    <script type="text/javascript">
-        function sendLabeledMatches(id) {
-            const iframe = document.querySelector("iframe");
-            const iframeWindow = iframe.contentWindow;
+{% block scripts %}
+<script type="text/javascript">
+    function sendLabeledMatches(id) {
+        const iframe = document.querySelector("iframe");
+        const iframeWindow = iframe.contentWindow;
 
-            const payload = {
-                id: id,
-                pairs: iframeWindow.pairs || [],
-                added: iframeWindow.addedMatches?.map(({ id_existing, id_new }) => ({ id_existing, id_new })) || [],  // extract only ids, not Leaflet layers
-                removed: iframeWindow.removedMatches || []
-            };
+        const payload = {
+            id: id,
+            pairs: iframeWindow.pairs || [],
+            added: iframeWindow.addedMatches?.map(({ id_existing, id_new }) => ({ id_existing, id_new })) || [],  // extract only ids, not Leaflet layers
+            removed: iframeWindow.removedMatches || []
+        };
 
-            fetch('/store-neighborhood', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            })
-            .then(response => response.json())
-            .then(data => {
-                window.location.href = `/show-neighborhood/${data.next_id}`;
-            })
-            .catch(err => console.error("Submission error:", err));
+        fetch('/store-neighborhood', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            window.location.href = `/show-neighborhood/${data.next_id}`;
+        })
+        .catch(err => console.error("Submission error:", err));
+    }
+
+    document.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+            const submitButton = document.querySelector("#buttons button.btn-submit");
+            if (submitButton) {
+                e.preventDefault(); // Prevent default form behavior if any
+                submitButton.click();
+            }
         }
+    });
 
-        document.addEventListener("keydown", function (e) {
-            if (e.key === "Enter") {
-                const submitButton = document.querySelector("#buttons button.btn-submit");
-                if (submitButton) {
-                    e.preventDefault(); // Prevent default form behavior if any
-                    submitButton.click();
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll('.kappa-value').forEach(el => {
+            const kappa = parseFloat(el.dataset.kappa);
+            if (!isNaN(kappa)) {
+                if (kappa >= 0.8) {
+                    el.classList.add('kappa-excellent');
+                } else if (kappa >= 0.6) {
+                    el.classList.add('kappa-high');
+                } else if (kappa >= 0.4) {
+                    el.classList.add('kappa-medium');
+                } else {
+                    el.classList.add('kappa-low');
                 }
             }
         });
-
-        document.addEventListener("DOMContentLoaded", function() {
-            document.querySelectorAll('.kappa-value').forEach(el => {
-                const kappa = parseFloat(el.dataset.kappa);
-                if (!isNaN(kappa)) {
-                    if (kappa >= 0.8) {
-                        el.classList.add('kappa-excellent');
-                    } else if (kappa >= 0.6) {
-                        el.classList.add('kappa-high');
-                    } else if (kappa >= 0.4) {
-                        el.classList.add('kappa-medium');
-                    } else {
-                        el.classList.add('kappa-low');
-                    }
-                }
-            });
-        });
-    </script>
-</body>
-</html>
+    });
+</script>
+{% endblock %}
