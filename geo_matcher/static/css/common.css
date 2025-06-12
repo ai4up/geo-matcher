@@ -1,0 +1,360 @@
+/* Base layout */
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+}
+
+/* Navigation */
+#nav-bar {
+    position: fixed;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(255, 255, 255, 0.95);
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 8px 14px;
+    z-index: 1001;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    gap: 10px;
+    font-family: Arial, sans-serif;
+}
+
+.nav-link {
+    color: #444;
+    text-decoration: none;
+    font-size: 14px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+}
+
+.nav-link:hover {
+    background-color: #eee;
+}
+
+.nav-link.active {
+    background-color: #eef8f0;
+    border: 1px solid #bde5c8;
+    color: #2e7d32;
+}
+
+.nav-divider {
+    width: 1px;
+    height: 24px;
+    background-color: #ccc;
+    margin: 0 6px;
+    align-self: center;
+    opacity: 0.8;
+}
+
+/* Buttons */
+#buttons {
+    position: absolute;
+    bottom: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 15px;
+    border-radius: 10px;
+    display: flex;
+    gap: 15px;
+}
+
+.btn {
+    font-size: 20px;
+    padding: 15px 25px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.btn-match { background: #4caf50; color: white; }
+.btn-no-match { background: #ff4d4d; color: white; }
+.btn-unsure { background: #f0ad4e; color: white; }
+.btn-submit { background: #4caf50; color: white; }
+
+.btn:hover {
+    opacity: 0.8;
+}
+
+/* Tutorial panel */
+#tutorial {
+    position: absolute;
+    top: 5%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.9);
+    padding: 15px;
+    border-radius: 10px;
+    z-index: 1000;
+    width: 40%;
+    font-size: 15px;
+    font-family: Arial, sans-serif;
+}
+
+#tutorial p {
+    margin-bottom: 15px;
+}
+
+/* Form elements */
+.form-row {
+    max-width: 500px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+}
+
+.input-field,
+.select-field {
+    flex: 1 1 220px;
+    min-width: 150px;
+    max-width: 250px;
+    padding: 14px 20px;
+    font-size: 15px;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+}
+
+.radio-group {
+    text-align: center;
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+.radio-group label {
+    margin-right: 20px;
+}
+
+.submit-button {
+    margin-top: 15px;
+    padding: 14px 20px;
+    font-size: 16px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.submit-button:hover {
+    background-color: #45a049;
+}
+
+/* Legend */
+#legend {
+    display: none;
+    position: fixed;
+    top: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(255, 255, 255, 0.95);
+    border: 1px solid #ccc;
+    padding: 12px 16px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    z-index: 1000;
+    font-size: 13px;
+    font-family: Arial, sans-serif;
+    width: max-content;
+}
+
+#legend h4 {
+    font-size: 14px;
+    margin: 0 0 8px 0;
+    text-align: center;
+}
+
+#legend ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#legend li {
+    margin: 4px 0;
+    display: flex;
+    align-items: center;
+}
+
+#legend kbd {
+    font-family: monospace;
+    background: #eee;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 12px;
+    margin-right: 6px;
+    min-width: 32px;
+    text-align: center;
+    color: #333;
+}
+
+.legend-divider {
+    height: 1px;
+    background-color: #ddd;
+    margin: 10px 0;
+}
+
+#legend button {
+    display: block;
+    margin: 0 auto;
+    padding: 6px 12px;
+    font-size: 13px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background-color: #f5f5f5;
+    cursor: pointer;
+}
+
+#legend button:hover {
+    background-color: #eaeaea;
+}
+
+/* Label feedback */
+#label-feedback {
+    position: fixed;
+    top: 45%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 34px;
+    font-weight: bold;
+    font-family: Arial, sans-serif;
+    z-index: 2000;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+#label-feedback.match {
+    color: #4CAF50;
+}
+
+#label-feedback.nomatch {
+    color: #ff4d4d;
+}
+
+#label-feedback.unsure {
+    color: #f0ad4e;
+}
+
+/* Scoreboard */
+#scoreboard {
+    position: fixed;
+    overflow: visible;
+    bottom: 25px;
+    right: 20px;
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid #ccc;
+    padding: 10px 14px;
+    width: 150px;
+    max-height: 250px;
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    z-index: 1000;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+#scoreboard-entries {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+#scoreboard-header {
+    font-weight: bold;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 4px;
+    margin-bottom: 6px;
+}
+
+.score-entry {
+    display: flex;
+    align-items: center;
+}
+
+.score-user {
+    flex: 1.2;
+    color: #333;
+    font-size: 12px;
+    text-align: left;
+}
+
+.score-count {
+    flex: 0.6;
+    font-size: 12px;
+    text-align: right;
+    padding-right: 9px;
+    color: #333;
+}
+
+.score-kappa {
+    flex: 0.6;
+    font-size: 12px;
+    text-align: right;
+    color: #333;
+}
+
+.kappa-value {
+    font-weight: bold;
+}
+
+.kappa-excellent {
+    color: #4caf50; /* green */
+}
+
+.kappa-high {
+    color: #8bc34a; /* light green */
+}
+
+.kappa-medium {
+    color: #ff9800; /* orange */
+}
+
+.kappa-low {
+    color: #f44336; /* red */
+}
+
+/* Tooltips */
+.tooltip-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: help;
+    height: 100%;
+}
+
+.custom-tooltip {
+    visibility: hidden;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 3px 8px;
+    position: absolute;
+    z-index: 1001;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    font-size: 11px;
+    white-space: nowrap;
+    transition: opacity 0.2s;
+}
+
+.tooltip-container:hover .custom-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
