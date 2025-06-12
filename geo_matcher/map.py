@@ -215,33 +215,35 @@ def _add_stylized_buildings_layer(
         return color_scheme["highlight"] if is_highlight else color_scheme["default"]
 
     gdf["type"] = layer_ref
-    buildings_geojson = _create_building_layer(gdf, style_function)
 
     feature_group = folium.FeatureGroup(name=layer_name)
-    buildings_geojson.add_to(feature_group)
+    geojson = _create_buildings_layer(gdf, style_function)
+    geojson.add_to(feature_group)
     feature_group.add_to(m)
 
-    _inject_var(m, layer_ref, buildings_geojson.get_name())
+    _inject_var(m, layer_ref, geojson.get_name())
 
     if highlight_id:
         _inject_var(m, layer_ref + "Highlighted", json.dumps(highlight_id))
 
 
-def _create_building_layer(
+def _create_buildings_layer(
     gdf: GeoDataFrame,
     style_function: Callable[[dict], dict],
 ) -> folium.GeoJson:
     def highlight_function(_):
         return {"fillOpacity": 0.8}
 
-    if not gdf.empty:
-        tooltip = folium.GeoJsonTooltip(fields=["index"], aliases=["Building ID"])
-        features = folium.GeoJson(
-            gdf.reset_index(),
-            tooltip=tooltip,
-            style_function=style_function,
-            highlight_function=highlight_function,
-        )
+    if gdf.empty:
+        return folium.GeoJson({"type": "FeatureCollection", "features": []})
+
+    tooltip = folium.GeoJsonTooltip(fields=["index"], aliases=["Building ID"])
+    features = folium.GeoJson(
+        gdf.reset_index(),
+        tooltip=tooltip,
+        style_function=style_function,
+        highlight_function=highlight_function,
+    )
 
     return features
 
