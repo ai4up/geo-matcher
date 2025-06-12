@@ -5,6 +5,7 @@ from typing import Any, Callable, Optional
 from geopandas import GeoDataFrame
 import folium
 import geopandas as gpd
+import numpy as np
 
 from geo_matcher.state import State
 from geo_matcher import spatial
@@ -250,6 +251,9 @@ def _create_buildings_layer(
 
 def _add_matching_layer(m: folium.Map, candidate_pairs: GeoDataFrame) -> None:
     matches = candidate_pairs[candidate_pairs["match"]]
+    unmatched_existing = np.setdiff1d(candidate_pairs["id_existing"].unique(), matches["id_existing"].unique()).tolist()
+    unmatched_new = np.setdiff1d(candidate_pairs["id_new"].unique(), matches["id_new"].unique()).tolist()
+
     if matches.empty:
         matching_edges = gpd.GeoDataFrame(geometry=[], crs=candidate_pairs["geometry_existing"].crs)
     else:
@@ -258,9 +262,13 @@ def _add_matching_layer(m: folium.Map, candidate_pairs: GeoDataFrame) -> None:
             matches.set_index("id_new")["geometry_new"]
         ).reset_index(names=["id_existing", "id_new"])
 
-    _inject_var(m, "pairs", candidate_pairs[["id_existing", "id_new", "match"]].to_json(orient='records'))
-    _add_matching_edges(m, matching_edges)
 
+    _inject_var(m, "pairs", candidate_pairs[["id_existing", "id_new", "match"]].to_json(orient='records'))
+    _inject_var(m, "unmatchedExisting", unmatched_existing)
+    _inject_var(m, "unmatchedNew", unmatched_new)
+
+    _add_matching_edges(m, matching_edges)
+    _add_unmatched_buildings_highlighting_toggle(m)
 
 def _disable_leaflet_click_outline(m: folium.Map) -> None:
     m.get_root().header.add_child(folium.Element("""
@@ -474,32 +482,161 @@ def _inject_mouseover_effects(m: folium.Map) -> None:
     ))
 
 
+def _add_unmatched_buildings_highlighting_toggle(m: folium.Map) -> None:
+    m.get_root().html.add_child(folium.Element(f"""
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {{
+        const map = window.{m.get_name()};
+        let highlighted = false;
+        const unmatchedExisting = new Set(window.unmatchedExisting || []);
+        const unmatchedNew = new Set(window.unmatchedNew || []);
+        const highlightStyle = {{ color: "black", weight: 3, dashArray: "3,6" }};
+
+        document.getElementById("highlightToggleButton").addEventListener("click", function () {{
+            map.eachLayer(layer => {{
+                if (layer.feature && layer.feature.properties && layer.feature.geometry) {{
+                    const type = layer.feature.properties.type;
+                    const id = layer.feature.properties.index;
+
+                    if ((type === "existing" && unmatchedExisting.has(id)) ||
+                        (type === "new" && unmatchedNew.has(id))) {{
+                        if (!highlighted) {{
+                            layer._originalStyle = {{
+                                color: layer.options.color,
+                                weight: layer.options.weight,
+                                dashArray: layer.options.dashArray || null
+                            }};
+                            layer.setStyle(highlightStyle);
+                        }} else if (layer._originalStyle) {{
+                            layer.setStyle(layer._originalStyle);
+                        }}
+                    }}
+                }}
+            }});
+
+            highlighted = !highlighted;
+        }});
+    }});
+    </script>
+    """))
+
+
 def _add_satellite_imagery_toogle(m: folium.Map) -> None:
     m.get_root().html.add_child(folium.Element(f"""
-    <style>
-    .custom-toggle-button {{
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        z-index: 9999;
-        background: white;
-        padding: 6px 10px;
-        border: 1px solid #ccc;
-        cursor: pointer;
-        font-size: 14px;
-        border-radius: 4px;
-    }}
-    .leaflet-control-layers {{
-        top: 40px !important;
-        right: 10px !important;
-    }}
-    </style>
-    <div class="custom-toggle-button" id="layerToggleButton">Switch to Satellite</div>
     <script>
     document.addEventListener("DOMContentLoaded", function () {{
         const map = window.{m.get_name()};
         const styleMap = {json.dumps(BUILDING_LAYER_COLORS)};
         let satelliteMode = false;
+        let highlighted = false;
+        const unmatchedExisting = new Set(window.unmatchedExisting || []);
+        const unmatchedNew = new Set(window.unmatchedNew || []);
+        const highlightStyle = {{ color: "black", weight: 3, dashArray: "3,6" }};
+
+        function addCustomControls() {{
+            const layerControl = document.querySelector('.leaflet-control-layers-expanded');
+            if (!layerControl || layerControl.querySelector('#satelliteToggle')) return;
+
+            // Add separator line
+            const separator = document.createElement('div');
+            separator.className = 'leaflet-control-layers-separator';
+            layerControl.appendChild(separator);
+
+            // Satellite toggle (mimic Folium's structure)
+            const satelliteToggle = document.createElement('div');
+            satelliteToggle.className = 'leaflet-control-layers-overlays';
+            satelliteToggle.style.marginTop = '8px';
+            satelliteToggle.innerHTML = `
+                <label>
+                  <input type="checkbox" id="satelliteToggle" style="vertical-align: middle; margin-right: 6px;">
+                  <span style="vertical-align: middle;">Satellite View</span>
+                </label>
+            `;
+            layerControl.appendChild(satelliteToggle);
+
+            // Highlight toggle (mimic Folium's structure)
+            const highlightToggle = document.createElement('div');
+            highlightToggle.className = 'leaflet-control-layers-overlays';
+            highlightToggle.innerHTML = `
+                <label>
+                  <input type="checkbox" id="highlightToggle" style="vertical-align: middle; margin-right: 6px;">
+                  <span style="vertical-align: middle;">Highlight Unmatched</span>
+                </label>
+            `;
+            layerControl.appendChild(highlightToggle);
+
+            // Satellite toggle functionality
+            document.getElementById('satelliteToggle').addEventListener('change', function() {{
+                const mode = this.checked ? "satellite" : "map";
+                const esriSatellite = window.esriSatellite;
+                const cartoPositron = window.cartoPositron;
+
+                applyStyle(window.existing, styleMap[mode], "existing");
+                applyStyle(window.new, styleMap[mode], "new");
+
+                if (this.checked) {{
+                    if (cartoPositron && map.hasLayer(cartoPositron)) map.removeLayer(cartoPositron);
+                    if (esriSatellite && !map.hasLayer(esriSatellite)) map.addLayer(esriSatellite);
+                }} else {{
+                    if (esriSatellite && map.hasLayer(esriSatellite)) map.removeLayer(esriSatellite);
+                    if (cartoPositron && !map.hasLayer(cartoPositron)) map.addLayer(cartoPositron);
+                }}
+            }});
+
+            // Highlight toggle functionality
+            document.getElementById('highlightToggle').addEventListener('change', function() {{
+                map.eachLayer(layer => {{
+                    if (layer.feature && layer.feature.properties && layer.feature.geometry) {{
+                        const type = layer.feature.properties.type;
+                        const id = layer.feature.properties.index;
+
+                        if ((type === "existing" && unmatchedExisting.has(id)) ||
+                            (type === "new" && unmatchedNew.has(id))) {{
+                            if (this.checked) {{
+                                layer._originalStyle = {{
+                                    color: layer.options.color,
+                                    weight: layer.options.weight,
+                                    dashArray: layer.options.dashArray || null
+                                }};
+                                layer.setStyle(highlightStyle);
+                            }} else if (layer._originalStyle) {{
+                                layer.setStyle(layer._originalStyle);
+                            }}
+                        }}
+                    }}
+                }});
+            }});
+        }}
+
+        function removeCustomControls() {{
+            const layerControl = document.querySelector('.leaflet-control-layers');
+            if (!layerControl) return;
+            const satellite = layerControl.querySelector('#satelliteToggle');
+            const highlight = layerControl.querySelector('#highlightToggle');
+            if (satellite) satellite.closest('.leaflet-control-layers-overlays').remove();
+            if (highlight) highlight.closest('.leaflet-control-layers-overlays').remove();
+        }}
+
+        // Watch for layer control expansion/collapse
+        const observer = new MutationObserver(function(mutations) {{
+            mutations.forEach(function(mutation) {{
+                const container = mutation.target;
+                if (container.classList.contains('leaflet-control-layers-expanded')) {{
+                    addCustomControls();
+                }} else {{
+                    removeCustomControls();
+                }}
+            }});
+        }});
+
+        // Start observing the layer control container
+        const layerControlContainer = document.querySelector('.leaflet-control-layers');
+        if (layerControlContainer) {{
+            observer.observe(layerControlContainer, {{
+                attributes: true,
+                attributeFilter: ['class']
+            }});
+        }}
 
         function applyStyle(layerGroup, styleGroup, layerType) {{
             if (!layerGroup) return;
@@ -513,29 +650,16 @@ def _add_satellite_imagery_toogle(m: folium.Map) -> None:
                 layer.setStyle(style);
             }});
         }}
-
-        document.getElementById("layerToggleButton").addEventListener("click", function () {{
-            const mode = satelliteMode ? "map" : "satellite";
-            const esriSatellite = window.esriSatellite;
-            const cartoPositron = window.cartoPositron;
-
-            applyStyle(window.existing, styleMap[mode], "existing");
-            applyStyle(window.new, styleMap[mode], "new");
-
-            if (!satelliteMode) {{
-                if (cartoPositron && map.hasLayer(cartoPositron)) map.removeLayer(cartoPositron);
-                if (esriSatellite && !map.hasLayer(esriSatellite)) map.addLayer(esriSatellite);
-                this.innerText = "Switch to Map";
-            }} else {{
-                if (esriSatellite && map.hasLayer(esriSatellite)) map.removeLayer(esriSatellite);
-                if (cartoPositron && !map.hasLayer(cartoPositron)) map.addLayer(cartoPositron);
-                this.innerText = "Switch to Satellite";
-            }}
-
-            satelliteMode = !satelliteMode;
-        }});
     }});
     </script>
+    <style>
+    .leaflet-control-layers-overlays label {{
+        font-weight: normal;
+        display: flex;
+        align-items: center;
+        margin-bottom: 2px;
+    }}
+    </style>
     """))
 
 
