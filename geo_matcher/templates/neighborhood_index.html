@@ -1,18 +1,8 @@
-{% extends "base.html" %}
+{% extends "base_index.html" %}
 
 {% block title %}Neighborhood Matching Tool{% endblock %}
 
-{% block body %}
-<div id="map">
-    <iframe src="{{ url_for('static', filename='maps/neighborhood_demo.html') }}" width="100%" height="100%"></iframe>
-</div>
-
-<div id="tutorial">
-    <div id="labeling-tabs" style="text-align: center; margin-top: 10px; margin-bottom: 10px;">
-        <a href="/" class="nav-link">Pair-wise Labeling</a>
-        <a href="/batch" class="nav-link active">Neighborhood-wise Labeling</a>
-    </div>
-
+{% block tutorial_content %}
     <h2 style="text-align: center;">Welcome to the Building Footprint Matching Tool!</h2>
     <p>This mode presents you with entire neighborhoods, where all presumed matching building pairs have been pre-connected by green edges. Your task is to:</p>
     <ul>
@@ -22,70 +12,10 @@
 
     <p>Take a moment to explore the functionality in this demo before getting started with the real data.</p>
     <p>Once you've reviewed the neighborhood and are confident in your changes, click the <strong>Submit</strong> button to save your labels and continue.</p>
+{% endblock %}
 
-    <form id="username-form" onsubmit="return handleFormSubmit(event)" style="text-align: center; margin-top: 30px;">
-        <div class="form-row">
-            <input type="text" id="username" name="username" placeholder="Enter your username" required class="input-field">
-
-            {% if datasets|length == 1 %}
-                <input type="hidden" id="dataset" name="dataset" value="{{ datasets[0] }}">
-            {% else %}
-                <select id="dataset" name="dataset" required class="select-field">
-                    <option value="" disabled selected>Select dataset</option>
-                    {% for ds in datasets %}
-                        <option value="{{ ds }}">{{ ds }}</option>
-                    {% endfor %}
-                </select>
-            {% endif %}
-        </div>
-
-        <div class="radio-group">
-            <label><input type="radio" name="label_mode" value="all"> Label everything</label>
-            <label><input type="radio" name="label_mode" value="unlabeled" checked> Label only unlabeled building pairs</label>
-            <label><input type="radio" name="label_mode" value="cross-validate"> Cross-validate previous annotations</label>
-        </div>
-
-        <button type="submit" class="submit-button">Get Started!</button>
-    </form>
-</div>
-
+{% block demo_buttons %}
 <div id="buttons">
     <button class="btn btn-submit" onclick="alert('Demo only. No data will be saved.');">Submit</button>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-    async function handleFormSubmit(event) {
-        event.preventDefault(); // Stop normal form submit
-
-        const username = document.getElementById('username').value.trim();
-        const labelMode = document.querySelector('input[name="label_mode"]:checked').value;
-        const dataset = document.getElementById('dataset')?.value;
-
-        if (!username || !dataset) {
-            alert('Please enter username and select a dataset.');
-            return false;
-        }
-
-        const formData = new URLSearchParams({
-            username: username,
-            labelmode: labelMode,
-            dataset: dataset
-        });
-
-        const response = await fetch('/start-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: formData
-        });
-
-        if (response.ok) {
-            window.location.href = '/show-neighborhood';
-        } else {
-            alert('There was a problem saving your username.');
-            return false;
-        }
-    }
-</script>
 {% endblock %}
