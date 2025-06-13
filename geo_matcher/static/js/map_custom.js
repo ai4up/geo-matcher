@@ -1,202 +1,242 @@
+const TYPE_EXISTING = 'existing';
+const TYPE_NEW      = 'new';
+const LINE_STYLE = { color: 'green', weight: 3 };
+const HOVER_STYLE = { color: 'lime', weight: 4 };
+
+function makeMatchKey(exId, newId) {
+  return `${exId}--${newId}`;
+}
+
+function bringToFront(map, type, id) {
+  map.eachLayer(layer => {
+    const props = layer.feature?.properties;
+    if (props?.type === type && props.index === id) {
+      layer.bringToFront();
+    }
+  });
+}
+
+function applyStyleGroup(group, styleMap, mode, type, highlightId) {
+  if (!group) return;
+  const styles = styleMap[mode]?.[type];
+  if (!styles) return;
+  group.eachLayer(layer => {
+    const id = layer.feature?.properties?.index;
+    const style = (id === highlightId) ? styles.highlight : styles.default;
+    layer.setStyle(style);
+  });
+}
+
+class MapController {
+  constructor({
+    map,
+    styleMap,
+    existingGroup,
+    newGroup,
+    esriSatellite,
+    cartoPositron,
+    satelliteToggleButton,
+    initialMatches
+  }) {
+    this.map            = map;
+    this.styleMap       = styleMap;
+    this.existingGroup  = existingGroup;
+    this.newGroup       = newGroup;
+    this.esriSatellite  = esriSatellite;
+    this.cartoPositron  = cartoPositron;
+    this.btn            = satelliteToggleButton;
+
+    // track match states: 'initial', 'removed', 'added'
+    this.matchState     = new Map();
+    this.initialKeys    = new Set();
+    this.initialMatches = initialMatches || { features: [] };
+
+    this.selected         = { [TYPE_EXISTING]: null, [TYPE_NEW]: null };
+    this.highlightedLayer = null;
+    this.originalStyles   = new WeakMap();
+
+    this._init();
+  }
+
+  _init() {
+    if (!this.map) {
+      console.error('Leaflet map instance not found.');
+      return;
+    }
+    this._initMatches();
+    this._bringHighlightedLayersToFront();
+    this._initSatelliteToggle();
+  }
+
+  _bringHighlightedLayersToFront() {
+    [TYPE_EXISTING, TYPE_NEW].forEach(type => {
+      const id = window[`${type}Highlighted`];
+      if (id) bringToFront(this.map, type, id);
+    });
+  }
+
+  _initSatelliteToggle() {
+    if (!this.btn) return;
+    let satelliteMode = false;
+    this.btn.addEventListener('click', () => {
+      const mode = satelliteMode ? 'map' : 'satellite';
+      applyStyleGroup(this.existingGroup, this.styleMap, mode, TYPE_EXISTING, window.existingHighlighted);
+      applyStyleGroup(this.newGroup,      this.styleMap, mode, TYPE_NEW,      window.newHighlighted);
+
+      if (!satelliteMode) {
+        this.map.removeLayer(this.cartoPositron);
+        this.map.addLayer(this.esriSatellite);
+        this.btn.textContent = 'Switch to Map';
+      } else {
+        this.map.removeLayer(this.esriSatellite);
+        this.map.addLayer(this.cartoPositron);
+        this.btn.textContent = 'Switch to Satellite';
+      }
+      satelliteMode = !satelliteMode;
+    });
+  }
+
+  _initMatches() {
+    if (!this.initialMatches?.features?.length) return;
+
+    this.initialMatches.features.forEach(f => {
+      const { id_existing, id_new } = f.properties;
+      const key = makeMatchKey(id_existing, id_new);
+
+      this.initialKeys.add(key);
+      this.matchState.set(key, 'initial');
+    });
+
+    this._drawInitialMatches();
+    this._setupAddingNewMatches();
+  }
+
+  _drawInitialMatches() {
+    this.matchLayer = L.geoJSON(this.initialMatches, {
+      style: () => LINE_STYLE,
+      onEachFeature: (f, line) => {
+        const { id_existing, id_new } = f.properties;
+        const key = makeMatchKey(id_existing, id_new);
+
+        line.on('click', () => this._removeMatch(line, key));
+        this._applyHover(line);
+      }
+    }).addTo(this.map);
+  }
+
+  _removeMatch(line, key) {
+    this.map.removeLayer(line);
+    this.matchState.set(key, 'removed');
+    console.log(`Removed match: ${key}`);
+  }
+
+  _applyHover(layer) {
+    layer.on('mouseover', () => layer.setStyle(HOVER_STYLE));
+    layer.on('mouseout',  () => layer.setStyle(LINE_STYLE));
+  }
+
+  _setupAddingNewMatches() {
+    this.map.eachLayer(layer => {
+      const props = layer.feature?.properties;
+      if (!props || ![TYPE_EXISTING, TYPE_NEW].includes(props.type)) return;
+
+      layer.off('mouseover mouseout click');
+      layer.on('click', () => {
+        const center = L.geoJSON(layer.feature).getBounds().getCenter();
+        this._onBuildingClick(layer, props.type, props.index, center);
+      });
+    });
+  }
+
+  _onBuildingClick(layer, type, id, latlng) {
+    if (this.selected[type]?.id === id) {
+      this._clearSelection(type);
+      return;
+    }
+    this._clearHighlight();
+    this._setSelection(type, id, latlng, layer);
+    if (this.selected[TYPE_EXISTING] && this.selected[TYPE_NEW]) {
+      this._handlePair();
+    }
+  }
+
+  _clearSelection(type) {
+    this.selected[type] = null;
+    this._clearHighlight();
+  }
+
+  _clearHighlight() {
+    if (this.highlightedLayer) {
+      const original = this.originalStyles.get(this.highlightedLayer);
+      if (original) this.highlightedLayer.setStyle(original);
+      this.highlightedLayer = null;
+    }
+  }
+
+  _setSelection(type, id, latlng, layer) {
+    this.selected[type] = { id, latlng };
+    const original = { ...layer.options };
+    this.originalStyles.set(layer, original);
+    layer.setStyle({ color: 'gold', weight: 5, dashArray: '5,5' });
+    this.highlightedLayer = layer;
+  }
+
+  _handlePair() {
+    const from = this.selected[TYPE_EXISTING];
+    const to   = this.selected[TYPE_NEW];
+    const key  = makeMatchKey(from.id, to.id);
+    const state = this.matchState.get(key);
+
+    if (state === 'initial' || state === 'added') {
+      console.log(`Skipped duplicate match: ${key}`);
+    } else {
+      this._addMatch(from, to, key);
+    }
+    this._reset();
+  }
+
+  _addMatch(from, to, key) {
+    const line = L.polyline([from.latlng, to.latlng], LINE_STYLE).addTo(this.map);
+    this._applyHover(line);
+    line.on('click', () => this._removeMatch(line, key));
+
+    this.matchState.set(key, 'added');
+    console.log(`Added match: ${key}`);
+  }
+
+  _reset() {
+    this._clearHighlight();
+    this.selected = { [TYPE_EXISTING]: null, [TYPE_NEW]: null };
+  }
+
+  getRemovedMatches() {
+    return Array.from(this.matchState.entries())
+      .filter(([key, state]) => state === 'removed' && this.initialKeys.has(key))
+      .map(([key]) => {
+        const [id_existing, id_new] = key.split('--');
+        return { id_existing, id_new };
+      });
+  }
+
+  getAddedMatches() {
+    return Array.from(this.matchState.entries())
+      .filter(([key, state]) => state === 'added' && !this.initialKeys.has(key))
+      .map(([key]) => {
+        const [id_existing, id_new] = key.split('--');
+        return { id_existing, id_new };
+      });
+  }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
-  const MapController = {
-    map: null,
-    styleMap: window.styleMap || {},
+  window.mapController = new MapController({
+    map: window.map,
+    styleMap: window.styleMap,
+    existingGroup: window.existing,
+    newGroup: window.new,
+    esriSatellite: window.esriSatellite,
+    cartoPositron: window.cartoPositron,
+    satelliteToggleButton: document.getElementById('satelliteToggleButton'),
     initialMatches: window.initialMatches,
-    removedMatches: [],
-    addedMatches: [],
-    selected: { existing: null, new: null },
-    highlightedLayer: null,
-
-    init() {
-      this.map = window.map;
-      if (!this.map) {
-        console.error('Leaflet map instance not found.');
-        return;
-      }
-      this.bringHighlightedLayersToFront();
-      this.initMatchInteractivity();
-      this.initSatelliteToggle();
-    },
-
-    bringHighlightedLayersToFront() {
-      ['existing', 'new'].forEach(type => {
-        const id = this.getHighlightedId(type);
-        if (!id) return;
-        this.map.eachLayer(layer => {
-          if (layer.feature?.properties?.type === type &&
-              layer.feature.properties.index === id) {
-            layer.bringToFront();
-          }
-        });
-      });
-    },
-
-    getHighlightedId(type) {
-      return window[`${type}Highlighted`];
-    },
-
-    applyStyle(group, mode, type) {
-      const styleGroup = this.styleMap[mode]?.[type];
-      if (!group || !styleGroup) return;
-      group.eachLayer(layer => {
-        const id = layer.feature?.properties?.index;
-        const style = (id === this.getHighlightedId(type)) ? styleGroup.highlight : styleGroup.default;
-        layer.setStyle(style);
-      });
-    },
-
-    initSatelliteToggle() {
-      const btn = document.getElementById('satelliteToggleButton');
-      if (!btn) return;
-      let satelliteMode = false;
-
-      btn.addEventListener('click', () => {
-        const mode = satelliteMode ? 'map' : 'satellite';
-        this.applyStyle(window.existing, mode, 'existing');
-        this.applyStyle(window.new, mode, 'new');
-
-        const { esriSatellite, cartoPositron } = window;
-        if (!satelliteMode) {
-          cartoPositron && this.map.removeLayer(cartoPositron);
-          esriSatellite && this.map.addLayer(esriSatellite);
-          btn.textContent = 'Switch to Map';
-        } else {
-          esriSatellite && this.map.removeLayer(esriSatellite);
-          cartoPositron && this.map.addLayer(cartoPositron);
-          btn.textContent = 'Switch to Satellite';
-        }
-        satelliteMode = !satelliteMode;
-      });
-    },
-
-    initMatchInteractivity() {
-      if (!this.initialMatches?.features?.length) return;
-      this.cacheInitialKeys();
-      this.drawInitialMatches();
-      this.setupAddingNewMatches();
-    },
-
-    cacheInitialKeys() {
-      this.initialKeys = new Set(
-        this.initialMatches.features.map(f => `${f.properties.id_existing}--${f.properties.id_new}`)
-      );
-    },
-
-    drawInitialMatches() {
-      const layer = L.geoJSON(this.initialMatches, {
-        style: () => ({ color: 'green', weight: 3 }),
-        onEachFeature: (feat, lyr) => {
-          lyr.on('click', () => this.removeMatchLayer(feat, lyr));
-          this.applyHover(lyr);
-        }
-      }).addTo(this.map);
-      this.matchLayer = layer;
-    },
-
-    removeMatchLayer(feature, layer) {
-      this.map.removeLayer(layer);
-      const entry = { id_existing: feature.properties.id_existing, id_new: feature.properties.id_new };
-      this.removedMatches.push(entry);
-      console.log(`Removed initial match: ${entry.id_existing} → ${entry.id_new}`);
-    },
-
-    applyHover(line) {
-      line.on('mouseover', () => line.setStyle({ color: 'lime', weight: 4 }));
-      line.on('mouseout',  () => line.setStyle({ color: 'green', weight: 3 }));
-    },
-
-    setupAddingNewMatches() {
-      this.map.eachLayer(layer => {
-        const props = layer.feature?.properties;
-        if (!props || !['existing','new'].includes(props.type)) return;
-
-        layer.off('mouseover');
-        layer.off('mouseout');
-        layer.on('click', () => this.onBuildingClick(layer, props.type, props.index));
-      });
-    },
-
-    onBuildingClick(layer, type, id) {
-      const center = L.geoJSON(layer.feature).getBounds().getCenter();
-      if (this.selected[type]?.id === id) {
-        this.clearSelection(type);
-        return;
-      }
-      this.clearHighlight();
-      this.setSelection(type, id, center, layer);
-      if (this.selected.existing && this.selected.new) {
-        this.handlePair();
-      }
-    },
-
-    clearSelection(type) {
-      this.selected[type] = null;
-      this.clearHighlight();
-    },
-
-    clearHighlight() {
-      if (this.highlightedLayer?._originalStyle) {
-        this.highlightedLayer.setStyle(this.highlightedLayer._originalStyle);
-        this.highlightedLayer = null;
-      }
-    },
-
-    setSelection(type, id, latlng, layer) {
-      this.selected[type] = { id, latlng };
-      layer._originalStyle = { color: layer.options.color, weight: layer.options.weight, dashArray: layer.options.dashArray || null };
-      layer.setStyle({ color: 'gold', weight: 5, dashArray: '5,5' });
-      this.highlightedLayer = layer;
-    },
-
-    handlePair() {
-      const from = this.selected.existing;
-      const to   = this.selected.new;
-      const key  = `${from.id}--${to.id}`;
-      if (this.initialKeys.has(key) && !this.removedMatches.some(m => `${m.id_existing}--${m.id_new}` === key) ||
-          this.addedMatches.some(m => `${m.id_existing}--${m.id_new}` === key)) {
-        console.log(`Skipped adding duplicate match: ${from.id} → ${to.id}`);
-        this.reset();
-        return;
-      }
-      this.addMatchLine(from, to);
-      this.reset();
-    },
-
-    addMatchLine(from, to) {
-      const line = L.polyline([from.latlng, to.latlng], { color: 'green', weight: 3 }).addTo(this.map);
-      this.applyHover(line);
-      line.on('click', () => this.removeAddedLine(line, from, to));
-
-      if (this.removedMatches.some(m => m.id_existing === from.id && m.id_new === to.id)) {
-        this.removedMatches = this.removedMatches.filter(
-          m => !(m.id_existing === from.id && m.id_new === to.id)
-        );
-        console.log(`Re-added removed match: ${from.id} → ${to.id}`);
-      } else {
-        this.addedMatches.push({ id_existing: from.id, id_new: to.id, layer: line });
-        console.log(`Added match: ${from.id} → ${to.id}`);
-      }
-    },
-
-    removeAddedLine(line, from, to) {
-      this.map.removeLayer(line);
-      const entry = { id_existing: from.id, id_new: to.id };
-      if (this.addedMatches.some(m => `${m.id_existing}--${m.id_new}` === `${entry.id_existing}--${entry.id_new}`)) {
-        this.addedMatches = this.addedMatches.filter(m => m.layer !== line);
-        console.log(`Removed added match: ${entry.id_existing} → ${entry.id_new}`);
-      } else {
-        this.removedMatches.push(entry);
-        console.log(`Removed re-added match: ${entry.id_existing} → ${entry.id_new}`);
-      }
-    },
-
-    reset() {
-      this.clearHighlight();
-      this.selected = { existing: null, new: null };
-    }
-  };
-
-  MapController.init();
+  });
 });

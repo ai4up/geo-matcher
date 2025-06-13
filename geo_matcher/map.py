@@ -275,7 +275,7 @@ def _disable_leaflet_click_outline(m: folium.Map) -> None:
 def _add_satellite_imagery_toogle(m: folium.Map) -> None:
     _inject_var(m, "styleMap", json.dumps(BUILDING_LAYER_COLORS))
     _inject_css(m, """
-    .custom-toggle-button {
+    .satellite-toggle-button {
         position: absolute;
         top: 10px;
         right: 10px;
@@ -293,7 +293,7 @@ def _add_satellite_imagery_toogle(m: folium.Map) -> None:
     }
     """)
     _inject_element(m, """
-    <div class="custom-toggle-button" id="layerToggleButton">Switch to Satellite</div>
+    <div class="satellite-toggle-button" id="satelliteToggleButton">Switch to Satellite</div>
     """)
 
 
