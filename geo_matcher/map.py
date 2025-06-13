@@ -72,9 +72,10 @@ def create_neighborhood_tutorial_html(filepath: str) -> None:
     m = _initialize_map(44.8031, 3.42505, 20)
     _add_stylized_buildings_layer(m, data.dataset_a, "Existing Buildings", "existing")
     _add_stylized_buildings_layer(m, data.dataset_b, "New Buildings", "new")
-    _add_matching_layer(m, pairs)
-    _disable_leaflet_click_outline(m)
     _add_legend(m)
+    _disable_leaflet_click_outline(m)
+    _inject_matching_relationships(m, pairs)
+    _inject_custom_js(m)
 
     folium.LayerControl(collapsed=True).add_to(m)
 
@@ -100,10 +101,10 @@ def create_candidate_pair_html(state: State, id_existing: str, id_new: str, file
     _add_stylized_buildings_layer(m, existing_buildings, "Existing Buildings", "existing", id_existing)
     _add_stylized_buildings_layer(m, new_buildings, "New Buildings", "new", id_new)
 
-    _bring_candidate_pair_to_front(m, [id_existing, id_new])
-    _disable_leaflet_click_outline(m)
     _add_legend(m, candidates_highlighted=True)
     _add_satellite_imagery_toogle(m)
+    _disable_leaflet_click_outline(m)
+    _inject_custom_js(m)
 
     folium.LayerControl(collapsed=True).add_to(m)
 
@@ -130,10 +131,11 @@ def create_neighborhood_html(state: State, id: str, filepath: Path) -> None:
     _add_stylized_buildings_layer(m, existing_buildings, "Existing Buildings", "existing")
     _add_stylized_buildings_layer(m, new_buildings, "New Buildings", "new")
 
-    _add_matching_layer(m, candidate_pairs)
-    _disable_leaflet_click_outline(m)
     _add_legend(m)
     _add_satellite_imagery_toogle(m)
+    _disable_leaflet_click_outline(m)
+    _inject_matching_relationships(m, candidate_pairs)
+    _inject_custom_js(m)
 
     folium.LayerControl(collapsed=True).add_to(m)
 
@@ -248,7 +250,7 @@ def _create_buildings_layer(
     return features
 
 
-def _add_matching_layer(m: folium.Map, candidate_pairs: GeoDataFrame) -> None:
+def _inject_matching_relationships(m: folium.Map, candidate_pairs: GeoDataFrame) -> None:
     matches = candidate_pairs[candidate_pairs["match"]]
     if matches.empty:
         matching_edges = gpd.GeoDataFrame(geometry=[], crs=candidate_pairs["geometry_existing"].crs)
@@ -259,225 +261,21 @@ def _add_matching_layer(m: folium.Map, candidate_pairs: GeoDataFrame) -> None:
         ).reset_index(names=["id_existing", "id_new"])
 
     _inject_var(m, "pairs", candidate_pairs[["id_existing", "id_new", "match"]].to_json(orient='records'))
-    _add_matching_edges(m, matching_edges)
+    _inject_var(m, "initialMatches", matching_edges.to_json(to_wgs84=True))
 
 
 def _disable_leaflet_click_outline(m: folium.Map) -> None:
-    m.get_root().header.add_child(folium.Element("""
-    <style>
+    _inject_css(m, """
     .leaflet-interactive:focus {
         outline: none;
     }
-    </style>
-    """))
-
-
-def _inject_var(m: folium.Map, name: str, data: Any) -> None:
-    m.get_root().html.add_child(folium.Element(f"""
-    <script>
-    document.addEventListener("DOMContentLoaded", function () {{
-        window.{name} = {data};
-    }});
-    </script>
-    """
-    ))
-
-
-def _bring_candidate_pair_to_front(m: folium.Map, highlight_ids: list[str]) -> None:
-    m.get_root().html.add_child(folium.Element(f"""
-    <script>
-    document.addEventListener("DOMContentLoaded", function () {{
-        const map = window.{m.get_name()};
-        var idsToBringFront = {str(highlight_ids).replace("'", '"')};
-        map.eachLayer(function(layer) {{
-            if (layer.feature && layer.feature.properties && idsToBringFront.includes(layer.feature.properties.index)) {{
-                console.log("Bringing layer to front:", layer.feature.properties.index);
-                layer.bringToFront();
-            }}
-        }});
-    }});
-    </script>
-    """
-    ))
-
-
-def _add_matching_edges(m: folium.Map, edges: GeoDataFrame) -> None:
-    _inject_mouseover_effects(m)
-    m.get_root().html.add_child(folium.Element(f"""
-    <script>
-    document.addEventListener("DOMContentLoaded", function () {{
-        window.removedMatches = [];
-        window.addedMatches = [];
-
-        let selected = {{ existing: null, new: null }};
-        let highlightedLayer = null;
-
-        const map = window.{m.get_name()};
-        const initialMatches = {edges.to_json(to_wgs84=True)};
-        const initialMatchKeys = new Set(
-            initialMatches.features.map(f => `${{f.properties.id_existing}}--${{f.properties.id_new}}`)
-        );
-        const matchLayer = L.geoJSON(initialMatches, {{
-            style: function(feature) {{
-                return {{ color: 'green', weight: 3 }};
-            }},
-            onEachFeature: function (feature, layer) {{
-                // Allow users to remove initial matching edges
-                layer.on("click", function () {{
-                    map.removeLayer(layer);
-                    window.removedMatches.push({{
-                        id_existing: feature.properties.id_existing,
-                        id_new: feature.properties.id_new
-                    }});
-                    console.log("Removed match:", feature.properties.id_existing, "→", feature.properties.id_new);
-                }});
-                applyLineHoverEffects(layer);
-            }}
-        }}).addTo(map);
-
-        function matchExists(from_id, to_id) {{
-            const key = `${{from_id}}--${{to_id}}`;
-            if (initialMatchKeys.has(key) &&
-                !window.removedMatches.some(m => m.id_existing === from_id && m.id_new === to_id)) {{
-                return true;
-            }}
-            if (window.addedMatches.some(m => m.id_existing === from_id && m.id_new === to_id)) {{
-                return true;
-            }}
-            return false;
-        }}
-
-        // Add new matches by clicking existing + new buildings
-        map.eachLayer(layer => {{
-            if (layer.feature && layer.feature.properties && layer.feature.geometry) {{
-                const type = layer.feature.properties.type;
-                const id = layer.feature.properties.index;
-                const centroid = L.geoJSON(layer.feature).getBounds().getCenter();
-
-                if (type === "existing" || type === "new") {{
-                    layer.off("mouseover");
-                    layer.off("mouseout");
-
-                    layer.on("click", function () {{
-                        const alreadySelected = selected[type]?.id === id;
-
-                        if (alreadySelected) {{
-                            selected[type] = null;
-                            if (highlightedLayer && highlightedLayer._originalStyle) {{
-                                highlightedLayer.setStyle(highlightedLayer._originalStyle);
-                                highlightedLayer = null;
-                            }}
-                            return;
-                        }}
-
-                        if (highlightedLayer && highlightedLayer._originalStyle) {{
-                            highlightedLayer.setStyle(highlightedLayer._originalStyle);
-                        }}
-
-                        selected[type] = {{
-                            id: id,
-                            latlng: centroid
-                        }};
-
-                        layer._originalStyle = {{
-                            color: layer.options.color,
-                            weight: layer.options.weight,
-                            dashArray: layer.options.dashArray || null
-                        }};
-
-                        layer.setStyle({{
-                            color: "gold",
-                            weight: 5,
-                            dashArray: "5,5"
-                        }});
-                        highlightedLayer = layer;
-
-                        if (selected.existing && selected.new) {{
-                            const from = selected.existing;
-                            const to = selected.new;
-
-                            if (matchExists(from.id, to.id)) {{
-                                console.log("Skipped adding match (duplicate):", from.id, "→", to.id);
-                                selected = {{ existing: null, new: null }};
-                                if (highlightedLayer && highlightedLayer._originalStyle) {{
-                                    highlightedLayer.setStyle(highlightedLayer._originalStyle);
-                                    highlightedLayer = null;
-                                }}
-                                return;
-                            }}
-
-                            const line = L.polyline([from.latlng, to.latlng], {{
-                                color: "green",
-                                weight: 3
-                            }}).addTo(map);
-
-                            applyLineHoverEffects(line);
-
-                            line.on("click", function () {{
-                                map.removeLayer(line);
-                                if (window.addedMatches.some(m => m.id_existing === from.id && m.id_new === to.id)) {{
-                                    window.addedMatches = window.addedMatches.filter(match => match.layer !== line);
-                                    console.log("Removed added match:", from.id, "→", to.id);
-                                }} else {{
-                                    window.removedMatches.push({{
-                                        id_existing: from.id,
-                                        id_new: to.id
-                                    }});
-                                    console.log("Removed re-added match:", from.id, "→", to.id);
-                                }}
-                            }});
-
-                            if (window.removedMatches.some(m => m.id_existing === from.id && m.id_new === to.id)) {{
-                                window.removedMatches = window.removedMatches.filter(
-                                    m => !(m.id_existing === from.id && m.id_new === to.id)
-                                );
-                            console.log("Re-added removed match:", from.id, "→", to.id);
-                            }} else {{
-                                window.addedMatches.push({{
-                                    id_existing: from.id,
-                                    id_new: to.id,
-                                    layer: line
-                                }});
-                                console.log("Added match:", from.id, "→", to.id);
-                            }}
-
-                            selected = {{ existing: null, new: null }};
-                            if (highlightedLayer && highlightedLayer._originalStyle) {{
-                                highlightedLayer.setStyle(highlightedLayer._originalStyle);
-                                highlightedLayer = null;
-                            }}
-                        }}
-                    }});
-                }}
-            }}
-        }});
-    }});
-    </script>
-    """
-    ))
-
-
-def _inject_mouseover_effects(m: folium.Map) -> None:
-    m.get_root().html.add_child(folium.Element("""
-    <script>
-    function applyLineHoverEffects(line) {
-        line.on("mouseover", function () {
-            line.setStyle({ color: "lime", weight: 4 });
-        });
-
-        line.on("mouseout", function () {
-            line.setStyle({ color: "green", weight: 3 });
-        });
-    }
-    </script>
-    """
-    ))
+    """)
 
 
 def _add_satellite_imagery_toogle(m: folium.Map) -> None:
-    m.get_root().html.add_child(folium.Element(f"""
-    <style>
-    .custom-toggle-button {{
+    _inject_var(m, "styleMap", json.dumps(BUILDING_LAYER_COLORS))
+    _inject_css(m, """
+    .custom-toggle-button {
         position: absolute;
         top: 10px;
         right: 10px;
@@ -488,55 +286,15 @@ def _add_satellite_imagery_toogle(m: folium.Map) -> None:
         cursor: pointer;
         font-size: 14px;
         border-radius: 4px;
-    }}
-    .leaflet-control-layers {{
+    }
+    .leaflet-control-layers {
         top: 40px !important;
         right: 10px !important;
-    }}
-    </style>
+    }
+    """)
+    _inject_element(m, """
     <div class="custom-toggle-button" id="layerToggleButton">Switch to Satellite</div>
-    <script>
-    document.addEventListener("DOMContentLoaded", function () {{
-        const map = window.{m.get_name()};
-        const styleMap = {json.dumps(BUILDING_LAYER_COLORS)};
-        let satelliteMode = false;
-
-        function applyStyle(layerGroup, styleGroup, layerType) {{
-            if (!layerGroup) return;
-            const highlightedId = window[layerType + "Highlighted"];
-
-            layerGroup.eachLayer(layer => {{
-                if (!layer.feature || !layer.feature.properties) return;
-                const id = layer.feature.properties.index;
-                const isHighlight = id === highlightedId;
-                const style = isHighlight ? styleGroup[layerType]["highlight"] : styleGroup[layerType]["default"];
-                layer.setStyle(style);
-            }});
-        }}
-
-        document.getElementById("layerToggleButton").addEventListener("click", function () {{
-            const mode = satelliteMode ? "map" : "satellite";
-            const esriSatellite = window.esriSatellite;
-            const cartoPositron = window.cartoPositron;
-
-            applyStyle(window.existing, styleMap[mode], "existing");
-            applyStyle(window.new, styleMap[mode], "new");
-
-            if (!satelliteMode) {{
-                if (cartoPositron && map.hasLayer(cartoPositron)) map.removeLayer(cartoPositron);
-                if (esriSatellite && !map.hasLayer(esriSatellite)) map.addLayer(esriSatellite);
-                this.innerText = "Switch to Map";
-            }} else {{
-                if (esriSatellite && map.hasLayer(esriSatellite)) map.removeLayer(esriSatellite);
-                if (cartoPositron && !map.hasLayer(cartoPositron)) map.addLayer(cartoPositron);
-                this.innerText = "Switch to Satellite";
-            }}
-
-            satelliteMode = !satelliteMode;
-        }});
-    }});
-    </script>
-    """))
+    """)
 
 
 def _add_legend(m: folium.Map, candidates_highlighted=False) -> None:
@@ -560,7 +318,7 @@ def _add_legend(m: folium.Map, candidates_highlighted=False) -> None:
     </div>
     """
 
-    m.get_root().html.add_child(folium.Element(f"""
+    _inject_element(m, f"""
     <div style="position: fixed; bottom: 30px; left: 30px; background: rgba(255, 255, 255, 0.8);
             border: 1px solid lightgrey; z-index: 9999; font-size: 14px; padding: 10px; line-height: 18px;">
         <b style="display: block; margin-bottom: 6px;">Building Layers</b>
@@ -579,5 +337,33 @@ def _add_legend(m: folium.Map, candidates_highlighted=False) -> None:
 
         {candidates_entry if candidates_highlighted else matching_edges_entry}
     </div>
-    """
-    ))
+    """)
+
+
+def _inject_element(m: folium.Map, element: str) -> None:
+    m.get_root().html.add_child(folium.Element(element))
+
+
+def _inject_var(m: folium.Map, name: str, data: Any) -> None:
+    _inject_element(m, f"""
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {{
+        window.{name} = {data};
+    }});
+    </script>
+    """)
+
+
+def _inject_css(m: folium.Map, css: str) -> None:
+    m.get_root().header.add_child(folium.Element(f"""
+    <style>
+    {css}
+    </style>
+    """))
+
+
+def _inject_custom_js(m: folium.Map) -> None:
+    _inject_var(m, 'map', m.get_name())
+    _inject_element(m, """
+      <script src="/static/js/map_custom.js"></script>
+    """)
