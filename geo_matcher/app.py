@@ -117,6 +117,7 @@ def show_candidate_pair(id_existing: str = None, id_new: str = None) -> Response
     S = _get_state()
     username = session.get("username")
     mode = session.get("label_mode")
+    dataset = session.get("dataset")
 
     if id_existing is None or id_new is None:
         id_existing, id_new = S.get_next_pair(mode, username)
@@ -128,14 +129,14 @@ def show_candidate_pair(id_existing: str = None, id_new: str = None) -> Response
     if not S.valid_pair(id_existing, id_new):
         return f"Candidate pair ({id_existing}, {id_new}) not found", 404
 
-    name = _unq_name(id_existing, id_new)
+    name = _unq_name(dataset, id_existing, id_new)
     fp = current_app.maps_dir / f"candidate_{name}.html"
     map.create_candidate_pair_html(S, id_existing, id_new, fp)
 
     subsequent_pair = S.get_pair_after_next(mode, username)
     if subsequent_pair[0]:
         current_app.logger.debug(f"Pre-generating HTML map for candidate pair {subsequent_pair}")
-        next_name = _unq_name(*subsequent_pair)
+        next_name = _unq_name(dataset, *subsequent_pair)
         next_fp = current_app.maps_dir / f"candidate_{next_name}.html"
         executor.submit(map.create_candidate_pair_html, S, *subsequent_pair, next_fp)
 
@@ -157,6 +158,7 @@ def show_neighborhood(id: Optional[str] = None) -> Response:
     S = _get_state()
     username = session.get("username")
     mode = session.get("label_mode")
+    dataset = session.get("dataset")
 
     if id is None:
         id = S.get_next_neighborhood(mode, username)
@@ -168,12 +170,12 @@ def show_neighborhood(id: Optional[str] = None) -> Response:
     if id not in S.get_all_neighborhoods():
         return "Neighborhood not found", 404
 
-    fp = current_app.maps_dir / f"neighborhood_{id}.html"
+    fp = current_app.maps_dir / f"neighborhood_{dataset}_{id}.html"
     map.create_neighborhood_html(S, id, fp)
 
     if subsequent_id := S.get_neighborhood_after_next(mode, username):
         current_app.logger.debug(f"Pre-generating HTML map for neighborhood {subsequent_id}")
-        next_fp = current_app.maps_dir / f"neighborhood_{subsequent_id}.html"
+        next_fp = current_app.maps_dir / f"neighborhood_{dataset}_{subsequent_id}.html"
         executor.submit(map.create_neighborhood_html, S, subsequent_id, next_fp)
 
     return render_template(
@@ -289,8 +291,8 @@ def _update_matches(candidate_pairs: DataFrame, matches: List[Dict], label: str,
     return candidate_pairs
 
 
-def _unq_name(id_existing: str, id_new: str) -> str:
-    return f"{id_existing}--{id_new}"
+def _unq_name(dataset: str, id_existing: str, id_new: str) -> str:
+    return f"{dataset}_{id_existing}_{id_new}"
 
 
 def _ensure_empty_dir(path: Path) -> None:
