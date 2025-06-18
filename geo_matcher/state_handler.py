@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from geo_matcher.state import State
+from geo_matcher.utils import normalize_filename
 
 class StateHandler:
     """
@@ -10,10 +11,10 @@ class StateHandler:
         p = Path(data_path).resolve()
         if p.is_file():
             self.data_dir = p.parent
-            self.datasets = [p.stem]
+            self.datasets = [normalize_filename(p.stem)]
         else:
             self.data_dir = p
-            self.datasets = [f.stem for f in p.glob("*.pickle")]
+            self.datasets = [normalize_filename(f.stem) for f in p.glob("*.pickle")]
 
         self.annotation_redundancy = annotation_redundancy
         self.consensus_margin = consensus_margin

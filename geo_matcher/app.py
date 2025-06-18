@@ -1,6 +1,5 @@
 import os
 import re
-import shutil
 import webbrowser
 from pathlib import Path
 from typing import Dict, Optional, List
@@ -13,6 +12,7 @@ import waitress
 
 from geo_matcher.state import State
 from geo_matcher.state_handler import StateHandler
+from geo_matcher.utils import force_empty_dir
 from geo_matcher import map
 
 bp = Blueprint("matching", __name__)
@@ -30,7 +30,7 @@ def create_app(data_path: str, annotation_redundancy: int, consensus_margin: int
     app.secret_key = os.getenv("SECRET_KEY") or "dev-mode"
     app.maps_dir = Path(app.static_folder) / "maps"
     app.url_map.strict_slashes = False
-    _ensure_empty_dir(app.maps_dir)
+    force_empty_dir(app.maps_dir)
 
     app.register_blueprint(bp)
     executor.init_app(app)
@@ -293,8 +293,3 @@ def _update_matches(candidate_pairs: DataFrame, matches: List[Dict], label: str,
 
 def _unq_name(dataset: str, id_existing: str, id_new: str) -> str:
     return f"{dataset}_{id_existing}_{id_new}"
-
-
-def _ensure_empty_dir(path: Path) -> None:
-    shutil.rmtree(path, ignore_errors=True)
-    path.mkdir(parents=True, exist_ok=True)
