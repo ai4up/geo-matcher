@@ -93,6 +93,11 @@ def label(path: str, annotation_redundancy: int, consensus_margin: int) -> None:
     help="Sample candidates in n neighborhoods.",
 )
 @click.option(
+    "--neighborhood",
+    multiple=True,
+    help="H3 indices of neighborhoods where to determine candidate pairs.",
+)
+@click.option(
     "--h3-res",
     "-r",
     default=9,
@@ -110,6 +115,7 @@ def create_labeling_dataset(
     max_intersection_others: float,
     sample_size: int,
     n_neighborhoods: int,
+    neighborhood: list,
     h3_res: int,
 ) -> None:
     """
@@ -130,6 +136,7 @@ def create_labeling_dataset(
         max_overlap_others=max_intersection_others,
         n=sample_size,
         n_neighborhoods=n_neighborhoods,
+        neighborhoods=neighborhood,
         h3_res=h3_res,
     ).save(DATASET_FILE)
     click.echo(

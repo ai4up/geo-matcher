@@ -29,6 +29,7 @@ def create_candidate_pairs_dataset(
     max_overlap_others: float = None,
     n: int = None,
     n_neighborhoods: int = None,
+    neighborhoods: list = None,
     h3_res: int = 9,
 ) -> CandidatePairs:
     """
@@ -50,6 +51,8 @@ def create_candidate_pairs_dataset(
 
     if n_neighborhoods:
         neighborhoods = _sample_neighborhoods(gdf2, n_neighborhoods)
+
+    if neighborhoods:
         pairs = _identify_candidate_pairs_in_neighborhoods(gdf1, gdf2, neighborhoods, max_distance)
         gdf1, gdf2 = _remove_non_candidates(pairs, gdf1, gdf2)
     else:
@@ -290,7 +293,7 @@ def _sample_candidate_pairs(
 
 def _sample_neighborhoods(
     gdf: GeoDataFrame, n: int
-) -> np.ndarray:
+) -> list:
     """
     Sample n neighborhoods, with selection weighted by the number of buildings per neighborhood.
     """
@@ -299,7 +302,7 @@ def _sample_neighborhoods(
         log(f"Sampling size n ({n}) is larger than the number of neighborhoods ({len(probs)}). Reducing n to {len(probs)}.")
         n = len(probs)
 
-    nbh = probs.sample(n=n, weights=probs, random_state=42).index.values
+    nbh = list(probs.sample(n=n, weights=probs, random_state=42).index.values)
 
     return nbh
 
