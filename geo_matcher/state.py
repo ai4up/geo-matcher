@@ -133,6 +133,12 @@ class State:
         """
         return id_existing in self.pairs["id_existing"].values and id_new in self.pairs["id_new"].values
 
+    def get_n_left(self) -> int:
+        """
+        Return the number of candidate pairs left to label.
+        """
+        return len(self._next_pairs("unlabeled", None))
+
     def get_next_pair(self, label_mode: str, user: str = None) -> Optional[tuple[str, str]]:
         """
         Return the next candidate pair to be labeled based on the selected labeling mode.

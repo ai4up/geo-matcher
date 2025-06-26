@@ -306,6 +306,13 @@ html, body {
     color: #333;
 }
 
+.scoreboard-footer {
+    text-align: center;
+    color: #aaa; /* Light grey */
+    font-size: 0.9em;
+    margin-top: 0.5em;
+}
+
 .kappa-value {
     font-weight: bold;
 }
