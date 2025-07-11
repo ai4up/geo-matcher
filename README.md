@@ -5,7 +5,7 @@ A web-based tool for matching and labeling building footprints from two datasets
 
 ## Install
 ```bash
-pip install git+https://github.com/ai4up/eubucco-conflation@main
+pip install git+https://github.com/ai4up/geo-matcher@main
 ```
 
 ## Usage
