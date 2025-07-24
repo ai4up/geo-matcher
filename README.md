@@ -2,6 +2,7 @@
 
 A web-based tool for matching and labeling building footprints from two datasets. Runs locally as a Flask app, displaying Folium-generated maps of potential matching pairs.
 
+🔗 Live demo: [matching-demo.eubucco.com](https://matching-demo.eubucco.com)
 
 ## Install
 ```bash
