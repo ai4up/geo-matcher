@@ -28,7 +28,7 @@ gmatch create-labeling-dataset \
     --max-intersection=0.2 \ # Maximum relative overlap for new buildings to be included in labeling dataset (0,1]
     data/demo-gov.parquet data/demo-microsoft.parquet
 ```
-The resulting dataset is locally stored as `candidate-pairs.pickle`. To initiate the browser-based labeling, run:
+The resulting dataset is locally stored as `candidate-pairs.zip`. To initiate the browser-based labeling, run:
 ```bash
 gmatch label
 ```
@@ -37,7 +37,7 @@ gmatch label
 
 ## Dockerized approach
 > Prerequisites
-> * Ensure a dataset of candidate pairs (`candidate-pairs.pickle`) is present in the `data` directory.
+> * Ensure a dataset of candidate pairs (`candidate-pairs.zip`) is present in the `data` directory.
 > * For production deployment, set a [Flask session](https://flask.palletsprojects.com/en/stable/quickstart/#sessions) `SECRET_KEY` environment variable.
 
 Serve the dockerized Flask app with an Nginx proxy at `http://localhost:80`:

@@ -14,7 +14,7 @@ class StateHandler:
             self.datasets = [normalize_filename(p.stem)]
         else:
             self.data_dir = p
-            self.datasets = [normalize_filename(f.stem) for f in p.glob("*.pickle")]
+            self.datasets = [normalize_filename(f.stem) for f in p.glob("*.zip")]
 
         self.annotation_redundancy = annotation_redundancy
         self.consensus_margin = consensus_margin
@@ -24,7 +24,7 @@ class StateHandler:
         """
         Create and register a State instance for the specified dataset.
         """
-        data_path = self.data_dir / f"{dataset}.pickle"
+        data_path = self.data_dir / f"{dataset}.zip"
         results_path = self.data_dir / f"labels-{dataset}.csv"
 
         self._states[dataset] = State(

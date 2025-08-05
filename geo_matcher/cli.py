@@ -2,7 +2,7 @@ import click
 
 from geo_matcher import app, dataset
 
-DATASET_FILE = "candidate-pairs.pickle"
+DATASET_FILE = "candidate-pairs.zip"
 RESULTS_FILE = "."
 
 @click.group()

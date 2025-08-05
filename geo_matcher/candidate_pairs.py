@@ -1,9 +1,12 @@
+from pathlib import Path
 import logging
-import pickle
+import tempfile
+import zipfile
 
 from geopandas import GeoDataFrame
 from pandas import DataFrame
 import pandas as pd
+import geopandas as gpd
 
 from geo_matcher import spatial
 
@@ -30,17 +33,38 @@ class CandidatePairs:
     @staticmethod
     def load(filepath: str) -> "CandidatePairs":
         """
-        Load an instance from a pickle file.
+        Load an instance from a zip file containing the datasets and candidate pairs as Parquet files.
         """
-        with open(filepath, "rb") as f:
-            return pickle.load(f)
+        filepath = Path(filepath)
+        if not filepath.exists():
+            raise FileNotFoundError(f"File not found: {filepath}")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with zipfile.ZipFile(filepath, "r") as zipf:
+                zipf.extractall(tmpdir)
+
+            tmpdir = Path(tmpdir)
+            dataset_a = gpd.read_parquet(tmpdir / "dataset_a.parquet")
+            dataset_b = gpd.read_parquet(tmpdir / "dataset_b.parquet")
+            pairs = pd.read_parquet(tmpdir / "pairs.parquet")
+
+        return CandidatePairs(dataset_a, dataset_b, pairs)
 
     def save(self, filepath: str) -> None:
         """
-        Save the instance to a file using pickle.
+        Save the instance as a zip file containing the datasets and candidate pairs as Parquet files.
         """
-        with open(filepath, "wb") as f:
-            pickle.dump(self, f)
+        filepath = Path(filepath)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+            self.dataset_a.to_parquet(tmpdir / "dataset_a.parquet")
+            self.dataset_b.to_parquet(tmpdir / "dataset_b.parquet")
+            self.pairs.to_parquet(tmpdir / "pairs.parquet")
+
+            with zipfile.ZipFile(filepath, "w", zipfile.ZIP_DEFLATED) as zipf:
+                zipf.write(tmpdir / "dataset_a.parquet", arcname="dataset_a.parquet")
+                zipf.write(tmpdir / "dataset_b.parquet", arcname="dataset_b.parquet")
+                zipf.write(tmpdir / "pairs.parquet", arcname="pairs.parquet")
 
     def pairs_to_gdf(self) -> GeoDataFrame:
         """

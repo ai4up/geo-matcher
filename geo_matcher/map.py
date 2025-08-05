@@ -60,7 +60,7 @@ def create_neighborhood_tutorial_html(filepath: str) -> None:
     Create a demo Folium HTML map with an example neighborhood and an instruction text.
     """
     # Load demo data
-    demo_data_path = Path(__file__).parent / "data" / "tutorial-neighborhood.pickle"
+    demo_data_path = Path(__file__).parent / "data" / "tutorial-neighborhood.zip"
     data = CandidatePairs.load(demo_data_path)
     data.preliminary_matching_estimate()
 

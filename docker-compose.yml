@@ -9,7 +9,7 @@ services:
       - ./data:/app/data
     environment:
       - SECRET_KEY=${SECRET_KEY}
-      - DATA_PATH=/app/data/candidate-pairs.pickle
+      - DATA_PATH=/app/data/candidate-pairs.zip
       - ANNOTATION_REDUNDANCY=0
       - CONSENSUS_MARGIN=1
 
