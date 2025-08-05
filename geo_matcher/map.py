@@ -63,10 +63,7 @@ def create_neighborhood_tutorial_html(filepath: str) -> None:
     demo_data_path = Path(__file__).parent / "data" / "tutorial-neighborhood.zip"
     data = CandidatePairs.load(demo_data_path)
     data.preliminary_matching_estimate()
-
-    pairs = GeoDataFrame(data.pairs)
-    pairs["geometry_existing"] = pairs["id_existing"].map(data.dataset_a.geometry)
-    pairs["geometry_new"] = pairs["id_new"].map(data.dataset_b.geometry)
+    pairs = data.pairs_to_gdf()
 
     # Initialize map and add demo buildings
     m = _initialize_map(44.8031, 3.42505, 20)
