@@ -7,10 +7,10 @@ services:
       - "5000"
     container_name: matching-app
     volumes:
-      - /home/eubucco-conflation/data:/app/data
+      - /home/eubucco-conflation-data:/app/data
     environment:
       - SECRET_KEY=${SECRET_KEY}
-      - DATA_PATH=/app/data/candidate-pairs.pickle
+      - DATA_PATH=/app/data/
       - ANNOTATION_REDUNDANCY=1
       - CONSENSUS_MARGIN=2
     networks:
