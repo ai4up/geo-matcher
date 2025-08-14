@@ -1,0 +1,64 @@
+<div class="attr-table-container" role="region" aria-label="Attributes table">
+    <div class="attr-table-wrapper">
+        <table class="attr-table">
+            <thead>
+                <tr>
+                    <th>GMaps</th>
+                    <th>Translate</th>
+                    {% for key in attr[0].keys() %}
+                    <th>{{ key.replace('_', ' ')|title }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in attr %}
+                    <tr class="{{ 'attr-table-row-a' if loop.index0 == 0 else 'attr-table-row-b' }}">
+                        <td>
+                            {% set query = row.get('name','') ~ ' ' ~ row.get('address','') %}
+                            {% if query %}
+                            <a href="https://www.google.com/maps/search/{{ query | urlencode }}"
+                                target="_blank" class="map-link">🌍</a>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if row.get('name') %}
+                            <a href="https://translate.google.com/?sl=auto&tl=en&text={{ row.get('name') | urlencode }}"
+                                target="_blank" class="map-link">🌐</a>
+                            {% endif %}
+                        </td>
+                        {% for key in attr[0].keys() %}
+                            <td>{{ row.get(key, '—') }}</td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function updateTableHeight() {
+        const el = document.querySelector('.attr-table-container');
+        const px = el ? (el.offsetHeight || 0) + 'px' : '0px';
+        document.documentElement.style.setProperty('--table-height', px);
+    }
+
+    function onAttrTableKeydown(e) {
+        const key = e.key?.toLowerCase();
+        if (key !== '1' && key !== '2') return;
+
+        const table = document.querySelector('.attr-table');
+        if (!table) return;
+
+        const targetRow = key === '1' ? 'first-child' : 'nth-child(2)';
+        const link = table.querySelector(`tbody tr:${targetRow} td:first-child a[href*="google.com/maps"]`);
+        if (link) {
+            e.preventDefault();
+            window.open(link.href, '_blank');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', updateTableHeight);
+    window.addEventListener('resize', updateTableHeight);
+    window.addEventListener('keydown', onAttrTableKeydown);
+</script>
