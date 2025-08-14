@@ -67,5 +67,14 @@
             }
         });
     });
+
+    function toggleLegend() {
+        const legend = document.getElementById('legend');
+        if (legend.style.display === 'block') {
+            legend.style.display = 'none';
+        } else {
+            legend.style.display = 'block';
+        }
+    }
 </script>
 {% endblock %}

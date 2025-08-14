@@ -120,15 +120,6 @@ window.addEventListener('resize', updateTableHeight);
         });
     }
 
-    function toggleLegend() {
-        const legend = document.getElementById('legend');
-        if (legend.style.display === 'block') {
-            legend.style.display = 'none';
-        } else {
-            legend.style.display = 'block';
-        }
-    }
-
     function displayText(label) {
         const feedback = document.getElementById('label-feedback');
         feedback.className = label; // 'match', 'nomatch', 'unsure'

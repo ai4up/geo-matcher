@@ -9,6 +9,16 @@
     <button class="btn btn-submit" onclick="sendLabeledMatches('{{ id }}')">Submit</button>
 </div>
 
+<div id="legend">
+    <h4>Keyboard Shortcuts</h4>
+    <ul>
+        <li><kbd>&#9166;</kbd> Submit</li>
+        <li><kbd>&uarr;</kbd> Back</li>
+        <li><kbd>?</kbd> Toggle Legend</li>
+    </ul>
+    <button onclick="toggleLegend()">Close</button>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -44,12 +54,13 @@
     }
 
     document.addEventListener("keydown", function (e) {
-        if (e.key === "Enter") {
-            const submitButton = document.querySelector("#buttons button.btn-submit");
-            if (submitButton) {
-                e.preventDefault(); // Prevent default form behavior if any
-                submitButton.click();
-            }
+        e.preventDefault();
+        if (event.key === "ArrowUp") {
+            window.history.back();
+        } else if (e.key === "Enter") {
+            sendLabeledMatches('{{ id }}');
+        } else if (e.key === "?") {
+            toggleLegend();
         }
     });
 </script>
