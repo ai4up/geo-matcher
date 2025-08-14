@@ -3,6 +3,7 @@
 A web app for labeling matching building and place pairs from two datasets. Runs locally as a Flask app, displaying Folium-generated maps of potential matching pairs.
 
 🔗 Live demo: [matching-demo.eubucco.com](https://matching-demo.eubucco.com)
+
 📍 Supported feature types: Buildings & Places (POIs)
 
 ## Install

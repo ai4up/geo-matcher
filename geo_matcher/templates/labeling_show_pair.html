@@ -40,7 +40,7 @@
       </thead>
       <tbody>
         {% for row in attr %}
-          <tr>
+          <tr class="{{ 'attr-table-row-a' if loop.index0 == 0 else 'attr-table-row-b' }}">
             <td>
             {% set query = row.get('name', '') ~ ' ' ~ row.get('address', '') %}
             {% if query %}
