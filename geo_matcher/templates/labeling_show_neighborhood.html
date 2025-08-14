@@ -1,4 +1,4 @@
-{% extends "base_labeling.html" %}
+{% extends "labeling_base.html" %}
 
 {% block title %}Label Neighborhood{% endblock %}
 
@@ -28,8 +28,8 @@
             added: added,
             removed: removed
         };
-
-        fetch('/store-neighborhood', {
+        const STORE_NBH_URL = {{ feature_url('labeling.store_neighborhood') | tojson }};
+        fetch(STORE_NBH_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -38,7 +38,7 @@
         })
         .then(response => response.json())
         .then(data => {
-            window.location.href = `/show-neighborhood/${data.next_id}`;
+            window.location.href = data.next_url;
         })
         .catch(err => console.error("Submission error:", err));
     }

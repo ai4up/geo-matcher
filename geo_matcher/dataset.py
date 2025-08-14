@@ -78,6 +78,7 @@ def create_candidate_pairs_dataset(
         dataset_a=gdf1,
         dataset_b=gdf2,
         pairs=pairs,
+        feature_type="buildings",
     )
 
 

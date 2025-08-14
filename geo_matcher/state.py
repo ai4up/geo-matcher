@@ -15,7 +15,7 @@ from geo_matcher import spatial
 
 class State:
     """
-    Manage the state of the candidate building pair labeling process.
+    Manage the state of the labeling process.
 
     Handles loading data, tracking progress, and storing results for
     individual candidate pairs and neighborhood-level matches.
@@ -39,40 +39,46 @@ class State:
         self.data_b = self.data.dataset_b
         self.pairs = self.data.pairs
 
-    def get_existing_buildings(self, neighborhood: str) -> GeoDataFrame:
+    def get_existing_features(self, neighborhood: str) -> GeoDataFrame:
         """
-        Return existing buildings in or linked to the given neighborhood.
+        Return features from dataset A in or linked to the given neighborhood.
         """
         nbh_a = self.data_a[self.data_a["neighborhood"] == neighborhood]
 
-        # Edge case: also get the existing buildings of candidate pairs, where only the new building is in the neighborhood of interest
+        # Edge case: also get the existing features of candidate pairs, where only the new feature is in the neighborhood of interest
         nbh_b = self.data_b[self.data_b["neighborhood"] == neighborhood]
         candidate_ids = self.pairs[self.pairs["id_new"].isin(nbh_b.index)]["id_existing"]
         candidates = self.data_a.loc[candidate_ids]
 
         return pd.concat([nbh_a, candidates]).drop_duplicates()
 
-    def get_new_buildings(self, iteration: str) -> GeoDataFrame:
+    def get_new_features(self, iteration: str) -> GeoDataFrame:
         """
-        Return new buildings in the given neighborhood.
+        Return features from dataset B in the given neighborhood.
         """
         return self.data_b[self.data_b["neighborhood"] == iteration]
 
-    def get_existing_buildings_at(self, loc: Point) -> GeoDataFrame:
+    def get_existing_features_near(self, loc: Point) -> GeoDataFrame:
         """
-        Return existing buildings within 150 meters of the given location.
+        Return features from dataset A within 150 meters of the given location.
         """
         return spatial.within(self.data_a, loc, dis=150)
 
-    def get_new_building_at(self, loc: Point) -> GeoDataFrame:
+    def get_new_features_near(self, loc: Point) -> GeoDataFrame:
         """
-        Return new buildings within 150 meters of the given location.
+        Return features from dataset B within 150 meters of the given location.
         """
         return spatial.within(self.data_b, loc, dis=150)
 
+    def get_candidate_attr(self, id_existing: str, id_new: str) -> Series:
+        """
+        Return attributes of a candidate pair.
+        """
+        return [self.data_a.loc[id_existing].drop(["geometry", "neighborhood"]).to_dict(), self.data_b.loc[id_new].drop(["geometry", "neighborhood"]).to_dict()]
+
     def get_candidate_pair(self, id_existing: str, id_new: str) -> Series:
         """
-        Return a candidate pair including the geometry of both buildings.
+        Return a candidate pair including the geometries of both features.
         """
         return Series({
             "id_existing": id_existing,
@@ -85,7 +91,7 @@ class State:
         """
         Return all candidate pairs in the given neighborhood including their geometries.
         """
-        new = self.get_new_buildings(neighborhood)
+        new = self.get_new_features(neighborhood)
         pairs = self.pairs[self.pairs["id_new"].isin(new.index)]
 
         pairs = GeoDataFrame(pairs)
@@ -113,7 +119,7 @@ class State:
 
         if len(self.results) % 10 == 0:
             frequency = dict(Counter([e["match"] for e in self.results]))
-            self.logger(f"Progress: {len(self.results)} buildings labeled ({frequency})")
+            self.logger(f"Progress: {len(self.results)} features labeled ({frequency})")
 
     def add_bulk_results(self, df: DataFrame) -> None:
         """
@@ -241,7 +247,7 @@ class State:
         """
         self._unique_results(include_unsure=True).to_csv(self.results_path, index=False)
         self.logger(
-            f"Labeled building pairs stored in {self.results_path}."
+            f"Labeled candidate pairs stored in {self.results_path}."
         )
 
     def store_aggregated_results(self, path: str) -> None:

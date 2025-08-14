@@ -1,0 +1,34 @@
+{% extends "tutorial_base.html" %}
+
+{% block title %}Place Matching Tutorial{% endblock %}
+
+{% block tutorial_content %}
+    {% macro marker(color="#6cb6f7ff", size=30) %}
+    <svg width="{{ size }}" viewBox="0 0 24 24" aria-hidden="true"
+        style="display:inline-block; vertical-align:middle">
+    <path fill="{{ color }}"
+            d="M12 2c-4.1 0-7.5 3.4-7.5 7.5 0 5.4 7.5 13 7.5 13s7.5-7.6 7.5-13C19.5 5.4 16.1 2 12 2z"/>
+    <circle cx="12" cy="9.5" r="3.5" fill="#fff" opacity=".9"/>
+    </svg>
+    {% endmacro %}
+    <h2 style="text-align: center;">Welcome to the Place Matching Labeling Tool!</h2>
+    <p>The tool iterates through pairs of places and asks you whether they describe the same actual place.</p>
+
+    <div style="padding-left: 20px;">
+        <div style="margin-bottom: 6px;">
+            {{ marker("#539edfff") }} {{ marker("#d24adbff") }}
+            The places are highlighted with two point markers of different color.<br>
+        </div>
+
+    </div>
+
+    <p>Use the buttons below to label the <strong>places pair</strong> as either a <strong>'Match'</strong>, <strong>'No Match'</strong>, or <strong>'Unsure'</strong>.</p>
+{% endblock %}
+
+{% block demo_buttons %}
+<div id="buttons">
+    <button class="btn btn-match" onclick="alert('Demo only. No data will be saved.');">Match</button>
+    <button class="btn btn-no-match" onclick="alert('Demo only. No data will be saved.');">No Match</button>
+    <button class="btn btn-unsure" onclick="alert('Demo only. No data will be saved.');">Unsure</button>
+</div>
+{% endblock %}

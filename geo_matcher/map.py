@@ -33,7 +33,20 @@ BUILDING_LAYER_COLORS = {
     },
 }
 
-def create_tutorial_html(filepath: str) -> None:
+
+def create_places_pair_tutorial_html(filepath: str) -> None:
+    """
+    Create a demo Folium HTML map with an example candidate pair and an instruction text.
+    """
+    m = _initialize_map(location=(18.4482, -66.076), zoom_level=19)
+
+    _add_places_marker(m, (18.44785, -66.07627), "blue")
+    _add_places_marker(m, (18.44783, -66.07578), "purple")
+
+    m.save(filepath)
+
+
+def create_buildings_pair_tutorial_html(filepath: str) -> None:
     """
     Create a demo Folium HTML map with an example candidate pair and an instruction text.
     """
@@ -44,18 +57,19 @@ def create_tutorial_html(filepath: str) -> None:
     new_buildings = gdf.loc[["B", "B_candidate"]]
 
     c = new_buildings.centroid.loc["B_candidate"]
-    lat, lon = spatial.to_lat_lon(c.x, c.y, existing_buildings.crs)
+    loc = spatial.to_lat_lon(c.x, c.y, existing_buildings.crs)
 
     # Initialize map and add demo buildings
-    m = _initialize_map(lat, lon, 20)
+    m = _initialize_map(loc, 20)
     _add_stylized_buildings_layer(m, existing_buildings, "Existing Buildings", "existing", "A_candidate")
     _add_stylized_buildings_layer(m, new_buildings, "New Buildings", "new", "B_candidate")
-    _add_tutorial_marker(m, lat, lon)
+    _add_tutorial_marker(m, loc)
     _add_baselayer_marker(m)
 
     m.save(filepath)
 
-def create_neighborhood_tutorial_html(filepath: str) -> None:
+
+def create_buildings_neighborhood_tutorial_html(filepath: str) -> None:
     """
     Create a demo Folium HTML map with an example neighborhood and an instruction text.
     """
@@ -66,7 +80,7 @@ def create_neighborhood_tutorial_html(filepath: str) -> None:
     pairs = data.pairs_to_gdf()
 
     # Initialize map and add demo buildings
-    m = _initialize_map(44.8031, 3.42505, 20)
+    m = _initialize_map((44.8031, 3.42505), 20)
     _add_stylized_buildings_layer(m, data.dataset_a, "Existing Buildings", "existing")
     _add_stylized_buildings_layer(m, data.dataset_b, "New Buildings", "new")
     _add_legend(m)
@@ -79,9 +93,33 @@ def create_neighborhood_tutorial_html(filepath: str) -> None:
     m.save(filepath)
 
 
-def create_candidate_pair_html(state: State, id_existing: str, id_new: str, filepath: Path) -> None:
+def create_places_pair_html(state: State, id_existing: str, id_new: str, filepath: Path) -> None:
     """
-    Create a Folium HTML map with a candidate pair.
+    Create a Folium HTML map for a candidate pair of places.
+    """
+    if filepath.is_file():
+        return
+
+    candidate_pair = state.get_candidate_pair(id_existing, id_new)
+    loc_existing = candidate_pair["geometry_existing"].centroid
+    loc_new = candidate_pair["geometry_new"].centroid
+
+    bounds = spatial.bounds(loc_existing, loc_new)
+    m = _initialize_map(bounds=bounds, baselayer="OpenStreetMap")
+
+    _add_places_marker(m, (loc_existing.y, loc_existing.x), "blue")
+    _add_places_marker(m, (loc_new.y + 1e-5, loc_new.x + 1e-5), "purple")
+    _disable_leaflet_click_outline(m)
+    _inject_custom_js(m)
+
+    folium.LayerControl(collapsed=True).add_to(m)
+
+    m.save(filepath)
+
+
+def create_buildings_pair_html(state: State, id_existing: str, id_new: str, filepath: Path) -> None:
+    """
+    Create a Folium HTML map for a candidate pair of buildings.
     """
     if filepath.is_file():
         return
@@ -89,11 +127,11 @@ def create_candidate_pair_html(state: State, id_existing: str, id_new: str, file
     candidate_pair = state.get_candidate_pair(id_existing, id_new)
 
     c = candidate_pair["geometry_new"].centroid
-    existing_buildings = state.get_existing_buildings_at(c)
-    new_buildings = state.get_new_building_at(c)
+    existing_buildings = state.get_existing_features_near(c)
+    new_buildings = state.get_new_features_near(c)
 
-    lat, lon = spatial.to_lat_lon(c.x, c.y, existing_buildings.crs)
-    m = _initialize_map(lat, lon, 20)
+    loc = spatial.to_lat_lon(c.x, c.y, existing_buildings.crs)
+    m = _initialize_map(loc, 20)
 
     _add_stylized_buildings_layer(m, existing_buildings, "Existing Buildings", "existing", id_existing)
     _add_stylized_buildings_layer(m, new_buildings, "New Buildings", "new", id_new)
@@ -108,22 +146,22 @@ def create_candidate_pair_html(state: State, id_existing: str, id_new: str, file
     m.save(filepath)
 
 
-def create_neighborhood_html(state: State, id: str, filepath: Path) -> None:
+def create_buildings_neighborhood_html(state: State, id: str, filepath: Path) -> None:
     """
-    Create a Folium HTML map with all candidate pairs in a neighborhood.
+    Create a Folium HTML map with all building candidate pairs in a neighborhood.
     """
     if filepath.is_file():
         return
 
     candidate_pairs = state.get_candidate_pairs(id)
-    existing_buildings = state.get_existing_buildings(id)
-    new_buildings = state.get_new_buildings(id)
+    existing_buildings = state.get_existing_features(id)
+    new_buildings = state.get_new_features(id)
 
     new_buildings = new_buildings.loc[candidate_pairs["id_new"].unique()]
     existing_buildings = existing_buildings.loc[candidate_pairs["id_existing"].unique()]
 
-    lat, lon = spatial.center_lat_lon(candidate_pairs["geometry_new"])
-    m = _initialize_map(lat, lon, 19)
+    loc = spatial.center_lat_lon(candidate_pairs["geometry_new"])
+    m = _initialize_map(loc, 19)
 
     _add_stylized_buildings_layer(m, existing_buildings, "Existing Buildings", "existing")
     _add_stylized_buildings_layer(m, new_buildings, "New Buildings", "new")
@@ -139,20 +177,22 @@ def create_neighborhood_html(state: State, id: str, filepath: Path) -> None:
     m.save(filepath)
 
 
-def _initialize_map(lat: float, lon: float, zoom_level: int) -> folium.Map:
-    m = folium.Map(location=[lat, lon], zoom_start=zoom_level, tiles=None)
+def _initialize_map(location: tuple[float, float] = None, zoom_level: int = None, bounds: list[list[float]] = None, baselayer: str = "CartoDB Positron") -> folium.Map:
+    m = folium.Map(location=location, zoom_start=zoom_level, tiles=None)
+    if bounds:
+        m.fit_bounds(bounds, padding=(50, 50))
 
     # Highest resolution
     carto = folium.TileLayer(
         "CartoDB.Positron",
         name="CartoDB Positron",
-        show=True,
+        show=(baselayer == "CartoDB Positron"),
     )
     # Familiar map style
     osm = folium.TileLayer(
         "OpenStreetMap",
         name="OpenStreetMap",
-        show=False,
+        show=(baselayer == "OpenStreetMap"),
     )
     # Satellite imagery
     esri = folium.TileLayer(
@@ -161,15 +201,15 @@ def _initialize_map(lat: float, lon: float, zoom_level: int) -> folium.Map:
         name='Esri Satellite',
         max_native_zoom=18,
         max_zoom=20,
-        show=False,
+        show=(baselayer == "Esri Satellite"),
     )
     # Base map without buildings
     esri_topo = folium.TileLayer(
         "Esri.WorldTopoMap",
         name="Esri WorldTopoMap",
-        show=False,
         max_native_zoom=18,
         max_zoom=19,
+        show=(baselayer == "Esri WorldTopoMap"),
     )
 
     carto.add_to(m)
@@ -185,9 +225,16 @@ def _initialize_map(lat: float, lon: float, zoom_level: int) -> folium.Map:
     return m
 
 
-def _add_tutorial_marker(m: folium.Map, lat: float, lon: float) -> None:
+def _add_places_marker(m: folium.Map, location: tuple[float, float], color: str) -> None:
     folium.Marker(
-        location=[lat, lon],
+        location=location,
+        icon=folium.Icon(color=color, icon="circle", prefix="fa"),
+    ).add_to(m)
+
+
+def _add_tutorial_marker(m: folium.Map, location: tuple[float, float]) -> None:
+    folium.Marker(
+        location=location,
         tooltip="Building pair to be labeled as 'Match' / 'No Match' / 'Unsure'.",
         icon=folium.Icon(color="lightred", icon="info-sign"),
     ).add_to(m)
@@ -195,7 +242,7 @@ def _add_tutorial_marker(m: folium.Map, lat: float, lon: float) -> None:
 
 def _add_baselayer_marker(m: folium.Map) -> None:
     folium.Marker(
-        location=[44.80484, 3.34594],
+        location=(44.80484, 3.34594),
         tooltip="Building from the baselayer. Can be ignored. Choose 'Esri WorldTopoMap' for a baselayer without buildings (lower resolution).",
         icon=folium.Icon(color="lightgray", icon="info-sign"),
     ).add_to(m)

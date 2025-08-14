@@ -7,8 +7,9 @@
 
 <div id="tutorial">
     <div id="labeling-tabs" style="text-align: center; margin-top: 10px; margin-bottom: 10px;">
-        <a href="/" class="nav-link {{ '' if request.path.startswith('/batch') else 'active' }}">Pair-wise Labeling</a>
-        <a href="/batch" class="nav-link {{ 'active' if request.path.startswith('/batch') else '' }}">Neighborhood-wise Labeling</a>
+        {% set on_neighborhood = request.endpoint.endswith('home_batch') %}
+        <a href="{{ feature_url('labeling.home_pair') }}" class="nav-link {{ '' if on_neighborhood else 'active' }}">Pair-wise Labeling</a>
+        <a href="{{ feature_url('labeling.home_batch') }}" class="nav-link {{ 'active' if on_neighborhood else '' }}">Neighborhood-wise Labeling</a>
     </div>
 
     {% block tutorial_content %}{% endblock %}
@@ -31,7 +32,7 @@
 
         <div class="radio-group">
             <label><input type="radio" name="label_mode" value="all"> Label everything</label>
-            <label><input type="radio" name="label_mode" value="unlabeled" checked> Label only unlabeled building pairs</label>
+            <label><input type="radio" name="label_mode" value="unlabeled" checked> Label only unlabeled {{ 'building' if g.ft == 'buildings' else 'place' }} pairs</label>
             <label><input type="radio" name="label_mode" value="cross-validate"> Cross-validate previous annotations</label>
         </div>
 
@@ -62,14 +63,15 @@
             dataset: dataset
         });
 
-        const response = await fetch('/start-session', {
+        const START_SESSION_URL = {{ url_for('labeling.start_session') | tojson }};
+        const response = await fetch(START_SESSION_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: formData
         });
 
         if (response.ok) {
-            window.location.href = '{{ "/show-neighborhood" if request.path.startswith("/batch") else "/show-pair" }}';
+            window.location.href = '{{ feature_url("labeling.show_neighborhood" if request.endpoint.endswith("batch") else "labeling.show_pair") }}';
         } else {
             alert('There was a problem saving your username.');
             return false;

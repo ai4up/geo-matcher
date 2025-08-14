@@ -1,4 +1,4 @@
-/* Base layout */
+/* ============ Base layout ============ */
 html, body {
     height: 100%;
     margin: 0;
@@ -10,7 +10,7 @@ html, body {
     height: 100%;
 }
 
-/* Navigation */
+/* ============ Navigation ============ */
 #nav-bar {
     position: fixed;
     top: 12px;
@@ -55,13 +55,14 @@ html, body {
     opacity: 0.8;
 }
 
-/* Buttons */
+/* ============ Labeling buttons ============ */
+
 #buttons {
-    position: absolute;
-    bottom: 10%;
+    position: fixed;
+    bottom: calc(var(--table-height, 5%) + 30px);
     left: 50%;
     transform: translateX(-50%);
-    z-index: 1000;
+    z-index: 1001;
     background: rgba(255, 255, 255, 0.9);
     padding: 15px;
     border-radius: 10px;
@@ -86,7 +87,7 @@ html, body {
     opacity: 0.8;
 }
 
-/* Tutorial panel */
+/* ============ Tutorial panel ============ */
 #tutorial {
     position: absolute;
     top: 5%;
@@ -105,7 +106,7 @@ html, body {
     margin-bottom: 15px;
 }
 
-/* Form elements */
+/* ============ Form elements ============ */
 .form-row {
     max-width: 500px;
     margin: 0 auto;
@@ -152,7 +153,7 @@ html, body {
     background-color: #45a049;
 }
 
-/* Legend */
+/* ============ Legend ============ */
 #legend {
     display: none;
     position: fixed;
@@ -222,7 +223,7 @@ html, body {
     background-color: #eaeaea;
 }
 
-/* Label feedback */
+/* ============ Label feedback ============ */
 #label-feedback {
     position: fixed;
     top: 45%;
@@ -249,12 +250,12 @@ html, body {
     color: #f0ad4e;
 }
 
-/* Scoreboard */
+/* ============ Scoreboard ============ */
 #scoreboard {
     position: fixed;
+    bottom: calc(var(--table-height, 0px) + 30px);
     overflow: visible;
-    bottom: 25px;
-    right: 20px;
+    right: 30px;
     background-color: rgba(255, 255, 255, 0.8);
     border: 1px solid #ccc;
     padding: 10px 14px;
@@ -262,7 +263,7 @@ html, body {
     max-height: 250px;
     font-family: Arial, sans-serif;
     font-size: 12px;
-    z-index: 1000;
+    z-index: 1001;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
@@ -333,7 +334,7 @@ html, body {
     color: #f44336; /* red */
 }
 
-/* Tooltips */
+/* ============ Tooltips ============ */
 .tooltip-container {
     position: relative;
     display: flex;
@@ -364,4 +365,201 @@ html, body {
 .tooltip-container:hover .custom-tooltip {
     visibility: visible;
     opacity: 1;
+}
+
+/* ============ Attributes table ============ */
+.attr-table-container {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: auto;
+    min-height: 15%;
+    max-height: 40%;
+    overflow: visible;
+    background: #f8f8f8;
+    border-top: 1px solid #ddd;
+    padding: 20px;
+    z-index: 1000;
+    font-family: Arial, sans-serif;
+}
+
+/* Table wrapper for horizontal scrolling */
+.attr-table-wrapper {
+    overflow-x: auto;
+    overflow-y: visible;
+    width: 100%;
+}
+
+/* Adjust map height only when attributes table is present */
+body:has(.attr-table-container) #map {
+    height: calc(100% - var(--table-height, 200px)) !important;
+}
+
+.attr-table {
+    border-collapse: collapse;
+    width: max-content;
+    min-width: 100%;
+    margin: 0 auto;
+    font-family: 'Helvetica', sans-serif;
+}
+
+.attr-table th, 
+.attr-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+.attr-table th {
+    background-color: #ffffff;
+    color: #0a0a0a;
+    position: sticky;
+    top: 0;
+    z-index: 3;
+}
+
+.attr-table tr:nth-child(even) td {
+    background: #fafafa;
+}
+
+.attr-table code {
+    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+    font-size: 12px;
+}
+
+.map-link {
+    text-decoration: none;
+    font-size: 22px;
+    line-height: 1;
+}
+
+/* ============ Success page ============ */
+.page-centered {
+  background: #f5f9f7;
+  font-family: Arial, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.success-box {
+  background: #fff;
+  border-radius: 12px;
+  padding: 40px 50px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  text-align: center;
+  max-width: 520px;
+}
+
+.success-box h1 {
+  color: #4CAF50;
+  font-size: 28px;
+  margin-bottom: 16px;
+}
+
+.success-box p {
+  font-size: 16px;
+  color: #444;
+  margin-bottom: 28px;
+}
+
+.success-button-group {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.success-button {
+  display: inline-block;
+  padding: 12px 24px;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: bold;
+  transition: background-color 0.2s ease;
+}
+
+.success-button-primary {
+  background-color: #4CAF50;
+  color: #fff;
+}
+.success-button-primary:hover {
+  background-color: #43a047;
+}
+
+.success-button-secondary {
+  background-color: #eee;
+  color: #333;
+  border: 1px solid #bbb;
+}
+.success-button-secondary:hover {
+  background-color: #ddd;
+}
+
+/* ============ Split chooser ============ */
+body.page-split {
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+.split-chooser {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.split-chooser .pane {
+  flex: 1 1 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  position: relative;
+  transition: transform 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+  outline: none;
+}
+
+.split-chooser .pane span {
+  font-family: Arial, sans-serif;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: clamp(24px, 6.5vw, 80px);
+  color: #1f2937;
+  user-select: none;
+}
+
+.split-chooser .pane-left  { border-right: 1px solid rgba(0,0,0,0.06); }
+.split-chooser .pane-right { border-left:  1px solid rgba(0,0,0,0.06); }
+
+.split-chooser .pane-left  { background: #f0f4e8; }
+.split-chooser .pane-right { background: #f5e7df; }
+
+.split-chooser .pane-left:hover,
+.split-chooser .pane-left:focus-visible {
+  background: #e4ecd8;
+  transform: scale(1.01);
+  box-shadow: inset 0 0 0 9999px rgba(76, 175, 80, 0.04);
+}
+
+.split-chooser .pane-right:hover,
+.split-chooser .pane-right:focus-visible {
+  background: #eed7cb;
+  transform: scale(1.01);
+  box-shadow: inset 0 0 0 9999px rgba(59, 130, 246, 0.04);
+}
+
+/* Mobile: stack vertically for narrow screens */
+@media (max-width: 800px) {
+  .split-chooser { flex-direction: column; }
+  .split-chooser .pane-left,
+  .split-chooser .pane-right {
+    border: 0;
+    border-top: 1px solid rgba(0,0,0,0.06);
+  }
 }

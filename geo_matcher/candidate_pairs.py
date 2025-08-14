@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class CandidatePairs:
     """
-    Class to store and persist potential matching pairs of buildings from two datasets.
+    Class to store and persist potential matching pairs of buildings or places from two datasets.
     """
 
     def __init__(
@@ -23,12 +23,18 @@ class CandidatePairs:
         dataset_a: GeoDataFrame,
         dataset_b: GeoDataFrame,
         pairs: DataFrame,
+        feature_type: str,
     ):
-        self._validate_inputs(dataset_a, dataset_b, pairs)
+        self._validate_inputs(dataset_a, dataset_b, pairs, feature_type)
 
         self.dataset_a = dataset_a
         self.dataset_b = dataset_b
         self.pairs = pairs
+        self.feature_type = feature_type
+
+        if self.feature_type == "places":
+            self.dataset_a = self.dataset_a.to_crs("EPSG:4326")
+            self.dataset_b = self.dataset_b.to_crs("EPSG:4326")
 
     @staticmethod
     def load(filepath: str) -> "CandidatePairs":
@@ -47,8 +53,9 @@ class CandidatePairs:
             dataset_a = gpd.read_parquet(tmpdir / "dataset_a.parquet")
             dataset_b = gpd.read_parquet(tmpdir / "dataset_b.parquet")
             pairs = pd.read_parquet(tmpdir / "pairs.parquet")
+            feature_type = "buildings" if dataset_a.geometry.geom_type.isin({"Polygon", "MultiPolygon"}).all() else "places"
 
-        return CandidatePairs(dataset_a, dataset_b, pairs)
+        return CandidatePairs(dataset_a, dataset_b, pairs, feature_type)
 
     def save(self, filepath: str) -> None:
         """
@@ -88,15 +95,15 @@ class CandidatePairs:
         new_geom = self.dataset_b.loc[self.pairs["id_new"]]
         self.pairs["match"] = spatial.corresponding(existing_geom, new_geom)
 
-    def _validate_inputs(self, dataset_a: GeoDataFrame, dataset_b: GeoDataFrame, pairs: DataFrame) -> None:
-        if not isinstance(dataset_a, GeoDataFrame):
-            raise TypeError("Dataset A must be a GeoDataFrame.")
-
+    def _validate_inputs(self, dataset_a: GeoDataFrame, dataset_b: GeoDataFrame, pairs: DataFrame, feature_type: str) -> None:
         if not dataset_a.index.is_unique:
             raise ValueError("Dataset A must have a unique index.")
 
         if not dataset_b.index.is_unique:
             raise ValueError("Dataset B must have a unique index.")
+
+        if not isinstance(dataset_a, GeoDataFrame):
+            raise TypeError("Dataset A must be a GeoDataFrame.")
 
         if not isinstance(dataset_b, GeoDataFrame):
             raise TypeError("Dataset B must be a GeoDataFrame.")
@@ -109,6 +116,12 @@ class CandidatePairs:
 
         if dataset_a.crs != dataset_b.crs:
             raise ValueError("Dataset A and Dataset B must have the same CRS.")
+
+        if feature_type == "buildings" and not dataset_a.geometry.geom_type.isin({"Polygon", "MultiPolygon"}).all():
+            raise ValueError("Dataset A must only contain Polygon or MultiPolygon geometries representing buildings.")
+
+        if feature_type == "buildings" and not dataset_b.geometry.geom_type.isin({"Polygon", "MultiPolygon"}).all():
+            raise ValueError("Dataset B must only contain Polygon or MultiPolygon geometries representing buildings.")
 
         if not "neighborhood" in dataset_a.columns:
             raise ValueError("Dataset A must contain a 'neighborhood' column.")

@@ -3,7 +3,9 @@ from typing import Tuple, List
 from pyproj import Transformer
 from geopandas import GeoDataFrame
 from pandas import DataFrame, Series, Index, MultiIndex
+from shapely.ops import unary_union
 from shapely.geometry import LineString, Point, Polygon
+from shapely.geometry.base import BaseGeometry
 import h3
 import numpy as np
 import momepy
@@ -128,6 +130,15 @@ def to_lat_lon(x: float, y: float, crs: str) -> Tuple[float, float]:
     lon, lat = transformer.transform(x, y)
 
     return lat, lon
+
+
+def bounds(*geoms: BaseGeometry) -> list[list[float]]:
+    """
+    Calculate the bounds of a list of geometries in the format [[lat, lon], [lat, lon]].
+    """
+    bounds = unary_union(geoms).bounds
+
+    return [[bounds[1], bounds[0]], [bounds[3], bounds[2]]]
 
 
 def connect_with_lines(gdf1: GeoDataFrame, gdf2: GeoDataFrame) -> GeoDataFrame:

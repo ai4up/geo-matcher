@@ -1,8 +1,9 @@
-# Building Footprint Matching Tool
+# Labeling Tool for Buildings and Places Matching
 
-A web-based tool for matching and labeling building footprints from two datasets. Runs locally as a Flask app, displaying Folium-generated maps of potential matching pairs.
+A web app for labeling matching building and place pairs from two datasets. Runs locally as a Flask app, displaying Folium-generated maps of potential matching pairs.
 
 🔗 Live demo: [matching-demo.eubucco.com](https://matching-demo.eubucco.com)
+📍 Supported feature types: Buildings & Places (POIs)
 
 ## Install
 ```bash
@@ -10,12 +11,12 @@ pip install git+https://github.com/ai4up/geo-matcher@main
 ```
 
 ## Usage
-Step 1: Create a dataset of potential building pairs from two datasets:
+Step 1: Create a dataset of potential matching pairs from two datasets:
 ```bash
 gmatch create-labeling-dataset dataset1.parquet dataset2.parquet
 ```
 
-Step 2: Start browser-based labeling of building pairs:
+Step 2: Start browser-based labeling of pairs:
 ```bash
 gmatch label
 ```

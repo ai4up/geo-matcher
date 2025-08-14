@@ -2,14 +2,14 @@
 
 {% block body %}
 <div id="nav-bar">
-    <a href="{{ '/batch' if request.path.startswith('/show-neighborhood') else '/' }}" class="nav-link">Home</a>
-    <a href="/download-results" class="nav-link">Download Results</a>
+    {% set on_neighborhood = request.endpoint.endswith('show_neighborhood') %}
+    <a href="{{ feature_url('labeling.home_batch' if on_neighborhood else 'labeling.home_pair') }}" class="nav-link">Home</a>
+    <a href="{{ url_for('labeling.download_results') }}" class="nav-link">Download Results</a>
 
     <span class="nav-divider"></span>
 
-    <a href="/show-pair" class="nav-link {{ 'active' if request.path.startswith('/show-pair') else '' }}">Pair-wise Labeling</a>
-    <a href="/show-neighborhood" class="nav-link {{ 'active' if request.path.startswith('/show-neighborhood') else '' }}">Neighborhood-wise Labeling</a>
-
+    <a href="{{ feature_url('labeling.show_pair') }}" class="nav-link {{ '' if on_neighborhood else 'active' }}">Pair-wise Labeling</a>
+    <a href="{{ feature_url('labeling.show_neighborhood') }}" class="nav-link {{ 'active' if on_neighborhood else '' }}">Neighborhood-wise Labeling</a>
 </div>
 
 <div id="scoreboard">

@@ -9,10 +9,16 @@
 
     {% block head %}{% endblock %}
 </head>
-<body>
-    <div id="map">
-        <iframe src="{{ url_for('static', filename='maps/' + map_file | string ) }}" width="100%" height="100%"></iframe>
-    </div>
+<body class="{% block body_class %}{% endblock %}">
+    {% block map %}
+        {% if map_file is defined and map_file %}
+            <div id="map">
+                <iframe src="{{ url_for('static', filename='maps/' ~ map_file) }}" width="100%" height="100%">
+                </iframe>
+            </div>
+        {% endif %}
+    {% endblock %}
+
 
     {% block body %}{% endblock %}
 
