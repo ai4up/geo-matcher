@@ -137,7 +137,7 @@ def home_batch() -> Response:
     Display the home page for neighborhood-wise labeling including a tutorial and a username prompt.
     """
     if g.ft != "buildings":
-        return render_template("info.html", message=f"Feature type {g.ft} not (yet) supported."), 404
+        return render_template("info.html", message=f"Not (yet) supported for {g.ft}."), 404
 
     fp = current_app.maps_dir / "neighborhood_demo.html"
     datasets = current_app.state_handler.datasets
@@ -201,7 +201,7 @@ def show_pair(id_existing: str = None, id_new: str = None) -> Response:
         map_creation_func = map.create_places_pair_html
         attr = S.get_candidate_attr(id_existing, id_new)
     else:
-        return render_template("info.html", message=f"Feature type {g.ft} not (yet) supported."), 404
+        return render_template("info.html", message=f"Not (yet) supported for {g.ft}."), 404
 
     name = _unq_name(dataset, id_existing, id_new)
     fp = current_app.maps_dir / f"{g.ft}_pair_{name}.html"
@@ -247,7 +247,7 @@ def show_neighborhood(id: Optional[str] = None) -> Response:
         return render_template("error.html", message="Neighborhood not found"), 404
 
     if g.ft != "buildings":
-        return render_template("info.html", message=f"Feature type {g.ft} not (yet) supported."), 404
+        return render_template("info.html", message=f"Not (yet) supported for {g.ft}."), 404
 
     if S.data.feature_type != "buildings":
         return render_template("error.html", message="Dataset does not conform to building schema"), 404
