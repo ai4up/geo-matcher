@@ -9,7 +9,9 @@
     <span class="nav-divider"></span>
 
     <a href="{{ feature_url('labeling.show_pair') }}" class="nav-link {{ '' if on_neighborhood else 'active' }}">Pair-wise Labeling</a>
-    <a href="{{ feature_url('labeling.show_neighborhood') }}" class="nav-link {{ 'active' if on_neighborhood else '' }}">Neighborhood-wise Labeling</a>
+    {% if g.ft == 'buildings' %}
+        <a href="{{ feature_url('labeling.show_neighborhood') }}" class="nav-link {{ 'active' if on_neighborhood else '' }}">Neighborhood-wise Labeling</a>
+    {% endif %}
 </div>
 
 <div class="legend-shortcut-hint" onclick="toggleLegend()">
