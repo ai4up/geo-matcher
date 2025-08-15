@@ -32,3 +32,17 @@
     <button class="btn btn-unsure" onclick="alert('Demo only. No data will be saved.');">Unsure</button>
 </div>
 {% endblock %}
+
+{% block keyboard_shortcuts %}
+<div id="legend" class="tutorial">
+    <h4>Keyboard Shortcuts</h4>
+    <ul>
+        <li><kbd>&rarr;</kbd> Match</li>
+        <li><kbd>&larr;</kbd> No Match</li>
+        <li><kbd>&darr;</kbd> Unsure</li>
+        <li><kbd>&uarr;</kbd> Back</li>
+        <li><kbd>1,2</kbd> Search Google Maps</li>
+        <li><kbd>?</kbd> Toggle Legend</li>
+    </ul>
+</div>
+{% endblock %}
