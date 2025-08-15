@@ -143,7 +143,7 @@ class State:
         """
         Return the number of candidate pairs left to label.
         """
-        return len(self._next_pairs("unlabeled", None))
+        return len(self._next_pairs("remaining", None))
 
     def get_next_pair(self, label_mode: str, user: str = None) -> Optional[tuple[str, str]]:
         """
@@ -152,8 +152,9 @@ class State:
         Args:
             label_mode: Determines the labeling strategy. One of:
                 - 'all': Return only pairs that have not yet been labeled by the current user.
-                - 'unlabeled': Return only pairs that have not been at all or not enough times.
-                - 'cross-validate': Return pairs that have either been labeled only once or received conflicting labels, for cross-validation.
+                - 'remaining': Return only pairs that have not been labeled enough times by any user.
+                - 'cross-validate': Return only pairs that have not been labeled enough times or received conflicting labels.
+                - 'resolve-inconsistencies': Return only pairs that have received conflicting labels.
             user: Optional. The current user's identifier.
 
         Returns:
@@ -172,8 +173,9 @@ class State:
         Args:
             label_mode: Determines the labeling strategy. One of:
                 - 'all': Return only pairs that have not yet been labeled by the current user.
-                - 'unlabeled': Return only pairs that have not been at all or not enough times.
-                - 'cross-validate': Return pairs that have either been labeled only once or received conflicting labels, for cross-validation.
+                - 'remaining': Return only pairs that have not been labeled enough times by any user.
+                - 'cross-validate': Return only pairs that have not been labeled enough times or received conflicting labels.
+                - 'resolve-inconsistencies': Return only pairs that have received conflicting labels.
             user: Optional. The current user's identifier
 
         Returns:
@@ -198,8 +200,8 @@ class State:
         Args:
             label_mode: Determines the labeling strategy. One of:
                 - 'all': Return a neighborhood that has not yet been labeled by the current user.
-                - 'unlabeled': Return a neighborhood that has not been labeled at all or not enough times.
-                - 'cross-validate': Return a neighborhood that has been labeled only once, to allow cross-validation.
+                - 'remaining': Return a neighborhood that has not been labeled enough times by any user.
+                - 'cross-validate': Return a neighborhood that has been labeled, but not enough times.
             user: Optional. The current user's identifier.
 
         Returns:
@@ -218,8 +220,8 @@ class State:
         Args:
             label_mode: Determines the labeling strategy. One of:
                 - 'all': Return a neighborhood that has not yet been labeled by the current user.
-                - 'unlabeled': Return a neighborhood that has not been labeled at all or not enough times.
-                - 'cross-validate': Return a neighborhood that has been labeled only once, to allow cross-validation.
+                - 'remaining': Return a neighborhood that has not been labeled enough times by any user.
+                - 'cross-validate': Return a neighborhood that has been labeled, but not enough times.
             user: Optional. The current user's identifier.
 
         Returns:
@@ -255,7 +257,7 @@ class State:
         Summarize sufficiently labeled pairs with majority vote and label count, then write to CSV.
         """
         results = self._unique_results(include_unsure=True)
-        unlabeled = self._next_pairs("unlabeled")
+        unlabeled = self._next_pairs("remaining")
         labeled_mask = ~results[["id_existing", "id_new"]].apply(tuple, axis=1).isin(unlabeled)
 
         label_counts = (
@@ -291,10 +293,12 @@ class State:
     def _next_pairs(self, label_mode: str, user: str = None) -> List[Optional[tuple[str, str]]]:
         if label_mode == "all":
             remaining = self._all_pairs()
-        elif label_mode == "unlabeled":
+        elif label_mode == "remaining":
             remaining = self._ambiguously_labeled_pairs().union(self._insufficiently_labeled_pairs(), sort=False).union(self._unlabeled_pairs(), sort=False)
         elif label_mode == "cross-validate":
             remaining = self._ambiguously_labeled_pairs().union(self._insufficiently_labeled_pairs(), sort=False)
+        elif label_mode == "resolve-inconsistencies":
+            remaining = self._ambiguously_labeled_pairs()
         else:
             raise ValueError(f"Labeling mode '{label_mode}' is not supported.")
 
@@ -305,7 +309,7 @@ class State:
     def _next_neighborhoods(self, label_mode: str, user: str = None) -> List[Optional[str]]:
         if label_mode == "all":
             remaining = self.get_all_neighborhoods()
-        elif label_mode == "unlabeled":
+        elif label_mode == "remaining":
             remaining = self._insufficiently_labeled_neighborhoods().union(self._unlabeled_neighborhoods())
         elif label_mode == "cross-validate":
             remaining = self._insufficiently_labeled_neighborhoods()

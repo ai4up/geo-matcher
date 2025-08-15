@@ -63,7 +63,7 @@ def ensure_session_defaults() -> None:
     """
     Sets labeling mode and username if not already set.
     """
-    session.setdefault("label_mode", "unlabeled")
+    session.setdefault("label_mode", "remaining")
     session.setdefault("username", "unknown")
 
 
@@ -155,7 +155,7 @@ def start_session():
     if not username or not re.match(r"^[a-zA-Z0-9_-]+$", username):
         return "Invalid username", 400
 
-    if label_mode not in ["all", "unlabeled", "cross-validate"]:
+    if label_mode not in ["all", "remaining", "cross-validate", "resolve-inconsistencies"]:
         return "Invalid labeling mode", 400
 
     if dataset not in current_app.state_handler.datasets:

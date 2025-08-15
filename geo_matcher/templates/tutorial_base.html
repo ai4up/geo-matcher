@@ -31,9 +31,10 @@
         </div>
 
         <div class="radio-group">
-            <label><input type="radio" name="label_mode" value="all"> Label everything</label>
-            <label><input type="radio" name="label_mode" value="unlabeled" checked> Label only unlabeled {{ 'building' if g.ft == 'buildings' else 'place' }} pairs</label>
-            <label><input type="radio" name="label_mode" value="cross-validate"> Cross-validate previous annotations</label>
+            <label  title="Label all available pairs"><input type="radio" name="label_mode" value="all"> Label everything</label>
+            <label  title="Label pairs that have not been sufficiently labeled by other users"><input type="radio" name="label_mode" value="remaining" checked> Label remaining</label>
+            <label  title="Cross-validate annotations from other users"><input type="radio" name="label_mode" value="cross-validate"> Cross-validate</label>
+            <label  title="Cross-validate pairs with contradictory annotations from other users"><input type="radio" name="label_mode" value="resolve-inconsistencies"> Resolve inconsistencies</label>
         </div>
 
         <button type="submit" class="submit-button">Get Started!</button>
