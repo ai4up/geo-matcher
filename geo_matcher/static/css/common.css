@@ -232,6 +232,25 @@ html, body {
     background-color: #eaeaea;
 }
 
+.legend-shortcut-hint {
+    position: fixed;
+    bottom: calc(var(--table-height, 0px));
+    left: 0;
+    background: rgba(255, 253, 253, 0.9);
+    color: rgb(94, 94, 94);
+    font-size: 9.5px;
+    padding: 2px 2px;
+    font-family: Arial, sans-serif;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+    z-index: 1001;
+    cursor: pointer;
+}
+
+.legend-shortcut-hint:hover {
+    opacity: 1;
+}
+
 /* ============ Label feedback ============ */
 #label-feedback {
     position: fixed;
