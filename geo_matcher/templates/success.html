@@ -4,20 +4,20 @@
 {% block body_class %}page-centered{% endblock %}
 
 {% block body %}
-  <div class="success-box">
+  <div class="info-box success">
     <h1>🎉 All {{ 'Buildings' if g.ft == 'buildings' else 'Places' }} Labeled!</h1>
     <p>
       Thank you for labeling all currently pending feature pairs.<br />
       Your annotations have been stored successfully.
     </p>
 
-    <div class="success-button-group">
+    <div class="info-button-group">
       <a href="{{ feature_url('labeling.home_pair') }}"
-         class="success-button success-button-secondary">
+         class="info-button">
         Back to Start
       </a>
       <a href="{{ url_for('labeling.download_results') }}"
-         class="success-button success-button-primary">
+         class="info-button success">
         Download Results
       </a>
     </div>

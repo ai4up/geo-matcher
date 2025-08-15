@@ -404,7 +404,7 @@ body:has(.attr-table-container) #map {
     font-family: 'Helvetica', sans-serif;
 }
 
-.attr-table th, 
+.attr-table th,
 .attr-table td {
     border: 1px solid #ddd;
     padding: 8px;
@@ -440,7 +440,7 @@ body:has(.attr-table-container) #map {
     line-height: 1;
 }
 
-/* ============ Success page ============ */
+/* ============ Info page ============ */
 .page-centered {
   background: #f5f9f7;
   font-family: Arial, sans-serif;
@@ -450,7 +450,7 @@ body:has(.attr-table-container) #map {
   align-items: center;
 }
 
-.success-box {
+.info-box {
   background: #fff;
   border-radius: 12px;
   padding: 40px 50px;
@@ -459,49 +459,58 @@ body:has(.attr-table-container) #map {
   max-width: 520px;
 }
 
-.success-box h1 {
-  color: #4CAF50;
-  font-size: 28px;
-  margin-bottom: 16px;
-}
-
-.success-box p {
+.info-box p {
   font-size: 16px;
   color: #444;
   margin-bottom: 28px;
 }
 
-.success-button-group {
+.info-box h1 {
+  color: #54a7d3;
+  font-size: 28px;
+}
+
+.info-box h2 {
+  color: #54a7d3;
+}
+
+.info-box.success h1 {
+  color: #4CAF50;
+}
+
+.info-box.error h1 {
+  color: #e74747;
+}
+
+.info-button-group {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
   gap: 16px;
 }
 
-.success-button {
+.info-button {
   display: inline-block;
   padding: 12px 24px;
   text-decoration: none;
   border-radius: 8px;
   font-weight: bold;
   transition: background-color 0.2s ease;
-}
-
-.success-button-primary {
-  background-color: #4CAF50;
-  color: #fff;
-}
-.success-button-primary:hover {
-  background-color: #43a047;
-}
-
-.success-button-secondary {
   background-color: #eee;
   color: #333;
   border: 1px solid #bbb;
 }
-.success-button-secondary:hover {
+
+.info-button:hover {
   background-color: #ddd;
+}
+
+.info-button.success {
+  background-color: #4CAF50;
+  color: #fff;
+}
+.info-button.success:hover {
+  background-color: #43a047;
 }
 
 /* ============ Split chooser ============ */

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Info{% endblock %}
+{% block body_class %}page-centered{% endblock %}
+
+{% block body %}
+  <div class="info-box">
+    <h2> {{ message }} </h2>
+
+    <div class="info-button-group">
+      <a href="{{ feature_url('labeling.home_pair') }}"
+         class="info-button">
+        Back to Start
+      </a>
+    </div>
+  </div>
+{% endblock %}

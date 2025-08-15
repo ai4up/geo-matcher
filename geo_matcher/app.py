@@ -73,6 +73,18 @@ def handle_missing_dataset(error):
     return redirect("/")
 
 
+@bp.app_errorhandler(404)
+def page_not_found(e):
+    return render_template("error.html", message="Page not found."), 404
+
+
+@bp.app_errorhandler(Exception)
+def handle_exception(e):
+    current_app.logger.error("Unhandled Exception", exc_info=e)
+
+    return render_template("error.html"), 500
+
+
 @bp.url_value_preprocessor
 def pull_ft(endpoint, values):
     # Extract /<ft>/ from the URL and stash on g
@@ -125,7 +137,7 @@ def home_batch() -> Response:
     Display the home page for neighborhood-wise labeling including a tutorial and a username prompt.
     """
     if g.ft != "buildings":
-        return f"Feature type ({g.ft}) not supported", 404
+        return render_template("info.html", message=f"Feature type {g.ft} not (yet) supported."), 404
 
     fp = current_app.maps_dir / "neighborhood_demo.html"
     datasets = current_app.state_handler.datasets
@@ -177,18 +189,19 @@ def show_pair(id_existing: str = None, id_new: str = None) -> Response:
         return render_template("success.html")
 
     if not S.valid_pair(id_existing, id_new):
-        return f"Candidate pair ({id_existing}, {id_new}) not found", 404
+        return render_template("error.html", message=f"Candidate pair ({id_existing}, {id_new}) not found"), 404
 
     if g.ft == "buildings":
         if S.data.feature_type != "buildings":
-            return f"Dataset does not conform to building schema", 404
+            return render_template("error.html", message="Dataset does not conform to building schema"), 404
+
         map_creation_func = map.create_buildings_pair_html
         attr = None
     elif g.ft == "places":
         map_creation_func = map.create_places_pair_html
         attr = S.get_candidate_attr(id_existing, id_new)
     else:
-        return f"Feature type ({g.ft}) not supported", 404
+        return render_template("info.html", message=f"Feature type {g.ft} not (yet) supported."), 404
 
     name = _unq_name(dataset, id_existing, id_new)
     fp = current_app.maps_dir / f"{g.ft}_pair_{name}.html"
@@ -231,13 +244,13 @@ def show_neighborhood(id: Optional[str] = None) -> Response:
         return render_template("success.html")
 
     if id not in S.get_all_neighborhoods():
-        return "Neighborhood not found", 404
+        return render_template("error.html", message="Neighborhood not found"), 404
 
     if g.ft != "buildings":
-        return f"Feature type ({g.ft}) not supported", 404
+        return render_template("info.html", message=f"Feature type {g.ft} not (yet) supported."), 404
 
     if S.data.feature_type != "buildings":
-        return f"Dataset does not conform to building schema", 404
+        return render_template("error.html", message="Dataset does not conform to building schema"), 404
 
     fp = current_app.maps_dir / f"{g.ft}_neighborhood_{dataset}_{id}.html"
     map.create_buildings_neighborhood_html(S, id, fp)
