@@ -27,7 +27,7 @@
                             {% endif %}
                         </td>
                         {% for key in attr[0].keys() %}
-                            <td>{{ row.get(key, '—') }}</td>
+                            <td>{{ row.get(key, '—')|string|urlize(target='_blank', rel='noopener noreferrer') }}</td>
                         {% endfor %}
                     </tr>
                 {% endfor %}
