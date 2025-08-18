@@ -100,7 +100,7 @@ class State:
 
         return pairs
 
-    def add_result(self, id_existing: str, id_new: str, match: str, username: str) -> None:
+    def add_result(self, id_existing: str, id_new: str, match: str, username: str, notes: str) -> None:
         """
         Store a labeling decision for a candidate pair.
         """
@@ -112,6 +112,7 @@ class State:
             "id_existing": id_existing,
             "id_new": id_new,
             "match": match,
+            "notes": notes or None,
             "username": username,
             "time": datetime.now().isoformat(timespec="milliseconds")
         })
@@ -271,6 +272,14 @@ class State:
         label_counts["match"] = label_counts[["yes", "no", "unsure"]].idxmax(axis=1)
         label_counts = label_counts.rename(columns={"yes": "count_match", "no": "count_no_match", "unsure": "count_unsure"})
 
+        notes_agg = (
+            results[labeled_mask]
+            .dropna(subset=["notes"])
+            .groupby(["id_existing", "id_new"])
+            .apply(lambda g: dict(zip(g["username"], g["notes"])))
+        )
+
+        label_counts["notes"] = notes_agg
         label_counts.reset_index().to_csv(path, index=False)
 
     def _load_results(self) -> List[Dict[str, any]]:

@@ -64,13 +64,17 @@
 
     function labelPair(id_existing, id_new, match) {
         const STORE_LABEL_URL = {{ feature_url('labeling.store_label') | tojson }};
+        const notesEl = document.getElementById('label-notes');
+        const notes = notesEl ? notesEl.value.trim() : "";
+
         fetch(STORE_LABEL_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 id_existing: id_existing,
                 id_new: id_new,
-                match: match
+                match: match,
+                notes: notes
             })
         })
         .then(response => response.json())

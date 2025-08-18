@@ -606,3 +606,26 @@ body.page-split {
     border-top: 1px solid rgba(0,0,0,0.06);
   }
 }
+
+/* ============ Notes box ============ */
+.notes-box-container {
+  max-width: 700px;
+  display: flex;
+  flex-direction: column;
+  margin: auto;
+  margin-top: 15px;
+  gap: 6px;
+}
+
+.notes-box {
+  width: 100%;
+  min-height: 48px;
+  max-height: 96px;
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  resize: vertical;
+  overflow: hidden;
+  box-sizing: border-box;
+}

@@ -281,9 +281,10 @@ def store_label() -> Response:
     id_existing = data.get("id_existing")
     id_new = data.get("id_new")
     match = data.get("match")
+    notes = data.get("notes")
 
     S = _get_state()
-    S.add_result(id_existing, id_new, match, username)
+    S.add_result(id_existing, id_new, match, username, notes)
     next_pair = S.get_next_pair(mode, username)
     next_url = url_for("labeling.show_pair", id_existing=next_pair[0], id_new=next_pair[1])
 
