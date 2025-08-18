@@ -44,6 +44,11 @@
     }
 
     function onAttrTableKeydown(e) {
+        if (e.metaKey) return;
+
+        const tag = document.activeElement?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable) return;
+
         const key = e.key?.toLowerCase();
         if (key !== '1' && key !== '2') return;
 

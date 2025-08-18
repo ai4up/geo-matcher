@@ -39,6 +39,12 @@
 
 <script type="text/javascript">
     document.addEventListener('keydown', function(event) {
+        if (event.metaKey) return;
+
+        const ae = document.activeElement;
+        const tag = ae?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || ae?.isContentEditable) return;
+
         event.preventDefault();
         if (event.key === "ArrowUp") {
             window.history.back();
