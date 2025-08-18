@@ -7,6 +7,7 @@ import geopandas as gpd
 
 from geo_matcher.candidate_pairs import CandidatePairs
 
+
 @click.command()
 @click.argument("input_path", type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.option(
@@ -15,7 +16,7 @@ from geo_matcher.candidate_pairs import CandidatePairs
     required=True,
     type=click.Choice(["places", "buildings"]),
     help="Feature type to use.",
-    )
+)
 def main(input_path: Path, feature_type: str) -> None:
     """
     Convert INPUT_PATH (Parquet file with base_* columns)
@@ -31,7 +32,8 @@ def main(input_path: Path, feature_type: str) -> None:
 
     out_zip = input_path.with_suffix(".zip")
     CandidatePairs(gdf_a, gdf_b, df_pairs, feature_type).save(out_zip)
-    click.echo(f"✅ Wrote {out_zip}  (feature_type={feature_type}, A={len(gdf_a):,}, B={len(gdf_b):,}, pairs={len(df_pairs):,})")
+    click.echo(
+        f"✅ Wrote {out_zip}  (feature_type={feature_type}, A={len(gdf_a):,}, B={len(gdf_b):,}, pairs={len(df_pairs):,})")
 
 
 def format_places_data(df: pd.DataFrame) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, pd.DataFrame]:
@@ -57,20 +59,27 @@ def _lat_lng_to_gdf(df: pd.DataFrame) -> gpd.GeoDataFrame:
         crs="EPSG:4326",
     )
 
+
 def _split_df(df: pd.DataFrame) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, pd.DataFrame]:
     data_cols = [c for c in df.columns if f"base_{c}" in df.columns]
     base_cols = [f"base_{c}" for c in data_cols]
 
+    # Pairs
     df_pairs = df[["id_existing", "id_new"]]
 
     # A (baseline) – strip 'base_'
-    df_a = df.set_index("id_existing")[base_cols].rename(columns=lambda x: x[5:])
-    df_a.index.name = None
+    df_a = df.set_index("id_existing")[base_cols] \
+        .rename_axis(None) \
+        .rename(columns=lambda x: x[5:]) \
+        .drop_duplicates()
+
     gdf_a = _lat_lng_to_gdf(df_a)
 
     # B (candidate)
-    df_b = df.set_index("id_new")[data_cols]
-    df_b.index.name = None
+    df_b = df.set_index("id_new")[data_cols] \
+        .rename_axis(None) \
+        .drop_duplicates()
+
     gdf_b = _lat_lng_to_gdf(df_b)
 
     return gdf_a, gdf_b, df_pairs
