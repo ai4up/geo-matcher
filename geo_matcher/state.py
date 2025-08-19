@@ -146,47 +146,28 @@ class State:
         """
         return len(self._next_pairs("remaining", None))
 
-    def get_next_pair(self, label_mode: str, user: str = None) -> Optional[tuple[str, str]]:
+    def get_next_pair(self, label_mode: str, user: str = None, i: int = 0) -> Optional[tuple[str, str]]:
         """
         Return the next candidate pair to be labeled based on the selected labeling mode.
 
         Args:
             label_mode: Determines the labeling strategy. One of:
-                - 'all': Return only pairs that have not yet been labeled by the current user.
-                - 'remaining': Return only pairs that have not been labeled enough times by any user.
-                - 'cross-validate': Return only pairs that have not been labeled enough times or received conflicting labels.
-                - 'resolve-inconsistencies': Return only pairs that have received conflicting labels.
-            user: Optional. The current user's identifier.
+                - 'all': Pairs not yet labeled by this user.
+                - 'remaining': Pairs not yet labeled (enough times) by any user.
+                - 'cross-validate': Pairs labeled by others but not enough times, or with conflicting labels.
+                - 'resolve-inconsistencies': Pairs with conflicting labels.
+            user: The current user's identifier (optional).
+            i: Position of the pair in the candidate list (default: 0).
 
         Returns:
             The next (id_existing, id_new) pair to be labeled, or (None, None) if no suitable pair is found.
         """
         try:
-            return self._next_pairs(label_mode, user)[0]
+            return self._next_pairs(label_mode, user)[i]
 
         except IndexError:
             return None, None
 
-    def get_pair_after_next(self, label_mode: str, user: str = None) -> Optional[tuple[str, str]]:
-        """
-        Return the next but one candidate pair to be labeled based on the selected labeling mode.
-
-        Args:
-            label_mode: Determines the labeling strategy. One of:
-                - 'all': Return only pairs that have not yet been labeled by the current user.
-                - 'remaining': Return only pairs that have not been labeled enough times by any user.
-                - 'cross-validate': Return only pairs that have not been labeled enough times or received conflicting labels.
-                - 'resolve-inconsistencies': Return only pairs that have received conflicting labels.
-            user: Optional. The current user's identifier
-
-        Returns:
-            The next but one (id_existing, id_new) pair to be labeled, or (None, None) if no suitable pair is found.
-        """
-        try:
-            return self._next_pairs(label_mode, user)[1]
-
-        except IndexError:
-            return None, None
 
     def get_all_neighborhoods(self) -> Index:
         """
@@ -194,42 +175,23 @@ class State:
         """
         return Index(self.pairs["id_new"].map(self.data_b["neighborhood"]).unique())
 
-    def get_next_neighborhood(self, label_mode: str, user: str = None) -> Optional[str]:
+    def get_next_neighborhood(self, label_mode: str, user: str = None, i: int = 0) -> Optional[str]:
         """
         Return the next neighborhood to be labeled based on the selected labeling mode.
 
         Args:
             label_mode: Determines the labeling strategy. One of:
-                - 'all': Return a neighborhood that has not yet been labeled by the current user.
-                - 'remaining': Return a neighborhood that has not been labeled enough times by any user.
-                - 'cross-validate': Return a neighborhood that has been labeled, but not enough times.
+                - 'all': Neighborhoods not yet labeled by this user.
+                - 'remaining': Neighborhoods not yet labeled enough times by any user.
+                - 'cross-validate': Neighborhoods labeled by others but not enough times.
             user: Optional. The current user's identifier.
+            i: Position of the neighborhood in the list (default: 0).
 
         Returns:
             The ID of the next neighborhood to be labeled, or None if no suitable neighborhood is found.
         """
         try:
-            return self._next_neighborhoods(label_mode, user)[0]
-
-        except IndexError:
-            return None
-
-    def get_neighborhood_after_next(self, label_mode: str, user: str = None) -> Optional[str]:
-        """
-        Return the next but one neighborhood to be labeled based on the selected labeling mode.
-
-        Args:
-            label_mode: Determines the labeling strategy. One of:
-                - 'all': Return a neighborhood that has not yet been labeled by the current user.
-                - 'remaining': Return a neighborhood that has not been labeled enough times by any user.
-                - 'cross-validate': Return a neighborhood that has been labeled, but not enough times.
-            user: Optional. The current user's identifier.
-
-        Returns:
-            The ID of the next but one neighborhood to be labeled, or None if no suitable neighborhood is found.
-        """
-        try:
-            return self._next_neighborhoods(label_mode, user)[1]
+            return self._next_neighborhoods(label_mode, user)[i]
 
         except IndexError:
             return None

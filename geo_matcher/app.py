@@ -171,8 +171,9 @@ def start_session():
 
 
 @bp.get("/<ft:ft>/show-pair")
+@bp.get("/<ft:ft>/show-pair/<int:idx>")
 @bp.get("/<ft:ft>/show-pair/<id_existing>/<id_new>")
-def show_pair(id_existing: str = None, id_new: str = None) -> Response:
+def show_pair(idx: int = 0, id_existing: str = None, id_new: str = None) -> Response:
     """
     Display a map of a candidate building pair for manual labeling.
     """
@@ -182,7 +183,7 @@ def show_pair(id_existing: str = None, id_new: str = None) -> Response:
     dataset = session.get("dataset")
 
     if id_existing is None or id_new is None:
-        id_existing, id_new = S.get_next_pair(mode, username)
+        id_existing, id_new = S.get_next_pair(mode, username, i=idx)
 
     if id_existing is None:
         S.store_results()
@@ -207,7 +208,7 @@ def show_pair(id_existing: str = None, id_new: str = None) -> Response:
     fp = current_app.maps_dir / f"{g.ft}_pair_{name}.html"
     map_creation_func(S, id_existing, id_new, fp)
 
-    subsequent_pair = S.get_pair_after_next(mode, username)
+    subsequent_pair = S.get_next_pair(mode, username, i=idx+1)
     if subsequent_pair[0]:
         current_app.logger.debug(f"Pre-generating HTML map for candidate pair {subsequent_pair}")
         next_name = _unq_name(dataset, *subsequent_pair)
@@ -255,7 +256,7 @@ def show_neighborhood(id: Optional[str] = None) -> Response:
     fp = current_app.maps_dir / f"{g.ft}_neighborhood_{dataset}_{id}.html"
     map.create_buildings_neighborhood_html(S, id, fp)
 
-    if subsequent_id := S.get_neighborhood_after_next(mode, username):
+    if subsequent_id := S.get_next_neighborhood(mode, username, i=1):
         current_app.logger.debug(f"Pre-generating HTML map for neighborhood {subsequent_id}")
         next_fp = current_app.maps_dir / f"{g.ft}_neighborhood_{dataset}_{subsequent_id}.html"
         executor.submit(map.create_buildings_neighborhood_html, S, subsequent_id, next_fp)
