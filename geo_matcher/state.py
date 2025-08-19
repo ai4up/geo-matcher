@@ -1,6 +1,7 @@
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
+from statistics import mode
 from typing import Callable, Dict, List, Optional, Union
 
 from geopandas import GeoDataFrame
@@ -100,6 +101,15 @@ class State:
 
         return pairs
 
+    def get_label(self, id_existing: str, id_new: str) -> str:
+        labels = [result["match"] for result in self.results if (
+            result["id_existing"] == id_existing
+            and result["id_new"] == id_new
+            and result["match"] != "unsure"
+        )]
+
+        return mode(labels) if labels else "unsure"
+
     def add_result(self, id_existing: str, id_new: str, match: str, username: str, notes: str) -> None:
         """
         Store a labeling decision for a candidate pair.
@@ -156,6 +166,7 @@ class State:
                 - 'remaining': Pairs not yet labeled (enough times) by any user.
                 - 'cross-validate': Pairs labeled by others but not enough times, or with conflicting labels.
                 - 'resolve-inconsistencies': Pairs with conflicting labels.
+                - 'review': Pairs already labeled by any user.
             user: The current user's identifier (optional).
             i: Position of the pair in the candidate list (default: 0).
 
@@ -167,7 +178,6 @@ class State:
 
         except IndexError:
             return None, None
-
 
     def get_all_neighborhoods(self) -> Index:
         """
@@ -270,6 +280,8 @@ class State:
             remaining = self._ambiguously_labeled_pairs().union(self._insufficiently_labeled_pairs(), sort=False)
         elif label_mode == "resolve-inconsistencies":
             remaining = self._ambiguously_labeled_pairs()
+        elif label_mode == "review":
+            return self._labeled_pairs().to_list()
         else:
             raise ValueError(f"Labeling mode '{label_mode}' is not supported.")
 
@@ -335,12 +347,13 @@ class State:
     def _all_pairs(self) -> Index:
         return self._shuffled(pd.MultiIndex.from_frame(self.pairs[["id_existing", "id_new"]]))
 
-    def _labeled_pairs(self, user: str) -> Index:
+    def _labeled_pairs(self, user: str = None) -> Index:
         results = self._unique_results(include_unsure=True)
-        user_results = results[results["username"] == user]
-        user_pairs = pd.MultiIndex.from_frame(user_results[["id_existing", "id_new"]])
+        if user:
+            results = results[results["username"] == user]
+        labeled_pairs = pd.MultiIndex.from_frame(results[["id_existing", "id_new"]])
 
-        return user_pairs
+        return labeled_pairs
 
     def _labeled_neighborhoods(self, user: str) -> Index:
         results = self._unique_results(include_unsure=True)

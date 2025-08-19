@@ -2,16 +2,20 @@
 
 {% block body %}
 <div id="nav-bar">
-    {% set on_neighborhood = request.endpoint.endswith('show_neighborhood') %}
+    {% set on_pair = request.endpoint.endswith('label_pair') %}
+    {% set on_neighborhood = request.endpoint.endswith('label_neighborhood') %}
+    {% set on_review = request.endpoint.endswith('review_pair') %}
+
     <a href="{{ feature_url('labeling.home_batch' if on_neighborhood else 'labeling.home_pair') }}" class="nav-link">Home</a>
     <a href="{{ url_for('labeling.download_results') }}" class="nav-link">Download Results</a>
 
     <span class="nav-divider"></span>
 
-    <a href="{{ feature_url('labeling.show_pair') }}" class="nav-link {{ '' if on_neighborhood else 'active' }}">Pair-wise Labeling</a>
+    <a href="{{ feature_url('labeling.label_pair') }}" class="nav-link {{ 'active' if on_pair else '' }}">Pair-wise Labeling</a>
     {% if g.ft == 'buildings' %}
-        <a href="{{ feature_url('labeling.show_neighborhood') }}" class="nav-link {{ 'active' if on_neighborhood else '' }}">Neighborhood-wise Labeling</a>
+        <a href="{{ feature_url('labeling.label_neighborhood') }}" class="nav-link {{ 'active' if on_neighborhood else '' }}">Neighborhood-wise Labeling</a>
     {% endif %}
+    <a href="{{ feature_url('labeling.review_pair') }}" class="nav-link {{ 'active' if on_review else '' }}">Review</a>
 </div>
 
 <div class="legend-shortcut-hint" onclick="toggleLegend()">

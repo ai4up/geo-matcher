@@ -170,16 +170,27 @@ def start_session():
     return "", 200
 
 
-@bp.get("/<ft:ft>/show-pair")
-@bp.get("/<ft:ft>/show-pair/<int:idx>")
-@bp.get("/<ft:ft>/show-pair/<id_existing>/<id_new>")
-def show_pair(idx: int = 0, id_existing: str = None, id_new: str = None) -> Response:
+@bp.get("/<ft:ft>/label")
+@bp.get("/<ft:ft>/label/<int:idx>")
+@bp.get("/<ft:ft>/label/<id_existing>/<id_new>")
+def label_pair(**kwargs) -> Response:
+    return _render_pair(**kwargs)
+
+
+@bp.get("/<ft:ft>/review")
+@bp.get("/<ft:ft>/review/<int:idx>")
+@bp.get("/<ft:ft>/review/<id_existing>/<id_new>")
+def review_pair(**kwargs) -> Response:
+    return _render_pair(**kwargs, mode="review")
+
+
+def _render_pair(idx: int = 0, id_existing: str = None, id_new: str = None, mode: str = None) -> Response:
     """
     Display a map of a candidate building pair for manual labeling.
     """
     S = _get_state()
     username = session.get("username")
-    mode = session.get("label_mode")
+    mode = mode or session.get("label_mode")
     dataset = session.get("dataset")
 
     if id_existing is None or id_new is None:
@@ -215,6 +226,18 @@ def show_pair(idx: int = 0, id_existing: str = None, id_new: str = None) -> Resp
         next_fp = current_app.maps_dir / f"{g.ft}_pair_{next_name}.html"
         executor.submit(map_creation_func, S, *subsequent_pair, next_fp)
 
+    if mode == "review":
+        label = S.get_label(id_existing, id_new)
+        return render_template(
+            "labeling_review_pair.html",
+            idx=idx,
+            label=label,
+            attr=attr,
+            map_file=fp.name,
+            user_stats=S.get_top_labelers(),
+            n_left=S.get_n_left(),
+        ), 200
+
     return render_template(
         "labeling_show_pair.html",
         id_existing=id_existing,
@@ -226,9 +249,9 @@ def show_pair(idx: int = 0, id_existing: str = None, id_new: str = None) -> Resp
     ), 200
 
 
-@bp.get("/<ft:ft>/show-neighborhood")
-@bp.get("/<ft:ft>/show-neighborhood/<id>")
-def show_neighborhood(id: Optional[str] = None) -> Response:
+@bp.get("/<ft:ft>/label-neighborhood")
+@bp.get("/<ft:ft>/label-neighborhood/<id>")
+def label_neighborhood(id: Optional[str] = None) -> Response:
     """
     Display a map of all candidate building pairs in a neighborhood for bulk labeling.
     """
@@ -287,7 +310,7 @@ def store_label() -> Response:
     S = _get_state()
     S.add_result(id_existing, id_new, match, username, notes)
     next_pair = S.get_next_pair(mode, username)
-    next_url = url_for("labeling.show_pair", id_existing=next_pair[0], id_new=next_pair[1])
+    next_url = url_for("labeling.label_pair", id_existing=next_pair[0], id_new=next_pair[1])
 
     return jsonify(status="ok", next_url=next_url), 200
 
@@ -322,7 +345,7 @@ def store_neighborhood() -> Response:
     S = _get_state()
     S.add_bulk_results(results)
     next_id = S.get_next_neighborhood(mode, username)
-    next_url = url_for("labeling.show_neighborhood", id=next_id)
+    next_url = url_for("labeling.label_neighborhood", id=next_id)
 
     return jsonify({"status": "ok", "next_url": next_url}), 200
 

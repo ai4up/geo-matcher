@@ -52,10 +52,10 @@
             displayText('unsure');
             labelPair('{{ id_existing }}', '{{ id_new }}', 'unsure');
         } else if (event.key === "ArrowRight") {
-            displayText('match');
+            displayText('yes');
             labelPair('{{ id_existing }}', '{{ id_new }}', 'yes');
         } else if (event.key === "ArrowLeft") {
-            displayText('nomatch');
+            displayText('no');
             labelPair('{{ id_existing }}', '{{ id_new }}', 'no');
         } else if (event.key === "?") {
             toggleLegend();
@@ -85,9 +85,9 @@
 
     function displayText(label) {
         const feedback = document.getElementById('label-feedback');
-        feedback.className = label; // 'match', 'nomatch', 'unsure'
-        feedback.textContent = label === 'match' ? 'Match' :
-                                label === 'nomatch' ? 'No Match' : 'Unsure';
+        feedback.className = label;
+        feedback.textContent = label === 'yes' ? 'Match' :
+                                label === 'no' ? 'No Match' : 'Unsure';
 
         feedback.style.opacity = '1';
 

@@ -266,11 +266,11 @@ html, body {
     pointer-events: none;
 }
 
-#label-feedback.match {
+#label-feedback.yes {
     color: #4CAF50;
 }
 
-#label-feedback.nomatch {
+#label-feedback.no {
     color: #ff4d4d;
 }
 

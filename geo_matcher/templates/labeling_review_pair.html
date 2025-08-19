@@ -1,0 +1,62 @@
+{% extends "labeling_base.html" %}
+
+{% block title %}Review Pairs{% endblock %}
+
+{% block body %}
+{{ super() }}
+
+<div id="buttons">
+    <button class="btn btn-unsure" onclick="window.history.back()">Previous</button>
+    <button class="btn btn-match" onclick="nextPair()">Next</button>
+</div>
+
+<div id="legend">
+    <h4>Keyboard Shortcuts</h4>
+    <ul>
+        <li><kbd>&uarr;</kbd> Back</li>
+        <li><kbd>&darr;</kbd> Next</li>
+        {% if attr and attr|length > 0 %}
+        <li><kbd>1,2</kbd> Search Google Maps</li>
+        {% endif %}
+        <li><kbd>?</kbd> Toggle Legend</li>
+    </ul>
+    <button onclick="toggleLegend()">Close</button>
+</div>
+
+<div id="label-feedback" class="{{ label }}" style="opacity: 1;">
+    {{ {"yes": "Match", "no": "No Match", "unsure": "Unsure"}.get(label) }}
+</div>
+
+{% if attr and attr|length > 0 %}
+    {% include "attr_table.html" %}
+{% endif %}
+
+{% endblock %}}
+
+{% block scripts %}
+{{ super() }}
+
+<script type="text/javascript">
+    document.addEventListener('keydown', function(event) {
+        if (event.metaKey) return;
+
+        const ae = document.activeElement;
+        const tag = ae?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || ae?.isContentEditable) return;
+
+        event.preventDefault();
+        if (event.key === "ArrowUp") {
+            window.history.back();
+        } else if (event.key === "ArrowDown") {
+            nextPair();
+        } else if (event.key === "?") {
+            toggleLegend();
+        }
+    });
+
+    function nextPair() {
+        window.location.href = {{ feature_url('labeling.review_pair', idx=idx+1) | tojson }};
+    }
+
+</script>
+{% endblock %}

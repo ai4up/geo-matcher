@@ -5,7 +5,8 @@
 
 {% block body %}
   <div class="info-box success">
-    <h1>🎉 All {{ 'Buildings' if g.ft == 'buildings' else 'Places' }} Labeled!</h1>
+    {% set on_review = request.endpoint.endswith('review_pair') %}
+    <h1>🎉 All {{ 'Buildings' if g.ft == 'buildings' else 'Places' }} {{ 'Reviewed' if on_review else 'Labeled' }}!</h1>
     <p>
       Thank you for labeling all currently pending feature pairs.<br />
       Your annotations have been stored successfully.
