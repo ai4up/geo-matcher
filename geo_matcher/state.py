@@ -102,6 +102,9 @@ class State:
         return pairs
 
     def get_label(self, id_existing: str, id_new: str) -> str:
+        """
+        Return the majority label for a candidate pair, or "unsure" if not yet labeled; ties return first.
+        """
         labels = [result["match"] for result in self.results if (
             result["id_existing"] == id_existing
             and result["id_new"] == id_new
