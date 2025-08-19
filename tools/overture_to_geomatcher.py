@@ -54,7 +54,7 @@ def _lat_lng_to_gdf(df: pd.DataFrame) -> gpd.GeoDataFrame:
         raise click.UsageError(f"Missing required columns: {sorted(missing)}")
 
     return gpd.GeoDataFrame(
-        df,
+        df.drop(columns=["longitude", "latitude"]),
         geometry=gpd.points_from_xy(df["longitude"], df["latitude"]),
         crs="EPSG:4326",
     )
