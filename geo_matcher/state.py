@@ -254,7 +254,7 @@ class State:
             .apply(lambda g: dict(zip(g["username"], g["notes"])))
         )
 
-        label_counts["notes"] = notes_agg
+        label_counts["notes"] = notes_agg if not notes_agg.empty else None
         label_counts.reset_index().to_csv(path, index=False)
 
     def _load_results(self) -> List[Dict[str, any]]:
