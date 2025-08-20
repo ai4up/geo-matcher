@@ -263,7 +263,6 @@ html, body {
     z-index: 2000;
     opacity: 0;
     transition: opacity 0.2s ease;
-    pointer-events: none;
 }
 
 #label-feedback.yes {
@@ -276,6 +275,23 @@ html, body {
 
 #label-feedback.unsure {
     color: #f0ad4e;
+}
+
+#label-feedback.show {
+    opacity: 1;
+}
+
+/* ============ Inline Feedback ============ */
+
+.inline-feedback {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  font-size: 10px;
+  color: #636f6b;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
 /* ============ Scoreboard ============ */
@@ -365,11 +381,12 @@ html, body {
 /* ============ Tooltips ============ */
 .tooltip-container {
     position: relative;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: help;
-    height: 100%;
+    height: auto;
+    gap: 6px;
 }
 
 .custom-tooltip {
@@ -380,7 +397,7 @@ html, body {
     border-radius: 6px;
     padding: 3px 8px;
     position: absolute;
-    z-index: 1001;
+    z-index: 2002;
     bottom: 125%;
     left: 50%;
     transform: translateX(-50%);
@@ -393,6 +410,10 @@ html, body {
 .tooltip-container:hover .custom-tooltip {
     visibility: visible;
     opacity: 1;
+}
+
+.notes-tooltip {
+    font-size: 14px;
 }
 
 /* ============ Attributes table ============ */

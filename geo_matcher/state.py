@@ -113,6 +113,21 @@ class State:
 
         return mode(labels) if labels else "unsure"
 
+    def get_labeling_details(self, id_existing: str, id_new: str) -> tuple[dict, dict]:
+        """
+        Return the majority label, label counts, and notes for a candidate pair.
+        """
+        labels = [result for result in self.results if (
+            result["id_existing"] == id_existing
+            and result["id_new"] == id_new
+        )]
+
+        counts = Counter([label["match"] for label in labels])
+        majority_label = counts.most_common(1)[0][0] if labels else "unsure"
+        notes = {label["username"]: label["notes"] for label in labels if label["notes"]}
+
+        return majority_label, counts, notes
+
     def add_result(self, id_existing: str, id_new: str, match: str, username: str, notes: str) -> None:
         """
         Store a labeling decision for a candidate pair.

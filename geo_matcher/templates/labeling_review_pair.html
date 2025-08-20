@@ -24,15 +24,23 @@
     <button onclick="toggleLegend()">Close</button>
 </div>
 
-<div id="label-feedback" class="{{ label }}" style="opacity: 1;">
-    {{ {"yes": "Match", "no": "No Match", "unsure": "Unsure"}.get(label) }}
-</div>
+<span id="label-feedback" class="show {{ label_code }}">
+    {{ label_text }}
+    {% if label_notes %}
+        <span class="tooltip-container">
+            <span aria-hidden="true" onclick="copyNotes(this)">📄</span>
+            <span class="custom-tooltip notes-tooltip">{{ label_notes|e }}</span>
+        </span>
+    {% endif %}
+</span>
+
+
 
 {% if attr and attr|length > 0 %}
     {% include "attr_table.html" %}
 {% endif %}
 
-{% endblock %}}
+{% endblock %}
 
 {% block scripts %}
 {{ super() }}
@@ -67,5 +75,20 @@
         window.location.href = {{ feature_url('labeling.review_pair', idx=idx+1) | tojson }};
     }
 
+    function copyNotes(el) {
+        const text = el.parentElement.querySelector(".notes-tooltip")?.textContent;
+        if (!text) return;
+
+        navigator.clipboard.writeText(text).then(() => {
+            const msg = document.createElement("span");
+            msg.className = "inline-feedback";
+            msg.textContent = "Copied!";
+            el.parentElement.style.position = "relative";
+            el.parentElement.appendChild(msg);
+
+            requestAnimationFrame(() => msg.style.opacity = "1");
+            setTimeout(() => { msg.style.opacity = "0"; msg.remove(); }, 1000);
+        });
+    }
 </script>
 {% endblock %}

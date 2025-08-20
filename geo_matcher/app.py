@@ -227,11 +227,13 @@ def _render_pair(idx: int = 0, id_existing: str = None, id_new: str = None, mode
         executor.submit(map_creation_func, S, *subsequent_pair, next_fp)
 
     if mode == "review":
-        label = S.get_label(id_existing, id_new)
+        label, counts, notes = S.get_labeling_details(id_existing, id_new)
         return render_template(
             "labeling_review_pair.html",
             idx=idx,
-            label=label,
+            label_code=label,
+            label_text=_summarize_labels(counts),
+            label_notes=_format_notes(notes),
             attr=attr,
             map_file=fp.name,
             user_stats=S.get_top_labelers(),
@@ -403,3 +405,27 @@ def _update_matches(candidate_pairs: DataFrame, matches: List[Dict], label: str,
 
 def _unq_name(dataset: str, id_existing: str, id_new: str) -> str:
     return f"{dataset}_{id_existing}_{id_new}"
+
+
+def _summarize_labels(counts: dict) -> str:
+    """
+    Summarize the label counts into a human-readable string.
+    """
+    yes = counts.get("yes", 0)
+    no = counts.get("no", 0)
+
+    if yes > no:
+        majority = "Match"
+    elif no > yes:
+        majority = "No Match"
+    else:
+        majority = "Unsure"
+
+    return f"{majority} ({yes}:{no})"
+
+
+def _format_notes(notes: dict) -> str:
+    """
+    Format labeling notes for display.
+    """
+    return "\n".join(f"{u}: {n}" for u, n in notes.items())
