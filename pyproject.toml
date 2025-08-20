@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "geo_matcher"}]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 flask = "^3.1"
 flask-executor = "^1.0"
 folium = "^0.19"
