@@ -259,7 +259,8 @@ class State:
 
     def _load_results(self) -> List[Dict[str, any]]:
         if self.results_path.exists():
-            return pd.read_csv(self.results_path).to_dict("records")
+            df = pd.read_csv(self.results_path)
+            return df.where(pd.notna(df), None).to_dict("records")
 
         self.results_path.parent.mkdir(parents=True, exist_ok=True)
         return []
