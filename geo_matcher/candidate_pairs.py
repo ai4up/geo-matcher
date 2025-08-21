@@ -87,6 +87,10 @@ class CandidatePairs:
         """
         Estimate the matching between buildings in dataset_a and dataset_b.
         """
+        if self.feature_type != "buildings":
+            logger.warning("Preliminary matching estimation is only supported for buildings. Skipping.")
+            return
+
         if "match" in self.pairs.columns:
             logger.info("Matching has already been performed.")
             return
