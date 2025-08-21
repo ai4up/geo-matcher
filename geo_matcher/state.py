@@ -77,6 +77,15 @@ class State:
         """
         return [self.data_a.loc[id_existing].drop(["geometry", "neighborhood"]).to_dict(), self.data_b.loc[id_new].drop(["geometry", "neighborhood"]).to_dict()]
 
+    def get_candidate_ref_label(self, id_existing: str, id_new: str) -> Series:
+        """
+        Return the reference label of a candidate pair (if available).
+        """
+        if "match" not in self.data.pairs.columns:
+            return None
+
+        return self.data.pairs.loc[(self.data.pairs["id_existing"] == id_existing) & (self.data.pairs["id_new"] == id_new), "match"].squeeze()
+
     def get_candidate_pair(self, id_existing: str, id_new: str) -> Series:
         """
         Return a candidate pair including the geometries of both features.
@@ -132,8 +141,8 @@ class State:
         """
         Store a labeling decision for a candidate pair.
         """
-        if match not in ["yes", "no", "unsure"]:
-            raise ValueError(f"Match label '{match}' must be one of: 'yes', 'no', 'unsure'.")
+        if match not in ["yes", "no", "unsure", "training"]:
+            raise ValueError(f"Match label '{match}' must be one of: 'yes', 'no', 'unsure', 'training'.")
 
         self.results.append({
             "neighborhood": None,
@@ -180,7 +189,7 @@ class State:
 
         Args:
             label_mode: Determines the labeling strategy. One of:
-                - 'all': Pairs not yet labeled by this user.
+                - 'all'/'training': Pairs not yet labeled by this user.
                 - 'remaining': Pairs not yet labeled (enough times) by any user.
                 - 'cross-validate': Pairs labeled by others but not enough times, or with conflicting labels.
                 - 'resolve-inconsistencies': Pairs with conflicting labels.
@@ -209,7 +218,7 @@ class State:
 
         Args:
             label_mode: Determines the labeling strategy. One of:
-                - 'all': Neighborhoods not yet labeled by this user.
+                - 'all'/'training': Neighborhoods not yet labeled by this user.
                 - 'remaining': Neighborhoods not yet labeled enough times by any user.
                 - 'cross-validate': Neighborhoods labeled by others but not enough times.
             user: Optional. The current user's identifier.
@@ -261,10 +270,10 @@ class State:
             .groupby(["id_existing", "id_new"])["match"]
             .value_counts()
             .unstack(fill_value=0)
-            .reindex(columns=["yes", "no", "unsure"], fill_value=0)
+            .reindex(columns=["yes", "no", "unsure", "training"], fill_value=0)
         )
         label_counts["match"] = self._majority_vote(label_counts[["yes", "no"]])
-        label_counts = label_counts.rename(columns={"yes": "count_match", "no": "count_no_match", "unsure": "count_unsure"})
+        label_counts = label_counts.rename(columns={"yes": "count_match", "no": "count_no_match", "unsure": "count_unsure", "training": "count_training"})
 
         notes_agg = (
             results
@@ -290,7 +299,7 @@ class State:
 
         results = pd.DataFrame(self.results).drop_duplicates(subset=["id_existing", "id_new", "username"], keep="last")
         if not include_unsure:
-            results = results[results["match"] != "unsure"]
+            results = results[~results["match"].isin(["unsure", "training"])]
 
         return results
 
@@ -306,7 +315,7 @@ class State:
         return label_counts[["yes", "no"]].idxmax(axis=1)
 
     def _next_pairs(self, label_mode: str, user: str = None) -> List[Optional[tuple[str, str]]]:
-        if label_mode == "all":
+        if label_mode == "all" or label_mode == "training":
             remaining = self._all_pairs()
         elif label_mode == "remaining":
             remaining = self._ambiguously_labeled_pairs().union(self._insufficiently_labeled_pairs(), sort=False).union(self._unlabeled_pairs(), sort=False)
@@ -324,7 +333,7 @@ class State:
         return remaining
 
     def _next_neighborhoods(self, label_mode: str, user: str = None) -> List[Optional[str]]:
-        if label_mode == "all":
+        if label_mode == "all" or label_mode == "training":
             remaining = self.get_all_neighborhoods()
         elif label_mode == "remaining":
             remaining = self._insufficiently_labeled_neighborhoods().union(self._unlabeled_neighborhoods())

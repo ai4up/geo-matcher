@@ -31,10 +31,11 @@
         </div>
 
         <div class="radio-group">
-            <label  title="Label all available pairs"><input type="radio" name="label_mode" value="all"> Label everything</label>
-            <label  title="Label pairs that have not been sufficiently labeled by other users"><input type="radio" name="label_mode" value="remaining" checked> Label remaining</label>
-            <label  title="Cross-validate annotations from other users"><input type="radio" name="label_mode" value="cross-validate"> Cross-validate</label>
-            <label  title="Cross-validate pairs with contradictory annotations from other users"><input type="radio" name="label_mode" value="resolve-inconsistencies"> Resolve inconsistencies</label>
+            <label title="Practice labeling on all pairs without saving, showing correct labels for mistakes"><input type="radio" name="label_mode" value="training"> Training </label>
+            <label title="Label all available pairs"><input type="radio" name="label_mode" value="all"> Label everything</label>
+            <label title="Label pairs that have not been sufficiently labeled by other users"><input type="radio" name="label_mode" value="remaining" checked> Label remaining</label>
+            <label title="Cross-validate annotations from other users"><input type="radio" name="label_mode" value="cross-validate"> Cross-validate</label>
+            <label title="Cross-validate pairs with contradictory annotations from other users"><input type="radio" name="label_mode" value="resolve-inconsistencies"> Resolve inconsistencies</label>
         </div>
 
         <button type="submit" class="submit-button">Get Started!</button>

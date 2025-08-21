@@ -28,6 +28,18 @@
 
 <div id="label-feedback"></div>
 
+<div id="mismatch-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="mismatch-title">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content" role="document">
+        <h3 id="mismatch-title">Label conflict</h3>
+        <p id="mismatch-message"></p>
+        <div class="modal-actions">
+            <button class="modal-btn btn-revisit">Revisit</button>
+            <button class="modal-btn btn-continue">Continue</button>
+        </div>
+    </div>
+</div>
+
 {% if attr and attr|length > 0 %}
     {% include "attr_table.html" %}
 {% endif %}
@@ -62,10 +74,55 @@
         }
     });
 
-    function labelPair(id_existing, id_new, match) {
+    function confirmMismatch(message) {
+        return new Promise((resolve) => {
+        const modal = document.getElementById('mismatch-modal');
+        const msg = document.getElementById('mismatch-message');
+        msg.textContent = message;
+        modal.classList.remove('hidden');
+
+        const close = (result) => {
+            modal.classList.add('hidden');
+            cleanup();
+            resolve(result);
+        };
+
+        const onEsc = (e) => { if (e.key === 'Escape') close(false); };
+        const cleanup = () => {
+            btnContinue.removeEventListener('click', cont);
+            btnRevisit.removeEventListener('click', rev);
+            backdrop.removeEventListener('click', rev);
+            document.removeEventListener('keydown', onEsc);
+        };
+
+        const btnContinue = modal.querySelector('.btn-continue');
+        const btnRevisit  = modal.querySelector('.btn-revisit');
+        const backdrop    = modal.querySelector('.modal-backdrop');
+
+        const cont = () => close(true);
+        const rev  = () => close(false);
+
+        btnContinue.addEventListener('click', cont, { once: true });
+        btnRevisit.addEventListener('click', rev, { once: true });
+        backdrop.addEventListener('click', rev, { once: true });
+        document.addEventListener('keydown', onEsc);
+
+        btnContinue.focus();
+        });
+    }
+
+    async function labelPair(id_existing, id_new, match) {
         const STORE_LABEL_URL = {{ feature_url('labeling.store_label') | tojson }};
         const notesEl = document.getElementById('label-notes');
         const notes = notesEl ? notesEl.value.trim() : "";
+
+        {% if label is defined and label is not none %}
+            const trueLabel = '{{ "yes" if label else "no" }}';
+            if (match !== trueLabel) {
+                if (!await confirmMismatch("Correct label is {{ 'Match' if label else 'No Match' }}.")) return;
+            }
+            match = 'training'
+        {% endif %}
 
         fetch(STORE_LABEL_URL, {
             method: 'POST',

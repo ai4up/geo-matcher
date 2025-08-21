@@ -155,7 +155,7 @@ def start_session():
     if not username or not re.match(r"^[a-zA-Z0-9_-]+$", username):
         return "Invalid username", 400
 
-    if label_mode not in ["all", "remaining", "cross-validate", "resolve-inconsistencies"]:
+    if label_mode not in ["training", "all", "remaining", "cross-validate", "resolve-inconsistencies"]:
         return "Invalid labeling mode", 400
 
     if dataset not in current_app.state_handler.datasets:
@@ -240,10 +240,12 @@ def _render_pair(idx: int = 0, id_existing: str = None, id_new: str = None, mode
             n_left=S.get_n_left(mode, username),
         ), 200
 
+    label = S.get_candidate_ref_label(id_existing, id_new)
     return render_template(
         "labeling_show_pair.html",
         id_existing=id_existing,
         id_new=id_new,
+        label=label if mode == "training" else None,
         attr=attr,
         map_file=fp.name,
         user_stats=S.get_top_labelers(),
