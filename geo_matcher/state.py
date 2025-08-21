@@ -168,11 +168,11 @@ class State:
         """
         return id_existing in self.pairs["id_existing"].values and id_new in self.pairs["id_new"].values
 
-    def get_n_left(self) -> int:
+    def get_n_left(self, label_mode: str, user: str = None) -> int:
         """
         Return the number of candidate pairs left to label.
         """
-        return len(self._next_pairs("remaining", None))
+        return len(self._next_pairs(label_mode, user))
 
     def get_next_pair(self, label_mode: str, user: str = None, i: int = 0) -> Optional[tuple[str, str]]:
         """

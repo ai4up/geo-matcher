@@ -237,7 +237,7 @@ def _render_pair(idx: int = 0, id_existing: str = None, id_new: str = None, mode
             attr=attr,
             map_file=fp.name,
             user_stats=S.get_top_labelers(),
-            n_left=S.get_n_left(),
+            n_left=S.get_n_left(mode, username),
         ), 200
 
     return render_template(
@@ -247,7 +247,7 @@ def _render_pair(idx: int = 0, id_existing: str = None, id_new: str = None, mode
         attr=attr,
         map_file=fp.name,
         user_stats=S.get_top_labelers(),
-        n_left=S.get_n_left(),
+        n_left=S.get_n_left(mode, username),
     ), 200
 
 
@@ -291,7 +291,7 @@ def label_neighborhood(id: Optional[str] = None) -> Response:
         id=id,
         map_file=fp.name,
         user_stats=S.get_top_labelers(),
-        n_left=S.get_n_left(),
+        n_left=S.get_n_left(mode, username),
     ), 200
 
 
