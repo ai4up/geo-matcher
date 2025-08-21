@@ -245,25 +245,29 @@ class State:
 
     def store_aggregated_results(self, path: str) -> None:
         """
-        Summarize sufficiently labeled pairs with majority vote and label count, then write to CSV.
+        Aggregate pair labels and export results to CSV.
+
+        For each (id_existing, id_new) pair:
+        - Count the number of 'yes', 'no', and 'unsure' labels.
+        - Assign a majority-vote label ('yes' or 'no') if there are
+          enough annotations (≥ annotation_redundancy + 1) and the
+          difference between 'yes' and 'no' votes meets the
+          consensus_margin. Otherwise, the label is NaN.
+        - Collect annotator notes (if any) keyed by username.
         """
         results = self._unique_results(include_unsure=True)
-        unlabeled = self._next_pairs("remaining")
-        labeled_mask = ~results[["id_existing", "id_new"]].apply(tuple, axis=1).isin(unlabeled)
-
         label_counts = (
-            results[labeled_mask]
+            results
             .groupby(["id_existing", "id_new"])["match"]
             .value_counts()
             .unstack(fill_value=0)
             .reindex(columns=["yes", "no", "unsure"], fill_value=0)
         )
-
-        label_counts["match"] = label_counts[["yes", "no", "unsure"]].idxmax(axis=1)
+        label_counts["match"] = self._majority_vote(label_counts[["yes", "no"]])
         label_counts = label_counts.rename(columns={"yes": "count_match", "no": "count_no_match", "unsure": "count_unsure"})
 
         notes_agg = (
-            results[labeled_mask]
+            results
             .dropna(subset=["notes"])
             .groupby(["id_existing", "id_new"])
             .apply(lambda g: dict(zip(g["username"], g["notes"])))
@@ -289,6 +293,17 @@ class State:
             results = results[results["match"] != "unsure"]
 
         return results
+
+    def _majority_vote(self, label_counts: DataFrame) -> DataFrame:
+        """
+        Compute majority vote labels, filtering out pairs that do not meet
+        the redundancy or consensus margin requirements.
+        """
+        sufficient_annotations = label_counts[["yes", "no"]].sum(axis=1) >= self.annotation_redundancy + 1
+        sufficient_margin = (label_counts["yes"] - label_counts["no"]).abs() >= self.consensus_margin
+        label_counts = label_counts[sufficient_annotations & sufficient_margin]
+
+        return label_counts[["yes", "no"]].idxmax(axis=1)
 
     def _next_pairs(self, label_mode: str, user: str = None) -> List[Optional[tuple[str, str]]]:
         if label_mode == "all":
