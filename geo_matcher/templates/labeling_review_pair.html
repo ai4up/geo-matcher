@@ -64,15 +64,15 @@
     });
 
     function relabel() {
-        window.location.href = {{ feature_url('labeling.label_pair', idx=idx) | tojson }};
+        window.location.href = {{ feature_url('labeling.pair', action='label', idx=idx) | tojson }};
     }
 
     function previousPair() {
-        window.location.href = {{ feature_url('labeling.review_pair', idx=idx-1) | tojson }};
+        window.location.href = {{ feature_url('labeling.pair', action='review', idx=idx-1) | tojson }};
     }
 
     function nextPair() {
-        window.location.href = {{ feature_url('labeling.review_pair', idx=idx+1) | tojson }};
+        window.location.href = {{ feature_url('labeling.pair', action='review', idx=idx+1) | tojson }};
     }
 
     function copyNotes(el) {

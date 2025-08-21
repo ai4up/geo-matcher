@@ -5,7 +5,9 @@
 
 {% block body %}
   <div class="info-box success">
-    {% set on_review = request.endpoint.endswith('review_pair') %}
+    {% set action = (request.view_args or {}).get('action') %}
+    {% set on_review = request.endpoint == 'labeling.pair' and action == 'review' %}
+
     <h1>🎉 All {{ 'Buildings' if g.ft == 'buildings' else 'Places' }} {{ 'Reviewed' if on_review else 'Labeled' }}!</h1>
     <p>
       Thank you for labeling all currently pending feature pairs.<br />
