@@ -166,7 +166,7 @@ class State:
         """
         Check whether a given ID pair exists in the candidate pairs.
         """
-        return id_existing in self.pairs["id_existing"].values and id_new in self.pairs["id_new"].values
+        return ((self.pairs["id_existing"] == id_existing) & (self.pairs["id_new"] == id_new)).any()
 
     def get_n_left(self, label_mode: str, user: str = None) -> int:
         """
