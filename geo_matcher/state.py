@@ -370,7 +370,7 @@ class State:
         results = self._unique_results(include_unsure=True)
         if user:
             results = results[results["username"] == user]
-        labeled_pairs = pd.MultiIndex.from_frame(results[["id_existing", "id_new"]])
+        labeled_pairs = pd.MultiIndex.from_frame(results[["id_existing", "id_new"]]).unique()
 
         return labeled_pairs
 
