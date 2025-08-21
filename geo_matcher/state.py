@@ -83,6 +83,15 @@ class State:
         """
         return self.pairs[(self.pairs["id_existing"] == id_existing) & (self.pairs["id_new"] == id_new)].index[0]
 
+    def get_candidate_ref_label(self, id_existing: str, id_new: str) -> Series:
+        """
+        Return the reference label of a candidate pair (if available).
+        """
+        if "match" not in self.data.pairs.columns:
+            return None
+
+        return self.data.pairs.loc[(self.data.pairs["id_existing"] == id_existing) & (self.data.pairs["id_new"] == id_new), "match"].squeeze()
+
     def get_candidate_pair(self, id_existing: str, id_new: str) -> Series:
         """
         Return a candidate pair including the geometries of both features.
@@ -227,7 +236,7 @@ class State:
 
         Args:
             label_mode: Determines the labeling strategy. One of:
-                - 'all': Neighborhoods not yet labeled by this user.
+                - 'all'/'training': Neighborhoods not yet labeled by this user.
                 - 'remaining': Neighborhoods not yet labeled enough times by any user.
                 - 'cross-validate': Neighborhoods labeled by others but not enough times.
             user: Optional. The current user's identifier.
@@ -342,7 +351,7 @@ class State:
         return remaining
 
     def _next_neighborhoods(self, label_mode: str, user: str = None) -> List[Optional[str]]:
-        if label_mode == "all":
+        if label_mode == "all" or label_mode == "training":
             remaining = self.get_all_neighborhoods()
         elif label_mode == "remaining":
             remaining = self._insufficiently_labeled_neighborhoods().union(self._unlabeled_neighborhoods())
