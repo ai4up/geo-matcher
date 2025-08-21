@@ -170,43 +170,48 @@ def start_session():
     return "", 200
 
 
-@bp.get("/<ft:ft>/label")
-@bp.get("/<ft:ft>/label/<int:idx>")
-@bp.get("/<ft:ft>/label/<id_existing>/<id_new>")
-def label_pair(**kwargs) -> Response:
-    return _render_pair(**kwargs)
+@bp.get("/<ft:ft>/<any(label,review):action>")
+@bp.get("/<ft:ft>/<any(label,review):action>/<int:idx>")
+@bp.get("/<ft:ft>/<any(label,review):action>/<id_existing>/<id_new>")
+def pair(action, idx=None, id_existing=None, id_new=None):
+    if id_existing is None or id_new is None:
+        return _resolve_pair(action, idx)
+
+    return _render_pair(id_existing, id_new, action == "review")
 
 
-@bp.get("/<ft:ft>/review")
-@bp.get("/<ft:ft>/review/<int:idx>")
-@bp.get("/<ft:ft>/review/<id_existing>/<id_new>")
-def review_pair(**kwargs) -> Response:
-    return _render_pair(**kwargs, mode="review")
+def _resolve_pair(action: str = None, idx: int = 0) -> Response:
+    S = _get_state()
+    username = session.get("username")
+    mode = session.get("label_mode")
+
+    if idx:
+        eid, nid = S.get_pair_by_index(idx)
+        if eid is None:
+            return render_template("error.html", message="Candidate pair not found"), 404
+
+    else:
+        eid, nid = S.get_next_pair(mode, username)
+        if eid is None:
+            S.store_results()
+            return render_template("success.html")
+
+    return redirect(url_for("labeling.pair", action=action, id_existing=eid, id_new=nid), code=303)
 
 
-def _render_pair(idx: int = 0, id_existing: str = None, id_new: str = None, mode: str = None) -> Response:
+def _render_pair(id_existing: str, id_new: str, review: bool = False) -> Response:
     """
     Display a map of a candidate building pair for manual labeling.
     """
     S = _get_state()
-    username = session.get("username")
-    mode = mode or session.get("label_mode")
-    dataset = session.get("dataset")
 
-    if id_existing is None or id_new is None:
-        id_existing, id_new = S.get_next_pair(mode, username, i=idx)
-
-    if id_existing is None:
-        S.store_results()
-        return render_template("success.html")
+    if g.ft != S.data.feature_type:
+            return render_template("error.html", message=f"Dataset does not conform to {g.ft} schema"), 404
 
     if not S.valid_pair(id_existing, id_new):
         return render_template("error.html", message=f"Candidate pair ({id_existing}, {id_new}) not found"), 404
 
     if g.ft == "buildings":
-        if S.data.feature_type != "buildings":
-            return render_template("error.html", message="Dataset does not conform to building schema"), 404
-
         map_creation_func = map.create_buildings_pair_html
         attr = None
     elif g.ft == "places":
@@ -215,11 +220,15 @@ def _render_pair(idx: int = 0, id_existing: str = None, id_new: str = None, mode
     else:
         return render_template("info.html", message=f"Not (yet) supported for {g.ft}."), 404
 
+    username = session.get("username")
+    mode = "review" if review else session.get("label_mode")
+    dataset = session.get("dataset")
+
     name = _unq_name(dataset, id_existing, id_new)
     fp = current_app.maps_dir / f"{g.ft}_pair_{name}.html"
     map_creation_func(S, id_existing, id_new, fp)
 
-    subsequent_pair = S.get_next_pair(mode, username, i=idx+1)
+    subsequent_pair = S.get_next_pair(mode, username, i=1)
     if subsequent_pair[0]:
         current_app.logger.debug(f"Pre-generating HTML map for candidate pair {subsequent_pair}")
         next_name = _unq_name(dataset, *subsequent_pair)
@@ -228,6 +237,7 @@ def _render_pair(idx: int = 0, id_existing: str = None, id_new: str = None, mode
 
     if mode == "review":
         label, counts, notes = S.get_labeling_details(id_existing, id_new)
+        idx = S.get_pair_index(id_existing, id_new)
         return render_template(
             "labeling_review_pair.html",
             idx=idx,
@@ -312,7 +322,7 @@ def store_label() -> Response:
     S = _get_state()
     S.add_result(id_existing, id_new, match, username, notes)
     next_pair = S.get_next_pair(mode, username)
-    next_url = url_for("labeling.label_pair", id_existing=next_pair[0], id_new=next_pair[1])
+    next_url = url_for("labeling.pair", action="label", id_existing=next_pair[0], id_new=next_pair[1])
 
     return jsonify(status="ok", next_url=next_url), 200
 

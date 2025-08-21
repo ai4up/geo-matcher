@@ -73,7 +73,7 @@
         });
 
         if (response.ok) {
-            window.location.href = '{{ feature_url("labeling.label_neighborhood" if request.endpoint.endswith("batch") else "labeling.label_pair") }}';
+            window.location.href = '{{ feature_url("labeling.label_neighborhood") if request.endpoint.endswith("batch") else feature_url("labeling.pair", action="label") }}';
         } else {
             alert('There was a problem saving your username.');
             return false;

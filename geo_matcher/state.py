@@ -77,6 +77,12 @@ class State:
         """
         return [self.data_a.loc[id_existing].drop(["geometry", "neighborhood"]).to_dict(), self.data_b.loc[id_new].drop(["geometry", "neighborhood"]).to_dict()]
 
+    def get_pair_index(self, id_existing: str, id_new: str) -> Series:
+        """
+        Return the index of a candidate pair. Raises IndexError if not found.
+        """
+        return self.pairs[(self.pairs["id_existing"] == id_existing) & (self.pairs["id_new"] == id_new)].index[0]
+
     def get_candidate_pair(self, id_existing: str, id_new: str) -> Series:
         """
         Return a candidate pair including the geometries of both features.
@@ -173,6 +179,15 @@ class State:
         Return the number of candidate pairs left to label.
         """
         return len(self._next_pairs(label_mode, user))
+
+    def get_pair_by_index(self, i: int = 0) -> Optional[tuple[str, str]]:
+        """
+        Get a candidate pair by its index.
+        """
+        try:
+            return self.pairs.loc[i]["id_existing"], self.pairs.loc[i]["id_new"]
+        except IndexError:
+            return None, None
 
     def get_next_pair(self, label_mode: str, user: str = None, i: int = 0) -> Optional[tuple[str, str]]:
         """

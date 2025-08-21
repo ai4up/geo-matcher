@@ -27,14 +27,15 @@ class CandidatePairs:
     ):
         self._validate_inputs(dataset_a, dataset_b, pairs, feature_type)
 
+        pairs = pairs.reset_index(drop=True)
+        if feature_type == "places":
+            dataset_a = dataset_a.to_crs("EPSG:4326")
+            dataset_b = dataset_b.to_crs("EPSG:4326")
+
         self.dataset_a = dataset_a
         self.dataset_b = dataset_b
         self.pairs = pairs
         self.feature_type = feature_type
-
-        if self.feature_type == "places":
-            self.dataset_a = self.dataset_a.to_crs("EPSG:4326")
-            self.dataset_b = self.dataset_b.to_crs("EPSG:4326")
 
     @staticmethod
     def load(filepath: str) -> "CandidatePairs":
