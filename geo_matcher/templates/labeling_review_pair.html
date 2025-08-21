@@ -68,11 +68,11 @@
     }
 
     function previousPair() {
-        window.location.href = {{ feature_url('labeling.pair', action='review', idx=idx-1) | tojson }};
+        window.history.back();
     }
 
     function nextPair() {
-        window.location.href = {{ feature_url('labeling.pair', action='review', idx=idx+1) | tojson }};
+        window.location.href = {{ feature_url('labeling.pair', action='review', idx=next_idx) | tojson }};
     }
 
     function copyNotes(el) {

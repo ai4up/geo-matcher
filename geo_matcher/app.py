@@ -228,7 +228,7 @@ def _render_pair(id_existing: str, id_new: str, review: bool = False) -> Respons
     fp = current_app.maps_dir / f"{g.ft}_pair_{name}.html"
     map_creation_func(S, id_existing, id_new, fp)
 
-    subsequent_pair = S.get_next_pair(mode, username, i=1)
+    subsequent_pair = S.get_next_pair(mode, username, id_existing, id_new)
     if subsequent_pair[0]:
         current_app.logger.debug(f"Pre-generating HTML map for candidate pair {subsequent_pair}")
         next_name = _unq_name(dataset, *subsequent_pair)
@@ -238,9 +238,13 @@ def _render_pair(id_existing: str, id_new: str, review: bool = False) -> Respons
     if mode == "review":
         label, counts, notes = S.get_labeling_details(id_existing, id_new)
         idx = S.get_pair_index(id_existing, id_new)
+        next_idx = S.get_pair_index(*subsequent_pair)
+        print(f"Current pair index: {idx}, Next pair index: {next_idx}")
+        print(subsequent_pair)
         return render_template(
             "labeling_review_pair.html",
             idx=idx,
+            next_idx=next_idx,
             label_code=label,
             label_text=_summarize_labels(counts),
             label_notes=_format_notes(notes),

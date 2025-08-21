@@ -186,30 +186,33 @@ class State:
         """
         try:
             return self.pairs.loc[i]["id_existing"], self.pairs.loc[i]["id_new"]
-        except IndexError:
+        except KeyError:
             return None, None
 
-    def get_next_pair(self, label_mode: str, user: str = None, i: int = 0) -> Optional[tuple[str, str]]:
+    def get_next_pair(self, label_mode: str, user: str = None, id_existing: str = None, id_new: str = None) -> Optional[tuple[str, str]]:
         """
         Return the next candidate pair to be labeled based on the selected labeling mode.
 
         Args:
             label_mode: Determines the labeling strategy. One of:
-                - 'all': Pairs not yet labeled by this user.
+                - 'all'/'training': Pairs not yet labeled by this user.
                 - 'remaining': Pairs not yet labeled (enough times) by any user.
                 - 'cross-validate': Pairs labeled by others but not enough times, or with conflicting labels.
                 - 'resolve-inconsistencies': Pairs with conflicting labels.
                 - 'review': Pairs already labeled by any user.
             user: The current user's identifier (optional).
-            i: Position of the pair in the candidate list (default: 0).
+            id_existing: Current ID of the existing feature (optional).
+            id_new: Current ID of the new feature (optional).
 
         Returns:
             The next (id_existing, id_new) pair to be labeled, or (None, None) if no suitable pair is found.
         """
         try:
-            return self._next_pairs(label_mode, user)[i]
+            pairs = self._next_pairs(label_mode, user)            
+            idx = pairs.get_loc((id_existing, id_new)) + 1 if id_existing and id_new else 0
+            return pairs[idx]
 
-        except IndexError:
+        except (IndexError, KeyError):
             return None, None
 
     def get_all_neighborhoods(self) -> Index:
@@ -320,8 +323,8 @@ class State:
 
         return label_counts[["yes", "no"]].idxmax(axis=1)
 
-    def _next_pairs(self, label_mode: str, user: str = None) -> List[Optional[tuple[str, str]]]:
-        if label_mode == "all":
+    def _next_pairs(self, label_mode: str, user: str = None) -> Index:
+        if label_mode == "all" or label_mode == "training":
             remaining = self._all_pairs()
         elif label_mode == "remaining":
             remaining = self._ambiguously_labeled_pairs().union(self._insufficiently_labeled_pairs(), sort=False).union(self._unlabeled_pairs(), sort=False)
@@ -330,11 +333,11 @@ class State:
         elif label_mode == "resolve-inconsistencies":
             remaining = self._ambiguously_labeled_pairs()
         elif label_mode == "review":
-            return self._labeled_pairs().to_list()
+            return self._labeled_pairs()
         else:
             raise ValueError(f"Labeling mode '{label_mode}' is not supported.")
 
-        remaining = remaining.drop(self._labeled_pairs(user), errors="ignore").to_list()
+        remaining = remaining.drop(self._labeled_pairs(user), errors="ignore")
 
         return remaining
 
