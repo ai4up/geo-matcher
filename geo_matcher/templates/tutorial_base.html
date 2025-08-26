@@ -7,9 +7,13 @@
 
 <div id="tutorial">
     <div id="labeling-tabs" style="text-align: center; margin-top: 10px; margin-bottom: 10px;">
-        {% set on_neighborhood = request.endpoint.endswith('home_batch') %}
-        <a href="{{ feature_url('labeling.home_pair') }}" class="nav-link {{ '' if on_neighborhood else 'active' }}">Pair-wise Labeling</a>
-        <a href="{{ feature_url('labeling.home_batch') }}" class="nav-link {{ 'active' if on_neighborhood else '' }}">Neighborhood-wise Labeling</a>
+        {% set on_pair = g.action == 'label' %}
+        {% set on_neighborhood = g.action == 'label-batch' %}
+        {% set on_review = g.action == 'review' %}
+
+        <a href="{{ feature_url('labeling.home_tutorial', action='label') }}" class="nav-link {{ 'active' if on_pair else '' }}">Pair-wise Labeling</a>
+        <a href="{{ feature_url('labeling.home_tutorial', action='label-batch') }}" class="nav-link {{ 'active' if on_neighborhood else '' }}">Neighborhood-wise Labeling</a>
+        <a href="{{ feature_url('labeling.home_tutorial', action='review') }}" class="nav-link {{ 'active' if on_review else '' }}">Review</a>
     </div>
 
     {% block tutorial_content %}{% endblock %}
@@ -73,7 +77,7 @@
         });
 
         if (response.ok) {
-            window.location.href = '{{ feature_url("labeling.label_neighborhood") if request.endpoint.endswith("batch") else feature_url("labeling.pair", action="label") }}';
+            window.location.href = '{{ feature_url("labeling.label_neighborhood") if g.action == "label-batch" else feature_url("labeling.pair", action="label") }}';
         } else {
             alert('There was a problem saving your username.');
             return false;

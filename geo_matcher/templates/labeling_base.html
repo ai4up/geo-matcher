@@ -2,12 +2,11 @@
 
 {% block body %}
 <div id="nav-bar">
-    {% set action = (request.view_args or {}).get('action') %}
-    {% set on_pair = request.endpoint == 'labeling.pair' and action == 'label' %}
+    {% set on_pair = request.endpoint == 'labeling.pair' and g.action == 'label' %}
     {% set on_neighborhood = request.endpoint == 'labeling.label_neighborhood' %}
-    {% set on_review = request.endpoint == 'labeling.pair' and action == 'review' %}
+    {% set on_review = request.endpoint == 'labeling.pair' and g.action == 'review' %}
 
-    <a href="{{ feature_url('labeling.home_batch' if on_neighborhood else 'labeling.home_pair') }}" class="nav-link">Home</a>
+    <a href="{{ feature_url('labeling.home_tutorial', action=g.action) }}" class="nav-link">Home</a>
     <a href="{{ url_for('labeling.download_results') }}" class="nav-link">Download Results</a>
 
     <span class="nav-divider"></span>

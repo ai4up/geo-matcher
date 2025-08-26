@@ -64,7 +64,7 @@
     });
 
     function relabel() {
-        window.location.href = {{ feature_url('labeling.pair', action='label', idx=idx) | tojson }};
+        window.location.href = {{ feature_url('labeling.pair', action='label', id_existing=id_existing, id_new=id_new) | tojson }};
     }
 
     function previousPair() {
@@ -72,7 +72,7 @@
     }
 
     function nextPair() {
-        window.location.href = {{ feature_url('labeling.pair', action='review', idx=next_idx) | tojson }};
+        window.location.href = {{ feature_url('labeling.pair', action='review', id_existing=next_id_existing, id_new=next_id_new) | tojson }};
     }
 
     function copyNotes(el) {

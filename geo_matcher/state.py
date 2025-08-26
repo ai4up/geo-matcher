@@ -195,11 +195,11 @@ class State:
 
         Args:
             label_mode: Determines the labeling strategy. One of:
-                - 'all'/'training': Pairs not yet labeled by this user.
+                - 'all': Pairs not yet labeled by this user.
                 - 'remaining': Pairs not yet labeled (enough times) by any user.
                 - 'cross-validate': Pairs labeled by others but not enough times, or with conflicting labels.
                 - 'resolve-inconsistencies': Pairs with conflicting labels.
-                - 'review': Pairs already labeled by any user.
+                - 'labeled': Pairs already labeled by any user.
             user: The current user's identifier (optional).
             id_existing: Current ID of the existing feature (optional).
             id_new: Current ID of the new feature (optional).
@@ -208,9 +208,9 @@ class State:
             The next (id_existing, id_new) pair to be labeled, or (None, None) if no suitable pair is found.
         """
         try:
-            pairs = self._next_pairs(label_mode, user)            
-            idx = pairs.get_loc((id_existing, id_new)) + 1 if id_existing and id_new else 0
-            return pairs[idx]
+            pairs = self._next_pairs(label_mode, user)          
+            next_idx = pairs.get_loc((id_existing, id_new)) + 1 if id_existing and id_new else 0
+            return pairs[next_idx]
 
         except (IndexError, KeyError):
             return None, None
@@ -324,7 +324,7 @@ class State:
         return label_counts[["yes", "no"]].idxmax(axis=1)
 
     def _next_pairs(self, label_mode: str, user: str = None) -> Index:
-        if label_mode == "all" or label_mode == "training":
+        if label_mode == "all":
             remaining = self._all_pairs()
         elif label_mode == "remaining":
             remaining = self._ambiguously_labeled_pairs().union(self._insufficiently_labeled_pairs(), sort=False).union(self._unlabeled_pairs(), sort=False)
@@ -332,8 +332,8 @@ class State:
             remaining = self._ambiguously_labeled_pairs().union(self._insufficiently_labeled_pairs(), sort=False)
         elif label_mode == "resolve-inconsistencies":
             remaining = self._ambiguously_labeled_pairs()
-        elif label_mode == "review":
-            return self._labeled_pairs()
+        elif label_mode == "labeled":
+            return self._all_labeled_pairs()
         else:
             raise ValueError(f"Labeling mode '{label_mode}' is not supported.")
 
@@ -399,13 +399,18 @@ class State:
     def _all_pairs(self) -> Index:
         return self._shuffled(pd.MultiIndex.from_frame(self.pairs[["id_existing", "id_new"]]))
 
-    def _labeled_pairs(self, user: str = None) -> Index:
+    def _all_labeled_pairs(self) -> Index:
         results = self._unique_results(include_unsure=True)
-        if user:
-            results = results[results["username"] == user]
         labeled_pairs = pd.MultiIndex.from_frame(results[["id_existing", "id_new"]]).unique()
 
         return labeled_pairs
+
+    def _labeled_pairs(self, user: str) -> Index:
+        results = self._unique_results(include_unsure=True)
+        user_results = results[results["username"] == user]
+        user_pairs = pd.MultiIndex.from_frame(user_results[["id_existing", "id_new"]]).unique()
+
+        return user_pairs
 
     def _labeled_neighborhoods(self, user: str) -> Index:
         results = self._unique_results(include_unsure=True)

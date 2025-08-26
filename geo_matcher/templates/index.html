@@ -7,13 +7,13 @@
 {% block body %}
 <main class="split-chooser" role="main" aria-label="Choose feature type">
   <a class="pane pane-left"
-     href="{{ url_for('labeling.home_pair', ft='buildings') }}"
+     href="{{ url_for('labeling.home_default', ft='buildings') }}"
      aria-label="Choose Buildings">
     <span>Buildings</span>
   </a>
 
   <a class="pane pane-right"
-     href="{{ url_for('labeling.home_pair', ft='places') }}"
+     href="{{ url_for('labeling.home_default', ft='places') }}"
      aria-label="Choose Places">
     <span>Places</span>
   </a>
