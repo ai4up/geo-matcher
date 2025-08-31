@@ -54,7 +54,7 @@
     document.addEventListener("keydown", function (e) {
         if (inFlight) return;
 
-        if (["ArrowUp", "Enter", "?"].includes(e.key)) {
+        if (["ArrowUp", "Enter", "?", "/"].includes(e.key)) {
             e.preventDefault();
         }
 
@@ -62,7 +62,7 @@
             window.history.back();
         } else if (e.key === "Enter") {
             submitNeighborhood();
-        } else if (e.key === "?") {
+        } else if (e.key === "?" || e.key === "/") {
             toggleLegend();
         }
     });

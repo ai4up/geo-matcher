@@ -69,7 +69,7 @@
         const tag = ae?.tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || ae?.isContentEditable) return;
 
-        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', '?'].includes(event.key)) {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', '?', '/'].includes(event.key)) {
             event.preventDefault();
         }
         if (event.repeat) return;
@@ -85,7 +85,7 @@
         } else if (event.key === 'ArrowLeft') {
             displayText('no');
             submitLabel('no');
-        } else if (event.key === '?') {
+        } else if (event.key === '?' || event.key === '/') {
             toggleLegend();
         }
     });
