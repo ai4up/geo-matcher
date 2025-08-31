@@ -55,7 +55,7 @@ def start_locally(*args, **kwargs) -> None:
     """
     app = create_app(*args, **kwargs)
     webbrowser.open("http://127.0.0.1:5001/")
-    waitress.serve(app, host="127.0.0.1", port=5001)
+    waitress.serve(app, host="127.0.0.1", port=5001, threads=1)
 
 
 @bp.before_request
