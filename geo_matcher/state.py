@@ -34,6 +34,7 @@ class State:
         self.data = CandidatePairs.load(data_path)
         self.data.preliminary_matching_estimate()
         self.results = self._load_results()
+        self.kappa = None
 
         # Add pointers to improve readability
         self.data_a = self.data.dataset_a
@@ -229,9 +230,18 @@ class State:
         Return a dictionary with the number of labeled pairs per user and their inter-annotator agreement score (Cohen's kappa).
         """
         results = self._unique_results(include_unsure=True)
-        user_counts = results["username"].value_counts(ascending=False).to_frame()[:5]
-        user_counts["kappa"] = self._inter_annotator_agreement()
+        user_counts = results["username"].value_counts().to_frame().head(5)
+        top_users = set(user_counts.index)
 
+        needs_refresh = (
+            self.kappa is None
+            or (len(self.results) % 10 == 0)
+            or self.kappa.keys() != top_users
+        )
+        if needs_refresh:
+            self.kappa = self._inter_annotator_agreement(top_users)
+
+        user_counts["kappa"] = self.kappa
         return user_counts.reset_index().to_dict(orient="records")
 
     def store_results(self) -> None:
@@ -396,32 +406,36 @@ class State:
 
         return user_neighborhoods
 
-    def _inter_annotator_agreement(self) -> Dict[str, float]:
+    def _inter_annotator_agreement(self, users: set[str]) -> Dict[str, float]:
         """
         Calculate Cohen's Kappa score for each user compared to the consensus of all other users.
 
         Returns:
             A dictionary mapping username to Cohen's Kappa score.
         """
-        def majority_vote(x):
-            return x.mode().iloc[0] if len(x.mode()) == 1 else None
-
-        # Only consider pairs labeled by more than one user
-        multi_labeled = self._unique_results().groupby(["id_existing", "id_new"]).filter(lambda g: g["username"].nunique() > 1)
+        df = self._unique_results().copy()
 
         kappas = {}
-        for user in multi_labeled["username"].unique():
-            user_df = multi_labeled[multi_labeled["username"] == user]
-            other_df = multi_labeled[multi_labeled["username"] != user]
+        for user in users:
+            user_df = df[df["username"] == user]
+            other_df = df[df["username"] != user]
+            label_counts = (
+                other_df
+                .groupby(["id_existing", "id_new"])["match"]
+                .value_counts()
+                .unstack(fill_value=0)
+                .reindex(columns=["yes", "no"], fill_value=0)
+            )
+            label_counts = label_counts[label_counts["yes"] != label_counts["no"]]
+            yes_consensus = (label_counts["yes"] > label_counts["no"]).rename("yes_consensus").reset_index()
 
-            consensus = other_df.groupby(["id_existing", "id_new"])["match"].agg(
-                majority_vote).dropna().rename("consensus")
-            merged = user_df.merge(consensus, on=["id_existing", "id_new"], how="inner")
+            user_df["yes"] = user_df["match"] == "yes"
+            user_df = user_df.merge(yes_consensus, on=["id_existing", "id_new"], how="inner")
 
-            if merged.empty:
+            if user_df.empty:
                 kappas[user] = float("nan")
             else:
-                kappas[user] = metrics.cohen_kappa_score(merged["match"].values, merged["consensus"].values, labels=["yes", "no"])
+                kappas[user] = metrics.cohen_kappa_score(user_df["yes"].values, user_df["yes_consensus"].values)
 
         return kappas
 
