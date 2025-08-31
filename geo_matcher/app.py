@@ -1,6 +1,8 @@
 import json
+import logging
 import os
 import re
+import time
 import webbrowser
 from pathlib import Path
 from typing import Dict, Optional, List
@@ -39,6 +41,7 @@ def create_app(data_path: str, annotation_redundancy: int, consensus_margin: int
     app.url_map.strict_slashes = False
     app.url_map.converters["ft"] = FeatureTypeConverter
     app.config["DEFAULT_FEATURE_TYPE"] = feature_type
+    app.logger.setLevel(logging.INFO)
 
     force_empty_dir(app.maps_dir)
 
@@ -66,6 +69,26 @@ def ensure_session_defaults() -> None:
     """
     session.setdefault("label_mode", "remaining")
     session.setdefault("username", "unknown")
+
+
+@bp.before_request
+def start_timer():
+    g._t0 = time.perf_counter()
+
+
+@bp.after_request
+def add_server_timing(resp):
+    try:
+        dur_ms = (time.perf_counter() - g._t0) * 1000
+        resp.headers["Server-Timing"] = f"app;dur={dur_ms:.1f}"
+        resp.headers["X-Response-Time"] = f"{dur_ms:.1f}ms"
+        current_app.logger.info(
+            "Endpoint %s (%s) took %.1f ms",
+            request.endpoint, request.path, dur_ms
+        )
+    except Exception:
+        pass
+    return resp
 
 
 @bp.app_errorhandler(MissingDataset)
