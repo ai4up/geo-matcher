@@ -6,7 +6,13 @@
 {{ super() }}
 
 <div id="buttons">
-    <button class="btn btn-submit" onclick="sendLabeledMatches('{{ id }}')">Submit</button>
+    <form id="nbh-form" method="post" action="{{ feature_url('labeling.store_neighborhood') }}">
+        <input type="hidden" name="id" value="{{ id }}">
+        <input type="hidden" id="pairs-field" name="pairs" value="">
+        <input type="hidden" id="added-field" name="added" value="">
+        <input type="hidden" id="removed-field" name="removed" value="">
+        <button type="button" id="submit-btn" class="btn btn-submit" onclick="submitNeighborhood()">Submit</button>
+    </form>
 </div>
 
 <div id="legend">
@@ -25,40 +31,37 @@
 {{ super() }}
 
 <script type="text/javascript">
-    function sendLabeledMatches(id) {
+    let inFlight = false;
+
+    function submitNeighborhood() {
+        if (inFlight) return;
+        inFlight = true;
+
         const iframe = document.querySelector("iframe");
-        const iframeWindow = iframe.contentWindow;
+        const iframeWindow = iframe?.contentWindow;
 
-        const added = iframeWindow.mapController?.getAddedMatches() || [];
-        const removed = iframeWindow.mapController?.getRemovedMatches() || [];
+        const added = iframeWindow?.mapController?.getAddedMatches?.() || [];
+        const removed = iframeWindow?.mapController?.getRemovedMatches?.() || [];
+        const pairs = iframeWindow?.pairs || [];
 
-        const payload = {
-            id: id,
-            pairs: iframeWindow.pairs || [],
-            added: added,
-            removed: removed
-        };
-        const STORE_NBH_URL = {{ feature_url('labeling.store_neighborhood') | tojson }};
-        fetch(STORE_NBH_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        })
-        .then(response => response.json())
-        .then(data => {
-            window.location.href = data.next_url;
-        })
-        .catch(err => console.error("Submission error:", err));
+        document.getElementById('pairs-field').value = JSON.stringify(pairs);
+        document.getElementById('added-field').value = JSON.stringify(added);
+        document.getElementById('removed-field').value = JSON.stringify(removed);
+
+        document.getElementById('nbh-form').submit();
     }
 
     document.addEventListener("keydown", function (e) {
-        e.preventDefault();
-        if (event.key === "ArrowUp") {
+        if (inFlight) return;
+
+        if (["ArrowUp", "Enter", "?"].includes(e.key)) {
+            e.preventDefault();
+        }
+
+        if (e.key === "ArrowUp") {
             window.history.back();
         } else if (e.key === "Enter") {
-            sendLabeledMatches('{{ id }}');
+            submitNeighborhood();
         } else if (e.key === "?") {
             toggleLegend();
         }

@@ -6,9 +6,15 @@
 {{ super() }}
 
 <div id="buttons">
-    <button class="btn btn-match" onclick="labelPair('{{ id_existing }}', '{{ id_new }}', 'yes')">Match</button>
-    <button class="btn btn-no-match" onclick="labelPair('{{ id_existing }}', '{{ id_new }}', 'no')">No Match</button>
-    <button class="btn btn-unsure" onclick="labelPair('{{ id_existing }}', '{{ id_new }}', 'unsure')">Unsure</button>
+    <form id="label-form" method="post" action="{{ feature_url('labeling.store_label') }}">
+        <input type="hidden" name="id_existing" value="{{ id_existing }}">
+        <input type="hidden" name="id_new" value="{{ id_new }}">
+        <input type="hidden" id="match-field" name="match" value="">
+        <input type="hidden" id="notes-field" name="notes" value="">
+        <button type="button" class="btn btn-match" onclick="submitLabel('yes')">Match</button>
+        <button type="button" class="btn btn-no-match" onclick="submitLabel('no')">No Match</button>
+        <button type="button" class="btn btn-unsure" onclick="submitLabel('unsure')">Unsure</button>
+    </form>
 </div>
 
 <div id="legend">
@@ -38,50 +44,51 @@
 {{ super() }}
 
 <script type="text/javascript">
+    let inFlight = false;
+
+    function submitLabel(match) {
+        if (inFlight) return;
+        inFlight = true;
+
+        const form = document.getElementById('label-form');
+        const matchField = document.getElementById('match-field');
+        const notesField = document.getElementById('notes-field');
+        const notesEl = document.getElementById('label-notes');
+
+        matchField.value = match;
+        if (notesEl) notesField.value = notesEl.value.trim();
+
+        form.submit();
+    }
+
     document.addEventListener('keydown', function(event) {
-        if (event.metaKey) return;
+        if (inFlight) return;
+        if (event.metaKey || event.ctrlKey || event.altKey) return;
 
         const ae = document.activeElement;
         const tag = ae?.tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || ae?.isContentEditable) return;
 
-        event.preventDefault();
-        if (event.key === "ArrowUp") {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', '?'].includes(event.key)) {
+            event.preventDefault();
+        }
+        if (event.repeat) return;
+
+        if (event.key === 'ArrowUp') {
             window.history.back();
-        } else if (event.key === "ArrowDown") {
+        } else if (event.key === 'ArrowDown') {
             displayText('unsure');
-            labelPair('{{ id_existing }}', '{{ id_new }}', 'unsure');
-        } else if (event.key === "ArrowRight") {
+            submitLabel('unsure');
+        } else if (event.key === 'ArrowRight') {
             displayText('yes');
-            labelPair('{{ id_existing }}', '{{ id_new }}', 'yes');
-        } else if (event.key === "ArrowLeft") {
+            submitLabel('yes');
+        } else if (event.key === 'ArrowLeft') {
             displayText('no');
-            labelPair('{{ id_existing }}', '{{ id_new }}', 'no');
-        } else if (event.key === "?") {
+            submitLabel('no');
+        } else if (event.key === '?') {
             toggleLegend();
         }
     });
-
-    function labelPair(id_existing, id_new, match) {
-        const STORE_LABEL_URL = {{ feature_url('labeling.store_label') | tojson }};
-        const notesEl = document.getElementById('label-notes');
-        const notes = notesEl ? notesEl.value.trim() : "";
-
-        fetch(STORE_LABEL_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                id_existing: id_existing,
-                id_new: id_new,
-                match: match,
-                notes: notes
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            window.location.href = data.next_url;
-        });
-    }
 
     function displayText(label) {
         const feedback = document.getElementById('label-feedback');

@@ -1,10 +1,11 @@
+import json
 import os
 import re
 import webbrowser
 from pathlib import Path
 from typing import Dict, Optional, List
 
-from flask import Blueprint, Flask, Response, current_app, g, jsonify, redirect, render_template, request, send_file, session, url_for
+from flask import Blueprint, Flask, Response, current_app, g, redirect, render_template, request, send_file, session, url_for
 from flask_executor import Executor
 from pandas import DataFrame
 import pandas as pd
@@ -300,21 +301,19 @@ def store_label() -> Response:
     """
     Store the labeling decision for a candidate pair and return the next one.
     """
-    data = request.json
-
     username = session.get("username")
     mode = session.get("label_mode")
-    id_existing = data.get("id_existing")
-    id_new = data.get("id_new")
-    match = data.get("match")
-    notes = data.get("notes")
+    id_existing = request.form.get("id_existing")
+    id_new = request.form.get("id_new")
+    match = request.form.get("match")
+    notes = request.form.get("notes")
 
     S = _get_state()
     S.add_result(id_existing, id_new, match, username, notes)
     next_pair = S.get_next_pair(mode, username)
     next_url = url_for("labeling.label_pair", id_existing=next_pair[0], id_new=next_pair[1])
 
-    return jsonify(status="ok", next_url=next_url), 200
+    return redirect(next_url, code=303)
 
 
 @bp.post("/<ft:ft>/store-neighborhood")
@@ -324,15 +323,22 @@ def store_neighborhood() -> Response:
 
     Accepts label adjustments (added and removed matches) and updates candidate pairs accordingly.
     """
-    data = request.json
-
     username = session.get("username")
     mode = session.get("label_mode")
 
-    id = data.get("id")
-    pairs = data.get("pairs")
-    added = data.get("added", [])
-    removed = data.get("removed", [])
+    def load_json_field(name: str):
+        raw = request.form.get(name, [])
+        try:
+            val = json.loads(raw)
+        except json.JSONDecodeError:
+            current_app.logger.warning("Invalid JSON in form field '%s'", name)
+            return []
+        return val
+
+    id = request.form.get("id")
+    pairs   = load_json_field("pairs")
+    added   = load_json_field("added")
+    removed = load_json_field("removed")
 
     current_app.logger.info(f"Adding {len(added)} matches, removing {len(removed)} in neighborhood {id}.")
 
@@ -349,7 +355,7 @@ def store_neighborhood() -> Response:
     next_id = S.get_next_neighborhood(mode, username)
     next_url = url_for("labeling.label_neighborhood", id=next_id)
 
-    return jsonify({"status": "ok", "next_url": next_url}), 200
+    return redirect(next_url, code=303)
 
 
 @bp.route("/download-results")
