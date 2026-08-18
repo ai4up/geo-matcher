@@ -5,7 +5,7 @@ import click
 import pandas as pd
 import geopandas as gpd
 
-from geo_matcher.candidate_pairs import CandidatePairs
+from sameplace.candidate_pairs import CandidatePairs
 
 
 @click.command()

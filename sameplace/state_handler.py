@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from geo_matcher.state import State
-from geo_matcher.utils import normalize_filename
+from sameplace.state import State
+from sameplace.utils import normalize_filename
 
 class StateHandler:
     """

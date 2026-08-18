@@ -1,7 +1,7 @@
 import os
 import sys
 
-from geo_matcher.app import create_app
+from sameplace.app import create_app
 
 try:
     data_path = os.environ["DATA_PATH"]

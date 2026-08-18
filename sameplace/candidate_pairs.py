@@ -8,7 +8,7 @@ from pandas import DataFrame
 import pandas as pd
 import geopandas as gpd
 
-from geo_matcher import spatial
+from sameplace import spatial
 
 logger = logging.getLogger(__name__)
 

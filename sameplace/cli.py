@@ -1,6 +1,6 @@
 import click
 
-from geo_matcher import app, dataset
+from sameplace import app, dataset
 
 DATASET_FILE = "candidate-pairs.zip"
 RESULTS_FILE = "."

@@ -19,7 +19,7 @@ RUN poetry config virtualenvs.create false \
  && poetry install --no-interaction --no-ansi --no-root
 
 # Copy package source code
-COPY geo_matcher geo_matcher
+COPY sameplace sameplace
 
 # Run app with Waitress
-CMD ["waitress-serve", "--host=0.0.0.0", "--port=5000", "--threads=1", "geo_matcher.wsgi:app"]
+CMD ["waitress-serve", "--host=0.0.0.0", "--port=5000", "--threads=1", "sameplace.wsgi:app"]

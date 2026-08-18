@@ -8,8 +8,8 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 
-from geo_matcher.candidate_pairs import CandidatePairs
-from geo_matcher import spatial
+from sameplace.candidate_pairs import CandidatePairs
+from sameplace import spatial
 
 warnings.simplefilter(action="ignore", category=pd.errors.SettingWithCopyWarning)
 warnings.simplefilter(action="ignore", category=FutureWarning)

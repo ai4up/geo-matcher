@@ -15,10 +15,10 @@ import waitress
 from werkzeug.routing import BaseConverter
 
 
-from geo_matcher.state import State
-from geo_matcher.state_handler import StateHandler
-from geo_matcher.utils import force_empty_dir
-from geo_matcher import map
+from sameplace.state import State
+from sameplace.state_handler import StateHandler
+from sameplace.utils import force_empty_dir
+from sameplace import map
 
 bp = Blueprint("labeling", __name__)
 executor = Executor()

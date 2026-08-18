@@ -6,9 +6,9 @@ from geopandas import GeoDataFrame
 import folium
 import geopandas as gpd
 
-from geo_matcher.state import State
-from geo_matcher import spatial
-from geo_matcher.candidate_pairs import CandidatePairs
+from sameplace.state import State
+from sameplace import spatial
+from sameplace.candidate_pairs import CandidatePairs
 
 BUILDING_LAYER_COLORS = {
     "map": {

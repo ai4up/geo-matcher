@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "geo-matcher"
+name = "sameplace"
 version = "0.2.0"
 description = "Tool for matching and labeling building pairs across building footprint datasets."
 authors = ["Florian Nachtigall <nachtigall.florian@gmail.com>"]
 readme = "README.md"
-packages = [{include = "geo_matcher"}]
+packages = [{include = "sameplace"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -27,4 +27,4 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-gmatch = "geo_matcher.cli:cli"
+sameplace = "sameplace.cli:cli"
